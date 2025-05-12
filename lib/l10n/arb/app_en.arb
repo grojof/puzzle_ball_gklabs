@@ -1,0 +1,45 @@
+{
+  "@@locale": "en",
+  "titleAppBarTitle": "Puzzle Ball",
+  "@titleAppBarTitle": {
+    "description": "Text shown in the AppBar of the Title Page"
+  },
+  "titleButtonContinue": "Continue",
+  "@titleButtonContinue": {
+    "description": "Text for the button that continues from the current level"
+  },
+  "titleButtonRestart": "Start Over",
+  "@titleButtonRestart": {
+    "description": "Text for the button that restarts the game from level 1"
+  },
+  "titleButtonLevelSelect": "Select Level",
+  "@titleButtonLevelSelect": {
+    "description": "Text for the button that opens the level selector"
+  },
+  "titleSoundToggle": "Sound enabled",
+  "@titleSoundToggle": {
+    "description": "Label for the switch that toggles sound"
+  },
+  "titleSelectLevel": "Select a level",
+  "@titleSelectLevel": {
+    "description": "Title of the dialog that shows the level selector"
+  },
+  "loading": "Loading {label}...",
+  "@loading": {
+    "description": "Text for the loading page",
+    "placeholders": {
+      "label": {
+        "type": "String",
+        "example": "Stuff",
+        "description": "Label for what is being loaded"
+      }
+    }
+  },
+  "loadingPhaseLabel": "{loadingPhase, select, audio{music} images{images} other{ }}",
+  "@loadingPhaseLabel": {
+    "description": "Loading phases",
+    "placeholders": {
+      "loadingPhase": {}
+    }
+  }
+}
