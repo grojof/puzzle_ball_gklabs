@@ -1,8 +1,8 @@
 export 'ball_component.dart';
 export 'ball_iso_visual_component.dart';
 export 'floor_component.dart';
-export 'floor_iso_visual_component.dart';
 export 'goal_component.dart';
+export 'iso_grid_debug_component.dart';
 export 'jump_button_component.dart';
 export 'keyboard_joystick_controller.dart';
 export 'obstacle_component.dart';

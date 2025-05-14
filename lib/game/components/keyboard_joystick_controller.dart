@@ -43,21 +43,22 @@ class KeyboardJoystickController extends KeyboardListenerComponent
 
     final delta = Vector2.zero();
 
-    if (keysPressed.contains(LogicalKeyboardKey.keyW) ||
-        keysPressed.contains(LogicalKeyboardKey.arrowUp)) {
+    // En isométrico: mover derecha = x+1, y-1 | izquierda = x-1, y+1
+    if (keysPressed.contains(LogicalKeyboardKey.keyW)) {
       delta.y -= 1;
     }
-    if (keysPressed.contains(LogicalKeyboardKey.keyS) ||
-        keysPressed.contains(LogicalKeyboardKey.arrowDown)) {
+    if (keysPressed.contains(LogicalKeyboardKey.keyS)) {
       delta.y += 1;
     }
-    if (keysPressed.contains(LogicalKeyboardKey.keyA) ||
-        keysPressed.contains(LogicalKeyboardKey.arrowLeft)) {
-      delta.x -= 1;
+    if (keysPressed.contains(LogicalKeyboardKey.keyA)) {
+      delta
+        ..x -= 1
+        ..y += 1;
     }
-    if (keysPressed.contains(LogicalKeyboardKey.keyD) ||
-        keysPressed.contains(LogicalKeyboardKey.arrowRight)) {
-      delta.x += 1;
+    if (keysPressed.contains(LogicalKeyboardKey.keyD)) {
+      delta
+        ..x += 1
+        ..y -= 1;
     }
 
     keyboardDelta = delta.normalized();

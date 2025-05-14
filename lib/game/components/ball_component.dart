@@ -23,7 +23,7 @@ class BallComponent extends BodyComponent with ContactCallbacks {
 
   static const double baseForce = 300;
   static const double keyboardForceMultiplier = 100;
-  static const double jumpImpulse = 300;
+  static const double jumpImpulse = -300;
   static const double dampingFactor = 0.98;
   static const double fallThresholdY = 100;
   static const double shakeJumpThreshold = 15;
@@ -120,7 +120,7 @@ class BallComponent extends BodyComponent with ContactCallbacks {
     debugPrint(
         '[Jump] Intentando saltar: canJump=$canJump, restante=${_canJumpUntil - now}');
     if (canJump || now < _canJumpUntil) {
-      body.applyLinearImpulse(Vector2(0, -jumpImpulse));
+      body.applyLinearImpulse(Vector2(-10, -jumpImpulse));
       canJump = false;
     }
   }

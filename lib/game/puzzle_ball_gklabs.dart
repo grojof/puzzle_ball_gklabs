@@ -17,7 +17,7 @@ class PuzzleBallGklabs extends Forge2DGame with HasKeyboardHandlerComponents {
     required this.levelIndex,
     this.onLevelCompleted,
     this.onResetRequested,
-  }) : super(gravity: Vector2(0, 20)) {
+  }) : super(gravity: Vector2(10, 10)) {
     this.images = images;
   }
 
@@ -54,6 +54,19 @@ class PuzzleBallGklabs extends Forge2DGame with HasKeyboardHandlerComponents {
     final level =
         predefinedLevels[levelIndex.clamp(0, predefinedLevels.length - 1)];
 
+    thirdPersonCamera = CameraComponent(world: gameWorld)
+      ..viewfinder.zoom = 0.5
+      ..viewfinder.anchor = const Anchor(0.5, 0.85);
+    await add(thirdPersonCamera);
+    camera = thirdPersonCamera;
+
+    thirdPersonCamera.viewfinder.add(
+      IsoGridDebugComponent(
+        columns: 40,
+        rows: 40,
+      ),
+    );
+
     joystick = JoystickComponent(
       knob: CircleComponent(
         radius: knobRadius,
@@ -74,11 +87,13 @@ class PuzzleBallGklabs extends Forge2DGame with HasKeyboardHandlerComponents {
       onFall: onResetRequested,
     )..joystick = joystick;
     await gameWorld.add(ball);
-    await add(BallIsoVisualComponent(
-      body: ball.body,
-      radius: ball.radius,
-      paint: ball.paint,
-    ));
+    thirdPersonCamera.viewfinder.add(
+      BallIsoVisualComponent(
+        body: ball.body,
+        radius: ball.radius,
+        paint: ball.paint,
+      ),
+    );
 
     final controller = KeyboardJoystickController(ball);
     ball.keyboardController = controller;
@@ -98,11 +113,6 @@ class PuzzleBallGklabs extends Forge2DGame with HasKeyboardHandlerComponents {
         size: Vector2(rect.width, rect.height),
       );
       await gameWorld.add(floor);
-      await add(FloorIsoVisualComponent(
-        body: floor.body,
-        visualSize: floor.size,
-        paint: floor.paint,
-      ));
     }
 
     for (final rect in level.walls) {
@@ -132,14 +142,6 @@ class PuzzleBallGklabs extends Forge2DGame with HasKeyboardHandlerComponents {
         paint: Paint()..color = const Color(0xFF81C784),
       ),
     );
-
-    // 🎥 Cámara tipo Marble Blast
-    thirdPersonCamera = CameraComponent(world: gameWorld)
-      ..viewfinder.zoom = 2.2
-      ..viewfinder.anchor = const Anchor(0.5, 0.85);
-
-    await add(thirdPersonCamera);
-    camera = thirdPersonCamera;
 
     thirdPersonCamera.follow(
       ball,
