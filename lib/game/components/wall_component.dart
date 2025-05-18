@@ -5,19 +5,18 @@ class WallComponent extends BodyComponent {
   WallComponent({
     required this.position,
     required this.size,
-    required Paint paint,
+    Paint? paint,
+    this.friction = 0.7,
+    this.restitution = 0.1,
   }) {
-    _paint = paint;
+    this.paint = paint ?? (Paint()..color = const Color(0xFF616161));
   }
 
   @override
   final Vector2 position;
-
   final Vector2 size;
-
-  late final Paint _paint;
-  @override
-  Paint get paint => _paint;
+  final double friction;
+  final double restitution;
 
   @override
   Body createBody() {
@@ -30,12 +29,12 @@ class WallComponent extends BodyComponent {
       );
 
     final fixtureDef = FixtureDef(shape)
-      ..friction = 0.3
-      ..restitution = 0.1;
+      ..friction = friction
+      ..restitution = restitution;
 
     final bodyDef = BodyDef()
       ..type = BodyType.static
-      ..position = position + size / 2; // Posición centrada
+      ..position = position;
 
     return world.createBody(bodyDef)..createFixture(fixtureDef);
   }

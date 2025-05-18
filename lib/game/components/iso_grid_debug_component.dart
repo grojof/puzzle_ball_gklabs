@@ -1,18 +1,19 @@
 import 'dart:ui';
 import 'package:flame/components.dart';
+import 'package:puzzle_ball_gklabs/game/components/components.dart';
 
 /// Dibuja una cuadrícula isométrica perfecta con rombos sin separación para debug.
 class IsoGridDebugComponent extends Component {
   IsoGridDebugComponent({
+    required this.gridConfig,
     this.columns = 30,
     this.rows = 30,
-    this.angle = 0.5,
     this.color = const Color(0x44888888),
   });
 
+  final IsoGridConfig gridConfig;
   final int columns;
   final int rows;
-  final double angle;
   final Color color;
 
   @override
@@ -21,31 +22,26 @@ class IsoGridDebugComponent extends Component {
       ..color = color
       ..style = PaintingStyle.stroke;
 
-    const cellWidth = 80.0;
+    final cellW = gridConfig.cellWidth;
+    final cellH = gridConfig.cellHeight;
 
-    final originX = -columns ~/ 2 * cellWidth;
-    final originY = -rows ~/ 2 * cellWidth;
+    final originX = -columns ~/ 2 * cellW;
+    final originY = -rows ~/ 2 * cellH;
 
-    // Líneas diagonales ↘ (de izquierda a derecha)
     for (var row = 0; row <= rows; row++) {
-      final start = _isoProject(Vector2(originX, originY + row * cellWidth));
-      final end = _isoProject(
-          Vector2(originX + columns * cellWidth, originY + row * cellWidth));
+      final start =
+          gridConfig.isoProject(Vector2(originX, originY + row * cellH));
+      final end = gridConfig.isoProject(
+          Vector2(originX + columns * cellW, originY + row * cellH));
       canvas.drawLine(start, end, paint);
     }
 
-    // Líneas diagonales ↙ (de derecha a izquierda)
     for (var col = 0; col <= columns; col++) {
-      final start = _isoProject(Vector2(originX + col * cellWidth, originY));
-      final end = _isoProject(
-          Vector2(originX + col * cellWidth, originY + rows * cellWidth));
+      final start =
+          gridConfig.isoProject(Vector2(originX + col * cellW, originY));
+      final end = gridConfig
+          .isoProject(Vector2(originX + col * cellW, originY + rows * cellH));
       canvas.drawLine(start, end, paint);
     }
-  }
-
-  Offset _isoProject(Vector2 p) {
-    final x = p.x - p.y;
-    final y = (p.x + p.y) * angle;
-    return Offset(x, y);
   }
 }

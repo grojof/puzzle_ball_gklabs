@@ -1,11 +1,8 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:puzzle_ball_gklabs/game/cubit/cubit.dart';
-import 'package:puzzle_ball_gklabs/gen/assets.gen.dart';
 import 'package:puzzle_ball_gklabs/l10n/l10n.dart';
-import 'package:puzzle_ball_gklabs/shared/cubit/settings/settings_cubit.dart';
+import 'package:puzzle_ball_gklabs/shared/cubit/cubit.dart';
 import 'package:puzzle_ball_gklabs/shared/theme/app_theme.dart';
 import 'package:puzzle_ball_gklabs/shared/widgets/widgets.dart';
 
@@ -33,29 +30,6 @@ class TitleView extends StatefulWidget {
 }
 
 class _TitleViewState extends State<TitleView> {
-  int currentLevel = 3; // Simulación: luego lo leeremos desde SharedPreferences
-  void _startGame() {
-    context.go('/game');
-  }
-
-  void _resetProgress() {
-    setState(
-      () => currentLevel = 1,
-    ); // Simulación: luego se reinicia persistencia
-  }
-
-  @override
-  void initState() {
-    super.initState();
-
-    final settings = context.read<SettingsCubit>().state;
-    final bgm = context.read<AudioCubit>().bgm;
-
-    if (settings.soundEnabled && !kIsWeb) {
-      bgm.play(Assets.audio.background);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
@@ -78,13 +52,50 @@ class _TitleViewState extends State<TitleView> {
               ),
               const SizedBox(height: 48),
               ElevatedButton(
-                onPressed: _startGame,
-                child:
-                    Text('${l10n.titleButtonContinue} (Nivel $currentLevel)'),
+                onPressed: () {
+                  final games = context.read<SavegameCubit>().state.games;
+                  if (games.isEmpty) {
+                    context.go('/savegames');
+                  } else {
+                    final sorted = List<SavedGame>.from(games)
+                      ..sort((a, b) => b.lastPlayed.compareTo(a.lastPlayed));
+                    final lastGame = sorted.first;
+                    context.go('/levels?savegame=${lastGame.id}');
+                  }
+                },
+                child: Text(l10n.titleButtonContinue),
+              ),
+              const SizedBox(height: 12),
+              ElevatedButton(
+                onPressed: () => context.go('/savegames'),
+                child: Text(l10n.titleSelectSavegame),
               ),
               const SizedBox(height: 12),
               ElevatedButton.icon(
-                onPressed: _resetProgress,
+                onPressed: () async {
+                  // TODO: lógica de reset de partidas guardadas
+                  // Por ahora, solo muestra un dialog
+                  await showDialog<void>(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      title: Text(l10n.titleResetProgress),
+                      content: Text(l10n.titleResetProgressConfirm),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: Text(l10n.titleCancel),
+                        ),
+                        TextButton(
+                          onPressed: () {
+                            // TODO: lógica real de reset
+                            Navigator.pop(context);
+                          },
+                          child: Text(l10n.titleConfirm),
+                        ),
+                      ],
+                    ),
+                  );
+                },
                 icon: const Icon(Icons.refresh),
                 label: Text(l10n.titleButtonRestart),
                 style: ElevatedButton.styleFrom(

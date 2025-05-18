@@ -7,6 +7,7 @@ import 'package:puzzle_ball_gklabs/game/cubit/cubit.dart';
 import 'package:puzzle_ball_gklabs/game/view/game_page.dart';
 import 'package:puzzle_ball_gklabs/l10n/l10n.dart';
 import 'package:puzzle_ball_gklabs/loading/loading.dart';
+import 'package:puzzle_ball_gklabs/shared/cubit/savegame/savegame_cubit.dart';
 import 'package:puzzle_ball_gklabs/shared/cubit/settings/settings_cubit.dart';
 import 'package:puzzle_ball_gklabs/shared/theme/app_theme.dart';
 import 'package:puzzle_ball_gklabs/title/view/view.dart';
@@ -38,6 +39,9 @@ class App extends StatelessWidget {
             return cubit;
           },
         ),
+        BlocProvider(
+          create: (_) => SavegameCubit(),
+        ),
       ],
       child: const AppView(),
     );
@@ -58,11 +62,16 @@ class AppView extends StatelessWidget {
           path: '/game',
           builder: (context, state) {
             final level =
-                int.tryParse(state.uri.queryParameters['level'] ?? '') ?? 1;
-            return GamePage(level: level);
+                int.tryParse(state.uri.queryParameters['level'] ?? '1') ?? 1;
+            final savegameId = state.uri.queryParameters['savegame'];
+            return GamePage(level: level, savegameId: savegameId);
           },
         ),
         GoRoute(path: '/levels', builder: (_, __) => const LevelSelectorPage()),
+        GoRoute(
+          path: '/savegames',
+          builder: (_, __) => const SavegameSelectorPage(),
+        ),
       ],
     );
 

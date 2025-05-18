@@ -16,6 +16,10 @@
   "@titleButtonLevelSelect": {
     "description": "Text for the button that opens the level selector"
   },
+  "titleButtonMenu": "Main menu",
+  "@titleButtonMenu": {
+    "description": "Tooltip and label for the button to return to the main menu"
+  },
   "titleSoundToggle": "Sound enabled",
   "@titleSoundToggle": {
     "description": "Label for the switch that toggles sound"
@@ -41,5 +45,71 @@
     "placeholders": {
       "loadingPhase": {}
     }
-  }
+  },
+  "titleSelectSavegame": "Select a savegame",
+  "@titleSelectSavegame": {
+    "description": "Title for the savegame selector page"
+  },
+  "titleNewSavegame": "New savegame",
+  "@titleNewSavegame": {
+    "description": "Tooltip for the button to create a new savegame"
+  },
+  "titleSeed": "Seed",
+  "@titleSeed": {
+    "description": "Label for the seed of a savegame"
+  },
+  "titleLevels": "Levels",
+  "@titleLevels": {
+    "description": "Label for the levels info in a savegame"
+  },
+  "titleCreated": "Created",
+  "@titleCreated": {
+    "description": "Label for the creation date of a savegame"
+  },
+  "titleLastPlayed": "Last played",
+  "@titleLastPlayed": {
+    "description": "Label for the last played date of a savegame"
+  },
+  "titleResetProgress": "Reset progress",
+  "@titleResetProgress": {
+    "description": "Dialog title for resetting progress"
+  },
+  "titleResetProgressConfirm": "Are you sure you want to reset all progress? This cannot be undone.",
+  "@titleResetProgressConfirm": {
+    "description": "Dialog content for resetting progress confirmation"
+  },
+  "titleCancel": "Cancel",
+  "@titleCancel": {
+    "description": "Cancel button label"
+  },
+  "titleConfirm": "Confirm",
+  "@titleConfirm": {
+    "description": "Confirm button label"
+  },
+  "titleDeleteSavegame": "Delete this savegame? This cannot be undone.",
+  "@titleDeleteSavegame": {
+    "description": "Dialog content for deleting a savegame"
+  },
+  "titleSavegameIconTooltip": "Savegame info",
+  "@titleSavegameIconTooltip": {
+    "description": "Tooltip for the savegame icon/avatar in the savegame list"
+  },
+  "titlePlaySavegame": "Play this savegame",
+  "@titlePlaySavegame": {
+    "description": "Tooltip for the play button in the savegame list"
+  },
+  "titleDelete": "Delete",
+  "@titleDelete": {
+    "description": "Label for delete button"
+  },
+  "titleLevelsHelper": "Number of levels for this savegame.",
+  "@titleLevelsHelper": {"description": "Helper text for the number of levels field when creating a savegame"},
+  "titleLevelsMinError": "Minimum 10 levels.",
+  "@titleLevelsMinError": {"description": "Validation error for minimum number of levels"},
+  "titleImportLevels": "Import levels (use seed)",
+  "@titleImportLevels": {"description": "Tooltip for the import levels button (show seed field)"},
+  "titleSeedHelper": "Optional: enter a seed to generate the same levels.",
+  "@titleSeedHelper": {"description": "Helper text for the seed field when creating a savegame"},
+  "titleCreate": "Create",
+  "@titleCreate": {"description": "Button label for creating a new savegame"}
 }

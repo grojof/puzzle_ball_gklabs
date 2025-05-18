@@ -1,12 +1,15 @@
 import 'dart:async';
-import 'dart:ui';
 
 import 'package:flame/components.dart';
 import 'package:flame_forge2d/flame_forge2d.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/painting.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:puzzle_ball_gklabs/game/components/floor_component.dart';
 import 'package:puzzle_ball_gklabs/game/components/goal_component.dart';
 import 'package:puzzle_ball_gklabs/game/components/keyboard_joystick_controller.dart';
+import 'package:puzzle_ball_gklabs/game/components/ramp_component.dart';
+import 'package:puzzle_ball_gklabs/game/levels/levels.dart';
 import 'package:puzzle_ball_gklabs/game/puzzle_ball_gklabs.dart';
 import 'package:puzzle_ball_gklabs/shared/cubit/settings/settings_cubit.dart';
 import 'package:sensors_plus/sensors_plus.dart';
@@ -18,38 +21,152 @@ class BallComponent extends BodyComponent with ContactCallbacks {
     required Paint paint,
     this.onFall,
   }) {
-    _customPaint = paint;
+    _paint = paint;
   }
-
-  static const double baseForce = 300;
-  static const double keyboardForceMultiplier = 100;
-  static const double jumpImpulse = -300;
-  static const double dampingFactor = 0.98;
-  static const double fallThresholdY = 100;
-  static const double shakeJumpThreshold = 15;
-
-  static const double density = 5;
-  static const double friction = 0.9;
-  static const double restitution = 0.05;
 
   final Vector2 initialPosition;
   final double radius;
   final VoidCallback? onFall;
 
-  late final Paint _customPaint;
-
+  late final Paint _paint;
   @override
-  Paint get paint => _customPaint;
+  Paint get paint => _paint;
+
+  // 🎯 Configuración física ajustable
+  static double density = 50; // Masa (más alto = más pesada)
+  static double friction = 0.6; // Rozamiento con el suelo
+  static double restitution = 0; // Rebote al chocar
+
+  static double linearDamping = 1.5; // Frenado natural
+  static double baseForce = 80; // Fuerza para moverse
+  static double jumpForce = 80; // Impulso del salto (vertical)
+  // static double fallThresholdY = 60; // Y para reiniciar al caer
+
+  // Parámetros ajustables para caída libre
+  static double fallCheckTime = 4; // segundos
+  static double fallCheckDistance = 8; // unidades
+  static double fallCheckRadius = 8; // radio de búsqueda de suelo/rampa
 
   JoystickComponent? joystick;
   KeyboardJoystickController? keyboardController;
 
-  Vector2 velocity = Vector2.zero();
+  Vector2 sensorVelocity = Vector2.zero();
   StreamSubscription<AccelerometerEvent>? _accelSub;
   double _lastZ = 0;
 
   bool canJump = false;
   int _canJumpUntil = 0;
+
+  // Variables para caída libre
+  double _lastGroundY = 0;
+  int _lastGroundTime = 0;
+  bool _onGround = false;
+
+  // --- BOOST STATE ---
+  void Function(BoostType type)? onBoostActivated;
+  void Function()? onBoostDeactivated;
+  bool _boostActive = false;
+  double jumpBoostForce = jumpForce;
+  double speedBoostForce = baseForce;
+  Vector2 speedBoostDirection = Vector2(1, 0);
+  double gravityBoostScale = 0.1; // Por defecto, gravedad lunar
+  double? _originalGravityScaleY;
+  double? _originalDensity;
+
+  // Métodos para boost externos
+  void applyJumpBoost([double? force]) {
+    body.applyLinearImpulse(Vector2(0, -(force ?? jumpBoostForce)));
+    _triggerBoost(BoostType.jump);
+  }
+
+  void applySpeedBoost({double? force, Vector2? direction}) {
+    body.applyLinearImpulse((direction ?? speedBoostDirection).normalized() *
+        (force ?? speedBoostForce));
+    _triggerBoost(BoostType.speed);
+  }
+
+  void applyGravityBoost({double? gravityScale, double? duration}) {
+    // Guarda el valor original solo la primera vez
+    _originalGravityScaleY ??= body.gravityScale?.y ?? 1.0;
+    body.gravityScale = Vector2(0, gravityScale ?? gravityBoostScale);
+    _triggerBoost(BoostType.gravity, duration: duration);
+    Future.delayed(Duration(milliseconds: ((duration ?? 2.0) * 1000).toInt()),
+        () {
+      if (body.isActive && _originalGravityScaleY != null) {
+        body.gravityScale = Vector2(0, _originalGravityScaleY!);
+        _originalGravityScaleY = null;
+      }
+    });
+  }
+
+  void _triggerBoost(BoostType type, {double? duration}) {
+    if (_boostActive) return;
+    _boostActive = true;
+    onBoostActivated?.call(type);
+    Future.delayed(Duration(milliseconds: ((duration ?? 2.0) * 1000).toInt()),
+        () {
+      _boostActive = false;
+      onBoostDeactivated?.call();
+    });
+  }
+
+  /// Aplica un boost de densidad (simula masa) temporalmente
+  void applyDensityBoost({double? density, double? duration}) {
+    // Cambia la densidad del primer fixture temporalmente
+    _originalDensity ??= body.fixtures.first.density;
+    body.fixtures.first.density = density ?? 0.1;
+    Future.delayed(
+      Duration(milliseconds: ((duration ?? 2.0) * 1000).toInt()),
+      () {
+        if (body.isActive && _originalDensity != null) {
+          body.fixtures.first.density = _originalDensity!;
+          _originalDensity = null;
+        }
+      },
+    );
+  }
+
+  /// Aplica un boost de fricción temporalmente
+  void applyFrictionBoost({double? friction, double? duration}) {
+    final originalFriction = body.fixtures.first.friction;
+    body.fixtures.first.friction = friction ?? 0.1;
+    Future.delayed(
+      Duration(milliseconds: ((duration ?? 2.0) * 1000).toInt()),
+      () {
+        if (body.isActive) {
+          body.fixtures.first.friction = originalFriction;
+        }
+      },
+    );
+  }
+
+  /// Aplica un boost de restitución (rebote) temporalmente
+  void applyRestitutionBoost({double? restitution, double? duration}) {
+    final originalRestitution = body.fixtures.first.restitution;
+    body.fixtures.first.restitution = restitution ?? 1.0;
+    Future.delayed(
+      Duration(milliseconds: ((duration ?? 2.0) * 1000).toInt()),
+      () {
+        if (body.isActive) {
+          body.fixtures.first.restitution = originalRestitution;
+        }
+      },
+    );
+  }
+
+  /// Aplica un boost de frenado natural (linearDamping) temporalmente
+  void applyLinearDampingBoost({double? damping, double? duration}) {
+    final originalDamping = body.linearDamping;
+    body.linearDamping = damping ?? 0.1;
+    Future.delayed(
+      Duration(milliseconds: ((duration ?? 2.0) * 1000).toInt()),
+      () {
+        if (body.isActive) {
+          body.linearDamping = originalDamping;
+        }
+      },
+    );
+  }
 
   @override
   Future<void> onLoad() async {
@@ -57,12 +174,9 @@ class BallComponent extends BodyComponent with ContactCallbacks {
 
     if (!kIsWeb) {
       _accelSub = accelerometerEventStream().listen((event) {
-        velocity = Vector2(-event.x, event.y);
-
+        sensorVelocity = Vector2(-event.x, event.y);
         final zDiff = (event.z - _lastZ).abs();
-        if (zDiff.isFinite && zDiff > shakeJumpThreshold) {
-          jump();
-        }
+        if (zDiff.isFinite && zDiff > 15) jump();
         _lastZ = event.z;
       });
     }
@@ -74,53 +188,74 @@ class BallComponent extends BodyComponent with ContactCallbacks {
     final fixtureDef = FixtureDef(shape)
       ..density = density
       ..friction = friction
-      ..restitution = restitution;
+      ..restitution = restitution
+      ..userData = this;
+
     final bodyDef = BodyDef()
       ..type = BodyType.dynamic
-      ..position = initialPosition;
+      ..position = initialPosition
+      ..linearDamping = linearDamping;
+
     return world.createBody(bodyDef)..createFixture(fixtureDef);
   }
 
   @override
   void update(double dt) {
     super.update(dt);
+    final dir = _getInputDirection();
 
+    if (dir.length > 0.1) {
+      body.applyForce(dir.normalized() * baseForce);
+    }
+
+    // Lógica avanzada de caída libre
+    if (!_onGround) {
+      final now = DateTime.now().millisecondsSinceEpoch;
+      final timeFalling = (now - _lastGroundTime) / 1000.0;
+      final ballPos = body.position;
+      double? minDist;
+      // Buscar el suelo/rampa más cercano por debajo
+      final bodies = (game as PuzzleBallGklabs)
+          .gameWorld
+          .children
+          .whereType<BodyComponent>();
+      for (final b in bodies) {
+        if (b is FloorComponent || b is RampComponent) {
+          final compPos = b.body.position;
+          final dx = (compPos.x - ballPos.x).abs();
+          final dy = compPos.y - ballPos.y;
+          if (dy > 0 && dx < fallCheckRadius) {
+            if (minDist == null || dy < minDist) minDist = dy;
+          }
+        }
+      }
+      if (timeFalling > fallCheckTime &&
+          (minDist == null || minDist > fallCheckDistance)) {
+        onFall?.call();
+      }
+    }
+  }
+
+  Vector2 _getInputDirection() {
     final useSensor =
         game.buildContext?.read<SettingsCubit>().state.useSensorControl ??
             false;
 
-    var inputDirection = Vector2.zero();
-
-    if (useSensor && velocity.length > 0.1) {
-      inputDirection = velocity;
-      if (inputDirection.length2 > 1.0) {
-        inputDirection.normalize();
-      }
-    } else if (!useSensor && keyboardController!.keyboardDelta.length > 0.1) {
-      inputDirection = keyboardController!.keyboardDelta;
-    } else if (!useSensor && joystick != null && joystick!.delta.length > 0.1) {
-      inputDirection = joystick!.delta;
+    if (useSensor && sensorVelocity.length > 0.1) {
+      return sensorVelocity.normalized();
     }
-
-    final isKeyboard = keyboardController!.keyboardDelta.length > 0.1;
-    final force = isKeyboard ? baseForce * keyboardForceMultiplier : baseForce;
-    body.applyForce(inputDirection * force);
-
-    if (inputDirection.length < 0.01) {
-      body.linearVelocity *= dampingFactor;
+    if (!useSensor && keyboardController!.keyboardDelta.length > 0.1) {
+      return keyboardController!.keyboardDelta;
     }
+    if (!useSensor && joystick!.delta.length > 0.1) return joystick!.delta;
 
-    if (body.position.y > fallThresholdY) {
-      onFall?.call();
-    }
+    return Vector2.zero();
   }
 
   void jump() {
     final now = DateTime.now().millisecondsSinceEpoch;
-    debugPrint(
-        '[Jump] Intentando saltar: canJump=$canJump, restante=${_canJumpUntil - now}');
     if (canJump || now < _canJumpUntil) {
-      body.applyLinearImpulse(Vector2(-10, -jumpImpulse));
+      body.applyLinearImpulse(Vector2(0, -jumpForce));
       canJump = false;
     }
   }
@@ -132,7 +267,10 @@ class BallComponent extends BodyComponent with ContactCallbacks {
     } else {
       canJump = true;
       _canJumpUntil = DateTime.now().millisecondsSinceEpoch + 150;
-      debugPrint('[Jump] Contacto iniciado, canJump = true');
+      // Si toca suelo/rampa, resetea caída libre
+      _onGround = true;
+      _lastGroundY = body.position.y;
+      _lastGroundTime = DateTime.now().millisecondsSinceEpoch;
     }
   }
 
@@ -141,6 +279,8 @@ class BallComponent extends BodyComponent with ContactCallbacks {
     if (other is! GoalComponent) {
       final now = DateTime.now().millisecondsSinceEpoch;
       canJump = now < _canJumpUntil;
+      // Si deja de tocar suelo/rampa, empieza caída libre
+      _onGround = false;
     }
   }
 
@@ -156,8 +296,31 @@ class BallComponent extends BodyComponent with ContactCallbacks {
 
     canvas
       ..save()
-      ..scale(scale, scale)
-      ..drawCircle(Offset.zero, radius, paint)
+      ..scale(scale, scale);
+
+    // Sombra
+    final shadowPaint = Paint()
+      ..color = const Color(0x22000000)
+      ..style = PaintingStyle.fill;
+    canvas.drawOval(
+      Rect.fromCenter(
+        center: Offset(0, radius * 1.2),
+        width: radius * 2.4,
+        height: radius * 0.5,
+      ),
+      shadowPaint,
+    );
+
+    // Bola
+    final gradientPaint = Paint()
+      ..shader = RadialGradient(
+        colors: [paint.color, paint.color.withAlpha(180)],
+        center: Alignment.topLeft,
+        radius: 0.9,
+      ).createShader(Rect.fromCircle(center: Offset.zero, radius: radius));
+
+    canvas
+      ..drawCircle(Offset.zero, radius, gradientPaint)
       ..restore();
   }
 

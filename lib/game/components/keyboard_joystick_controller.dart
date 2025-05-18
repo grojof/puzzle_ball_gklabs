@@ -20,9 +20,10 @@ class KeyboardJoystickController extends KeyboardListenerComponent
 
     if (!useSensor) {
       this.keysPressed = keysPressed;
+
+      // Salto solo con barra espaciadora (no arrow up)
       if (event is KeyDownEvent &&
-          (event.logicalKey == LogicalKeyboardKey.space ||
-              event.logicalKey == LogicalKeyboardKey.arrowUp)) {
+          event.logicalKey == LogicalKeyboardKey.space) {
         ball.jump();
       }
     }
@@ -43,24 +44,23 @@ class KeyboardJoystickController extends KeyboardListenerComponent
 
     final delta = Vector2.zero();
 
-    // En isométrico: mover derecha = x+1, y-1 | izquierda = x-1, y+1
-    if (keysPressed.contains(LogicalKeyboardKey.keyW)) {
-      delta.y -= 1;
-    }
-    if (keysPressed.contains(LogicalKeyboardKey.keyS)) {
-      delta.y += 1;
-    }
+    // if (keysPressed.contains(LogicalKeyboardKey.keyW)) {
+    //   delta.y -= 1;
+    // }
+    // if (keysPressed.contains(LogicalKeyboardKey.keyS)) {
+    //   delta.y += 1;
+    // }
     if (keysPressed.contains(LogicalKeyboardKey.keyA)) {
-      delta
-        ..x -= 1
-        ..y += 1;
+      delta.x -= 1;
     }
     if (keysPressed.contains(LogicalKeyboardKey.keyD)) {
-      delta
-        ..x += 1
-        ..y -= 1;
+      delta.x += 1;
     }
 
-    keyboardDelta = delta.normalized();
+    if (delta.length2 > 0) {
+      keyboardDelta = delta.normalized();
+    } else {
+      keyboardDelta.setZero();
+    }
   }
 }

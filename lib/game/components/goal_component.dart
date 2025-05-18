@@ -1,28 +1,32 @@
 import 'package:flame_forge2d/flame_forge2d.dart';
 import 'package:flutter/painting.dart';
 
-class GoalComponent extends BodyComponent {
+class GoalComponent extends BodyComponent with ContactCallbacks {
   GoalComponent({
     required this.position,
     required this.size,
-    required Paint paint,
-  }) {
-    _paint = paint;
-  }
+    Paint? paint,
+  }) : _customPaint = paint ?? (Paint()..color = const Color(0xFF81C784));
 
   @override
   final Vector2 position;
+
   final Vector2 size;
 
-  late final Paint _paint;
+  late final Paint _customPaint;
 
   @override
-  Paint get paint => _paint;
+  Paint get paint => _customPaint;
 
   @override
   Body createBody() {
     final shape = PolygonShape()
-      ..setAsBox(size.x / 2, size.y / 2, Vector2.zero(), 0);
+      ..setAsBox(
+        size.x / 2,
+        size.y / 2,
+        Vector2.zero(),
+        0,
+      );
 
     final fixtureDef = FixtureDef(shape)
       ..isSensor = true
@@ -30,16 +34,18 @@ class GoalComponent extends BodyComponent {
 
     final bodyDef = BodyDef()
       ..type = BodyType.static
-      ..position = position + size / 2;
+      ..position = position;
 
     return world.createBody(bodyDef)..createFixture(fixtureDef);
   }
 
   @override
   void render(Canvas canvas) {
-    canvas.drawRect(
-      Rect.fromCenter(center: Offset.zero, width: size.x, height: size.y),
-      paint,
+    final rect = Rect.fromCenter(
+      center: Offset.zero,
+      width: size.x,
+      height: size.y,
     );
+    canvas.drawRect(rect, paint);
   }
 }
