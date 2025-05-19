@@ -16,6 +16,7 @@ class PuzzleBallGklabs extends Forge2DGame with HasKeyboardHandlerComponents {
     required this.textStyle,
     required Images images,
     required this.levelIndex,
+    required this.levelsList,
     this.onLevelCompleted,
     this.onResetRequested,
   }) : super(gravity: Vector2(0, 10), zoom: 40) {
@@ -28,6 +29,7 @@ class PuzzleBallGklabs extends Forge2DGame with HasKeyboardHandlerComponents {
   final int levelIndex;
   final VoidCallback? onLevelCompleted;
   final VoidCallback? onResetRequested;
+  final List<LevelData> levelsList;
 
   static const double joystickRadius = 40;
   static const double knobRadius = 12;
@@ -130,8 +132,7 @@ class PuzzleBallGklabs extends Forge2DGame with HasKeyboardHandlerComponents {
     await add(gameWorld);
 
     // 🎯 Cargar nivel
-    final level =
-        predefinedLevels[levelIndex.clamp(0, predefinedLevels.length - 1)];
+    final level = levelsList[levelIndex.clamp(0, levelsList.length - 1)];
     _levelFloors = level.floorData;
     _levelBoosts = level.boostData;
 

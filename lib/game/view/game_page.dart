@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:puzzle_ball_gklabs/game/game.dart';
 import 'package:puzzle_ball_gklabs/game/levels/levels.dart';
+import 'package:puzzle_ball_gklabs/game/levels/predefined_levels.dart';
 import 'package:puzzle_ball_gklabs/l10n/l10n.dart';
 import 'package:puzzle_ball_gklabs/loading/cubit/cubit.dart';
 import 'package:puzzle_ball_gklabs/shared/cubit/cubit.dart';
@@ -63,8 +64,9 @@ class GameView extends StatelessWidget {
             )
         : nullSavedGame;
     final isValidSavegame = savegame.id.isNotEmpty;
-    final totalLevels =
-        isValidSavegame ? savegame.totalLevels : predefinedLevels.length;
+    final totalLevels = isValidSavegame ? savegame.totalLevels : 100;
+    final seed = isValidSavegame ? savegame.seed : '';
+    final levelsList = generatePredefinedLevels(totalLevels, seed);
 
     final game = PuzzleBallGklabs(
       l10n: context.l10n,
@@ -72,6 +74,7 @@ class GameView extends StatelessWidget {
       textStyle: textStyle,
       images: preload.images,
       levelIndex: level - 1,
+      levelsList: levelsList,
       onLevelCompleted: () {
         final nextLevel = level + 1;
         if (isValidSavegame) {
