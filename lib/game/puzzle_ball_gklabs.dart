@@ -77,13 +77,15 @@ class PuzzleBallGklabs extends Forge2DGame with HasKeyboardHandlerComponents {
       thirdPersonCamera,
       _levelFloors,
       ballPos,
-      lookAhead: 4.0,
-      lookBehind: 8.0,
-      lookUp: 8.0,
-      lookDown: 8.0,
+      lookAhead: 8,
+      lookBehind: 8,
+      lookUp: 3,
+      lookDown: 3,
       anchorNormal: const Anchor(0.5, 0.85),
-      anchorUp: const Anchor(0.5, 0.7),
-      anchorDown: const Anchor(0.5, 0.95),
+      // cámara baja, muestra más terreno por debajo
+      anchorLower: const Anchor(0.5, 0.75),
+      // cámara alta, muestra más terreno por arriba
+      anchorHigher: const Anchor(0.5, 0.95),
       setTargetAnchor: (anchor) => _targetCameraAnchor = anchor,
       ballVelocityX: velocityX,
     );
