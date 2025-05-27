@@ -4,6 +4,10 @@
   "@titleAppBarTitle": {
     "description": "Text shown in the AppBar of the Title Page"
   },
+  "labelLevel": "Level",
+  "@labelLevel": {
+    "description": "Text for the level label used everywhere in the game"
+  },
   "titleButtonContinue": "Continue",
   "@titleButtonContinue": {
     "description": "Text for the button that continues from the current level"
@@ -103,13 +107,23 @@
     "description": "Label for delete button"
   },
   "titleLevelsHelper": "Number of levels for this savegame.",
-  "@titleLevelsHelper": {"description": "Helper text for the number of levels field when creating a savegame"},
+  "@titleLevelsHelper": {
+    "description": "Helper text for the number of levels field when creating a savegame"
+  },
   "titleLevelsMinError": "Minimum 10 levels.",
-  "@titleLevelsMinError": {"description": "Validation error for minimum number of levels"},
+  "@titleLevelsMinError": {
+    "description": "Validation error for minimum number of levels"
+  },
   "titleImportLevels": "Import levels (use seed)",
-  "@titleImportLevels": {"description": "Tooltip for the import levels button (show seed field)"},
+  "@titleImportLevels": {
+    "description": "Tooltip for the import levels button (show seed field)"
+  },
   "titleSeedHelper": "Optional: enter a seed to generate the same levels.",
-  "@titleSeedHelper": {"description": "Helper text for the seed field when creating a savegame"},
+  "@titleSeedHelper": {
+    "description": "Helper text for the seed field when creating a savegame"
+  },
   "titleCreate": "Create",
-  "@titleCreate": {"description": "Button label for creating a new savegame"}
+  "@titleCreate": {
+    "description": "Button label for creating a new savegame"
+  }
 }

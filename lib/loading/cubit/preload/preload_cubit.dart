@@ -20,7 +20,10 @@ class PreloadCubit extends Cubit<PreloadState> {
         'audio',
         () => audio.loadAll([
           Assets.audio.background,
-          Assets.audio.effect,
+          Assets.audio.boostGravity,
+          Assets.audio.boostJump,
+          Assets.audio.boostSpeed,
+          Assets.audio.jump,
         ]),
       ),
       PreloadPhase(

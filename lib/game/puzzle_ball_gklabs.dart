@@ -1,9 +1,11 @@
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flame/cache.dart';
 import 'package:flame/components.dart';
+import 'package:flame/effects.dart';
 import 'package:flame/input.dart';
 import 'package:flame/parallax.dart';
 import 'package:flame_forge2d/flame_forge2d.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/painting.dart';
 import 'package:puzzle_ball_gklabs/game/components/components.dart';
 import 'package:puzzle_ball_gklabs/game/levels/levels.dart';
@@ -61,6 +63,42 @@ class PuzzleBallGklabs extends Forge2DGame with HasKeyboardHandlerComponents {
   double _cameraLerp = 0.08; // Suavidad de movimiento
 
   final Vector2 parallaxVelocity = Vector2.zero();
+
+  void _showLevelIndicator(int levelNumber) {
+    final baseStyle = textStyle.copyWith(
+      fontSize: 40,
+      color: Colors.white,
+      shadows: [
+        const Shadow(
+            blurRadius: 4, offset: Offset(2, 2), color: Colors.black54),
+      ],
+    );
+
+    final text = '${l10n.labelLevel} $levelNumber';
+    final textComponent = TextComponent(
+      text: text,
+      textRenderer: TextPaint(style: baseStyle),
+      anchor: Anchor.center,
+      position: size / 2,
+      priority: 1000,
+    );
+
+    double time = 0;
+
+    final effect = _TextFadeController(
+      duration: 2.3,
+      onOpacityChange: (opacity) {
+        textComponent.textRenderer = TextPaint(
+          style: baseStyle.copyWith(color: Colors.white.withOpacity(opacity)),
+        );
+      },
+      onComplete: () {
+        textComponent.removeFromParent();
+      },
+    );
+
+    camera.viewport.addAll([textComponent, effect]);
+  }
 
   void _updateCameraSmooth() {
     final currentZoom = thirdPersonCamera.viewfinder.zoom;
@@ -301,6 +339,8 @@ class PuzzleBallGklabs extends Forge2DGame with HasKeyboardHandlerComponents {
     // Suscribirse a eventos de boost (BallComponent ahora tiene los hooks)
     ball.onBoostActivated = handleBoostActivated;
     ball.onBoostDeactivated = handleBoostDeactivated;
+
+    _showLevelIndicator(levelIndex + 1);
   }
 
   Future<void> resetLevel() async {
@@ -329,5 +369,39 @@ class PuzzleBallGklabs extends Forge2DGame with HasKeyboardHandlerComponents {
     _adjustCameraHeightForTerrain(ball.body.position);
     _adjustCameraForBoosts(ball.body.position);
     _updateCameraSmooth();
+  }
+}
+
+class _TextFadeController extends Component {
+  _TextFadeController({
+    required this.duration,
+    required this.onOpacityChange,
+    required this.onComplete,
+  });
+
+  final double duration;
+  final void Function(double opacity) onOpacityChange;
+  final VoidCallback onComplete;
+
+  double _elapsed = 0;
+
+  @override
+  void update(double dt) {
+    _elapsed += dt;
+
+    double opacity;
+    if (_elapsed < 0.3) {
+      opacity = _elapsed / 0.3; // fade in
+    } else if (_elapsed < 1.8) {
+      opacity = 1.0; // hold
+    } else if (_elapsed < duration) {
+      opacity = 1.0 - ((_elapsed - 1.8) / (duration - 1.8)); // fade out
+    } else {
+      onComplete();
+      removeFromParent();
+      return;
+    }
+
+    onOpacityChange(opacity.clamp(0.0, 1.0));
   }
 }

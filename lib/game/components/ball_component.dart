@@ -2,7 +2,9 @@ import 'dart:async';
 import 'dart:ui';
 
 import 'package:flame/components.dart';
+import 'package:flame/effects.dart';
 import 'package:flame_forge2d/flame_forge2d.dart';
+import 'package:flutter/animation.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/painting.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -27,6 +29,7 @@ class BallComponent extends BodyComponent with ContactCallbacks {
   final double radius;
   final VoidCallback? onFall;
   final Image? textureImage;
+  bool _portalActivated = false;
 
   // 🎯 Configuración física ajustable
   static double density = 50; // Masa (más alto = más pesada)
@@ -239,15 +242,18 @@ class BallComponent extends BodyComponent with ContactCallbacks {
         game.buildContext?.read<SettingsCubit>().state.useSensorControl ??
             false;
 
-    if (useSensor && sensorVelocity.length > 0.1) {
-      return sensorVelocity.normalized();
-    }
-    if (!useSensor && keyboardController!.keyboardDelta.length > 0.1) {
-      return keyboardController!.keyboardDelta;
-    }
-    if (!useSensor && joystick!.delta.length > 0.1) return joystick!.delta;
+    var direction = Vector2.zero();
 
-    return Vector2.zero();
+    if (useSensor && sensorVelocity.length > 0.1) {
+      direction = sensorVelocity;
+    } else if (!useSensor && keyboardController!.keyboardDelta.length > 0.1) {
+      direction = keyboardController!.keyboardDelta;
+    } else if (!useSensor && joystick!.delta.length > 0.1) {
+      direction = joystick!.delta;
+    }
+
+    // ⚠️ Forzamos movimiento solo horizontal
+    return Vector2(direction.x, 0);
   }
 
   void jump() {
@@ -260,14 +266,67 @@ class BallComponent extends BodyComponent with ContactCallbacks {
 
   @override
   void beginContact(Object other, Contact contact) {
-    if (other is GoalComponent) {
-      (game as PuzzleBallGklabs).onLevelCompleted?.call();
+    if (other is GoalComponent && !_portalActivated) {
+      _portalActivated = true;
+
+      final gameRef = game as PuzzleBallGklabs;
+      final screenSize = gameRef.size;
+
+      // 🚫 Detener física de la bola
+      Future.microtask(() {
+        body.linearVelocity = Vector2.zero();
+        body.setActive(false);
+      });
+
+      // 🔵 Azul parpadeante
+      final portalFlashOverlay = RectangleComponent(
+        size: screenSize,
+        position: Vector2.zero(),
+        paint: Paint()..color = const Color(0xFF42A5F5).withOpacity(0.0),
+      );
+
+      gameRef.camera.viewport.add(portalFlashOverlay);
+
+      portalFlashOverlay.add(
+        SequenceEffect(
+          [
+            OpacityEffect.to(
+              0.6,
+              EffectController(duration: 0.4, curve: Curves.easeOut),
+            ),
+            OpacityEffect.to(
+              0.0,
+              EffectController(duration: 0.4, curve: Curves.easeIn),
+            ),
+          ],
+          onComplete: () {
+            portalFlashOverlay.removeFromParent();
+
+            // ⚫ Luego fundido a negro
+            final blackoutOverlay = RectangleComponent(
+              size: screenSize,
+              position: Vector2.zero(),
+              paint: Paint()..color = const Color(0xFF000000).withOpacity(0.0),
+            );
+
+            gameRef.camera.viewport.add(blackoutOverlay);
+
+            blackoutOverlay.add(
+              OpacityEffect.to(
+                1.0,
+                EffectController(duration: 0.4, curve: Curves.easeIn),
+                onComplete: () {
+                  gameRef.onLevelCompleted?.call();
+                },
+              ),
+            );
+          },
+        ),
+      );
     } else {
       canJump = true;
       _canJumpUntil = DateTime.now().millisecondsSinceEpoch + 150;
-      // Si toca suelo/rampa, resetea caída libre
       _onGround = true;
-      // _lastGroundY = body.position.y;
       _lastGroundTime = DateTime.now().millisecondsSinceEpoch;
     }
   }

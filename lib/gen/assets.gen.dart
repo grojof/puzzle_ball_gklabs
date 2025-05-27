@@ -15,11 +15,26 @@ class $AssetsAudioGen {
   /// File path: assets/audio/background.mp3
   String get background => 'assets/audio/background.mp3';
 
-  /// File path: assets/audio/effect.mp3
-  String get effect => 'assets/audio/effect.mp3';
+  /// File path: assets/audio/boost_gravity.mp3
+  String get boostGravity => 'assets/audio/boost_gravity.mp3';
+
+  /// File path: assets/audio/boost_jump.mp3
+  String get boostJump => 'assets/audio/boost_jump.mp3';
+
+  /// File path: assets/audio/boost_speed.mp3
+  String get boostSpeed => 'assets/audio/boost_speed.mp3';
+
+  /// File path: assets/audio/jump.mp3
+  String get jump => 'assets/audio/jump.mp3';
 
   /// List of all assets
-  List<String> get values => [background, effect];
+  List<String> get values => [
+    background,
+    boostGravity,
+    boostJump,
+    boostSpeed,
+    jump,
+  ];
 }
 
 class $AssetsImagesGen {
