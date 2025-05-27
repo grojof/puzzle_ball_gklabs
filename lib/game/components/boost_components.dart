@@ -54,7 +54,7 @@ class JumpBoostComponent extends BodyComponent with ContactCallbacks {
   @override
   void beginContact(Object other, Contact contact) {
     if (other is BallComponent) {
-      other.body.applyLinearImpulse(Vector2(0, -force));
+      other.applyJumpBoost(force);
     }
   }
 
@@ -123,7 +123,7 @@ class SpeedBoostComponent extends BodyComponent with ContactCallbacks {
   @override
   void beginContact(Object other, Contact contact) {
     if (other is BallComponent) {
-      other.body.applyLinearImpulse(direction.normalized() * force);
+      other.applySpeedBoost(force: force, direction: direction);
     }
   }
 
@@ -192,14 +192,10 @@ class GravityBoostComponent extends BodyComponent with ContactCallbacks {
   @override
   void beginContact(Object other, Contact contact) {
     if (other is BallComponent) {
-      // Solo modifica gravityScale, no density
-      final originalGravity = other.body.gravityScale?.y ?? 1.0;
-      other.body.gravityScale = Vector2(0, gravityScale);
-      Future.delayed(Duration(milliseconds: (duration * 1000).toInt()), () {
-        if (other.body.isActive) {
-          other.body.gravityScale = Vector2(0, originalGravity);
-        }
-      });
+      other.applyGravityBoost(
+        gravityScale: gravityScale,
+        duration: duration,
+      );
     }
   }
 

@@ -1,9 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:puzzle_ball_gklabs/shared/cubit/settings/settings_cubit.dart';
 
 class ControlModeSelector extends StatelessWidget {
-  const ControlModeSelector({super.key});
+  const ControlModeSelector({
+    required this.l10n,
+    super.key,
+  });
+
+  final AppLocalizations l10n;
 
   @override
   Widget build(BuildContext context) {
@@ -17,15 +23,13 @@ class ControlModeSelector extends StatelessWidget {
         color: theme.colorScheme.primary,
       ),
       title: Text(
-        settings.useSensorControl
-            ? 'Control por inclinación'
-            : 'Control por joystick',
+        settings.useSensorControl ? l10n.controlTilt : l10n.controlJoystick,
         style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold),
       ),
       subtitle: Text(
         settings.useSensorControl
-            ? 'Usa el acelerómetro del dispositivo para mover la bola.'
-            : 'Usa el joystick táctil o las teclas para mover la bola.',
+            ? l10n.controlTiltDesc
+            : l10n.controlJoystickDesc,
         style: theme.textTheme.bodySmall,
       ),
       trailing: Switch.adaptive(

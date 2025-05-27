@@ -3,16 +3,16 @@ import 'package:google_fonts/google_fonts.dart';
 
 class AppColors {
   /// 🎯 Color principal (azul eléctrico vibrante)
-  static const Color primary = Color(0xFF2A48DF);
+  static const Color primary = Color(0xFFE0AC00);
 
   /// 🌌 Color secundario oscuro, ideal para capas de fondo
   static const Color secondary = Color(0xFF2E365D);
 
   /// 💡 Color de acento (amarillo eléctrico cálido, para bolas o portales)
-  static const Color accent = Color(0xFFFFD54A);
+  static const Color accent = Color(0xFF804AFF);
 
   /// 🌃 Fondo principal nocturno
-  static const Color background = Color(0xFF0B0F1A);
+  static const Color background = Color(0xFF0b1627);
 
   /// ✨ Color de texto lavanda claro para buena legibilidad
   static const Color text = Color(0xFFE6E6FA);

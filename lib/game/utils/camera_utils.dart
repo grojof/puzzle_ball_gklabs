@@ -213,3 +213,23 @@ void adjustCameraHeightForTerrain(
     camera.viewfinder.anchor = targetAnchor;
   }
 }
+
+void adjustCameraForBoostsSmooth(
+  CameraComponent camera,
+  List<BoostData> boosts,
+  Vector2 ballPos,
+  double defaultZoom,
+  double currentZoom,
+  void Function(double newZoom) setTargetZoom, {
+  double lerp = 0.08,
+}) {
+  final boostNear = boosts.any(
+    (b) => (b.position.x - ballPos.x).abs() < CameraBehaviorConfig.boostRange,
+  );
+
+  final targetZoom = boostNear ? CameraBehaviorConfig.boostZoom : defaultZoom;
+
+  // Aplicar interpolación suave directamente
+  final newZoom = currentZoom + (targetZoom - currentZoom) * lerp;
+  setTargetZoom(newZoom);
+}

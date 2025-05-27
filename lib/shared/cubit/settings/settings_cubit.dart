@@ -11,15 +11,23 @@ class SettingsCubit extends Cubit<SettingsState> {
   Future<void> _loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
     final currentLevel = prefs.getInt('currentLevel') ?? 1;
+    final languageCode = prefs.getString('languageCode') ?? 'es';
     final soundEnabled = prefs.getBool('soundEnabled') ?? true;
     final useSensor = prefs.getBool('useSensorControl') ?? false;
     emit(
       state.copyWith(
         currentLevel: currentLevel,
+        languageCode: languageCode,
         soundEnabled: soundEnabled,
         useSensorControl: useSensor,
       ),
     );
+  }
+
+  Future<void> changeLanguage(String code) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('languageCode', code);
+    emit(state.copyWith(languageCode: code));
   }
 
   Future<void> setCurrentLevel(int level) async {

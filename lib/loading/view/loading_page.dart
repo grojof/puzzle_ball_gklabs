@@ -18,6 +18,18 @@ class LoadingPage extends StatelessWidget {
     final loaderTotalDelay = PuzzleBallLoader.intrinsicAnimationDuration +
         const Duration(milliseconds: 2000);
 
+    final preload = context.watch<PreloadCubit>();
+
+    // ✅ Si ya está precargado desde el principio (cambio idioma u otro rebuild)
+    if (preload.state.isComplete) {
+      Future.microtask(() async {
+        await Future<void>.delayed(loaderTotalDelay); // ⏳ Espera mínima visible
+        if (context.mounted) {
+          context.go(redirectTo ?? '/menu');
+        }
+      });
+    }
+
     return BlocListener<PreloadCubit, PreloadState>(
       listenWhen: (prev, next) => !prev.isComplete && next.isComplete,
       listener: (context, _) {

@@ -48,7 +48,6 @@ class SavegameSelectorPage extends StatelessWidget {
               },
             ),
           ),
-          const SoundToggleFab(),
         ],
       ),
     );

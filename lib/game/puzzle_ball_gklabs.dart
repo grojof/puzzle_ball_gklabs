@@ -61,6 +61,7 @@ class PuzzleBallGklabs extends Forge2DGame with HasKeyboardHandlerComponents {
   double _targetCameraZoom = 40;
   Anchor _targetCameraAnchor = const Anchor(0.5, 0.85);
   double _cameraLerp = 0.08; // Suavidad de movimiento
+  double? _boostZoomEndTime;
 
   final Vector2 parallaxVelocity = Vector2.zero();
 
@@ -92,9 +93,7 @@ class PuzzleBallGklabs extends Forge2DGame with HasKeyboardHandlerComponents {
           style: baseStyle.copyWith(color: Colors.white.withOpacity(opacity)),
         );
       },
-      onComplete: () {
-        textComponent.removeFromParent();
-      },
+      onComplete: textComponent.removeFromParent,
     );
 
     camera.viewport.addAll([textComponent, effect]);
@@ -110,13 +109,6 @@ class PuzzleBallGklabs extends Forge2DGame with HasKeyboardHandlerComponents {
       currentAnchor.y + (_targetCameraAnchor.y - currentAnchor.y) * _cameraLerp,
     );
   }
-
-  void _adjustCameraForBoosts(Vector2 ballPos) => adjustCameraForBoosts(
-        thirdPersonCamera,
-        _levelBoosts,
-        ballPos,
-        _defaultCameraZoom,
-      );
 
   void _adjustCameraHeightForTerrain(Vector2 ballPos) {
     final velocityX = ball.body.linearVelocity.x;
@@ -147,16 +139,15 @@ class PuzzleBallGklabs extends Forge2DGame with HasKeyboardHandlerComponents {
   void handleBoostActivated(BoostType type) {
     if (_isCameraBoosted) return;
     _isCameraBoosted = true;
-    _animateCameraZoom(25, duration: 0.4); // Aleja la cámara
+
+    // Definir cuánto tiempo dura el zoom especial
+    _boostZoomEndTime = currentTime() + 2.0; // 2 segundos desde ahora
   }
 
   void handleBoostDeactivated() {
-    if (!_isCameraBoosted) return;
     _isCameraBoosted = false;
-    _animateCameraZoom(
-      _defaultCameraZoom,
-      duration: 0.5,
-    ); // Vuelve a la normalidad
+    _boostZoomEndTime = null;
+    _targetCameraZoom = _defaultCameraZoom;
   }
 
   void adjustCameraAnchorForTerrain(Vector2 ballPos) {
@@ -313,6 +304,7 @@ class PuzzleBallGklabs extends Forge2DGame with HasKeyboardHandlerComponents {
 
     // ⚽ Bola física
     ball = BallComponent(
+      effectPlayer: effectPlayer,
       initialPosition: level.ballStart,
       radius: 0.2,
       onFall: resetLevel,
@@ -347,9 +339,6 @@ class PuzzleBallGklabs extends Forge2DGame with HasKeyboardHandlerComponents {
     onResetRequested?.call();
   }
 
-  void _animateCameraZoom(double targetZoom, {double duration = 0.5}) =>
-      animateCameraZoom(thirdPersonCamera, targetZoom, duration: duration);
-
   @override
   void update(double dt) {
     super.update(dt);
@@ -367,7 +356,36 @@ class PuzzleBallGklabs extends Forge2DGame with HasKeyboardHandlerComponents {
     layer3.update(Vector2(20 * dt, 0), dt);
 
     _adjustCameraHeightForTerrain(ball.body.position);
-    _adjustCameraForBoosts(ball.body.position);
+    // adjustCameraForBoostsSmooth(
+    //   thirdPersonCamera,
+    //   _levelBoosts,
+    //   ball.body.position,
+    //   _defaultCameraZoom,
+    //   thirdPersonCamera.viewfinder.zoom,
+    //   (newZoom) => _targetCameraZoom = newZoom,
+    // );
+    final now = currentTime();
+    if (_isCameraBoosted &&
+        _boostZoomEndTime != null &&
+        now < _boostZoomEndTime!) {
+      adjustCameraForBoostsSmooth(
+        thirdPersonCamera,
+        _levelBoosts,
+        ball.body.position,
+        40, // Zoom alejado
+        thirdPersonCamera.viewfinder.zoom,
+        (newZoom) => _targetCameraZoom = newZoom,
+      );
+    } else {
+      adjustCameraForBoostsSmooth(
+        thirdPersonCamera,
+        _levelBoosts,
+        ball.body.position,
+        _defaultCameraZoom,
+        thirdPersonCamera.viewfinder.zoom,
+        (newZoom) => _targetCameraZoom = newZoom,
+      );
+    }
     _updateCameraSmooth();
   }
 }

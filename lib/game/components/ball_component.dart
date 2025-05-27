@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:ui';
 
+import 'package:audioplayers/audioplayers.dart';
 import 'package:flame/components.dart';
 import 'package:flame/effects.dart';
 import 'package:flame_forge2d/flame_forge2d.dart';
@@ -14,17 +15,20 @@ import 'package:puzzle_ball_gklabs/game/components/keyboard_joystick_controller.
 import 'package:puzzle_ball_gklabs/game/components/ramp_component.dart';
 import 'package:puzzle_ball_gklabs/game/levels/levels.dart';
 import 'package:puzzle_ball_gklabs/game/puzzle_ball_gklabs.dart';
+import 'package:puzzle_ball_gklabs/gen/assets.gen.dart';
 import 'package:puzzle_ball_gklabs/shared/cubit/settings/settings_cubit.dart';
 import 'package:sensors_plus/sensors_plus.dart';
 
 class BallComponent extends BodyComponent with ContactCallbacks {
   BallComponent({
+    required this.effectPlayer,
     required this.initialPosition,
     required this.radius,
     this.textureImage,
     this.onFall,
   });
 
+  final AudioPlayer effectPlayer;
   final Vector2 initialPosition;
   final double radius;
   final VoidCallback? onFall;
@@ -42,9 +46,9 @@ class BallComponent extends BodyComponent with ContactCallbacks {
   // static double fallThresholdY = 60; // Y para reiniciar al caer
 
   // Parámetros ajustables para caída libre
-  static double fallCheckTime = 4; // segundos
-  static double fallCheckDistance = 8; // unidades
-  static double fallCheckRadius = 8; // radio de búsqueda de suelo/rampa
+  static double fallCheckTime = 2; // segundos
+  static double fallCheckDistance = 20; // unidades
+  static double fallCheckRadius = 20; // radio de búsqueda de suelo/rampa
 
   JoystickComponent? joystick;
   KeyboardJoystickController? keyboardController;
@@ -102,6 +106,15 @@ class BallComponent extends BodyComponent with ContactCallbacks {
 
   void _triggerBoost(BoostType type, {double? duration}) {
     if (_boostActive) return;
+    switch (type) {
+      case BoostType.jump:
+        effectPlayer.play(AssetSource(Assets.audio.boostJump));
+      case BoostType.speed:
+        effectPlayer.play(AssetSource(Assets.audio.boostSpeed));
+      case BoostType.gravity:
+        effectPlayer.play(AssetSource(Assets.audio.boostGravity));
+    }
+
     _boostActive = true;
     onBoostActivated?.call(type);
     Future.delayed(Duration(milliseconds: ((duration ?? 2.0) * 1000).toInt()),
@@ -261,6 +274,9 @@ class BallComponent extends BodyComponent with ContactCallbacks {
     if (canJump || now < _canJumpUntil) {
       body.applyLinearImpulse(Vector2(0, -jumpForce));
       canJump = false;
+
+      // 🔊 Reproducir sonido de salto
+      effectPlayer.play(AssetSource(Assets.audio.jump));
     }
   }
 

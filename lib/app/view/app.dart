@@ -9,6 +9,7 @@ import 'package:puzzle_ball_gklabs/l10n/l10n.dart';
 import 'package:puzzle_ball_gklabs/loading/loading.dart';
 import 'package:puzzle_ball_gklabs/shared/cubit/savegame/savegame_cubit.dart';
 import 'package:puzzle_ball_gklabs/shared/cubit/settings/settings_cubit.dart';
+import 'package:puzzle_ball_gklabs/shared/cubit/settings/settings_state.dart';
 import 'package:puzzle_ball_gklabs/shared/theme/app_theme.dart';
 import 'package:puzzle_ball_gklabs/title/view/view.dart';
 
@@ -33,8 +34,8 @@ class App extends StatelessWidget {
             final preload = context.read<PreloadCubit>();
             final cubit = AudioCubit(audioCache: preload.audio);
 
-            final settings = context.read<SettingsCubit>().state;
-            cubit.setVolume(settings.soundEnabled ? 1.0 : 0.0);
+            // final settings = context.read<SettingsCubit>().state;
+            // cubit.setVolume(settings.soundEnabled ? 0.0 : 1.0);
 
             return cubit;
           },
@@ -53,6 +54,8 @@ class AppView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final locale = context.select((SettingsCubit c) => c.state.locale);
+
     final router = GoRouter(
       initialLocation: '/loading',
       routes: [
@@ -73,7 +76,10 @@ class AppView extends StatelessWidget {
             return GamePage(level: level, savegameId: savegameId);
           },
         ),
-        GoRoute(path: '/levels', builder: (_, __) => const LevelSelectorPage()),
+        GoRoute(
+          path: '/levels',
+          builder: (_, __) => const LevelSelectorPage(),
+        ),
         GoRoute(
           path: '/savegames',
           builder: (_, __) => const SavegameSelectorPage(),
@@ -86,6 +92,7 @@ class AppView extends StatelessWidget {
       routerConfig: router,
       theme: AppTheme.dark,
       themeMode: ThemeMode.dark,
+      locale: locale,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
     );

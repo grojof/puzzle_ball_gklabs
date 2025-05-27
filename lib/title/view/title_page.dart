@@ -1,9 +1,13 @@
+import 'package:flame/cache.dart';
+import 'package:flame/components.dart';
+import 'package:flame/game.dart';
+import 'package:flame/parallax.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:puzzle_ball_gklabs/l10n/l10n.dart';
+import 'package:puzzle_ball_gklabs/loading/cubit/preload/preload_cubit.dart';
 import 'package:puzzle_ball_gklabs/shared/cubit/cubit.dart';
-import 'package:puzzle_ball_gklabs/shared/theme/app_theme.dart';
 import 'package:puzzle_ball_gklabs/shared/widgets/widgets.dart';
 
 class TitlePage extends StatelessWidget {
@@ -11,32 +15,37 @@ class TitlePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = context.l10n;
-
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(l10n.titleAppBarTitle),
-      ),
-      body: const SafeArea(child: TitleView()),
+    return const Scaffold(
+      body: SafeArea(child: TitleView()),
     );
   }
 }
 
 class TitleView extends StatefulWidget {
   const TitleView({super.key});
-
   @override
   State<TitleView> createState() => _TitleViewState();
 }
 
 class _TitleViewState extends State<TitleView> {
+  late final _MenuParallaxGame _game;
+
+  @override
+  void initState() {
+    super.initState();
+    _game = _MenuParallaxGame();
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final theme = Theme.of(context);
 
     return Stack(
+      fit: StackFit.expand,
       children: [
+        GameWidget(game: _game),
+        Container(color: Colors.black.withOpacity(0.3)),
         Padding(
           padding: const EdgeInsets.all(24),
           child: Column(
@@ -47,6 +56,14 @@ class _TitleViewState extends State<TitleView> {
                 l10n.titleAppBarTitle,
                 style: theme.textTheme.headlineMedium?.copyWith(
                   fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                  shadows: const [
+                    Shadow(
+                      blurRadius: 4,
+                      color: Colors.black,
+                      offset: Offset(2, 2),
+                    ),
+                  ],
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -70,53 +87,59 @@ class _TitleViewState extends State<TitleView> {
                 onPressed: () => context.go('/savegames'),
                 child: Text(l10n.titleSelectSavegame),
               ),
-              const SizedBox(height: 12),
-              ElevatedButton.icon(
-                onPressed: () async {
-                  // TODO: lógica de reset de partidas guardadas
-                  // Por ahora, solo muestra un dialog
-                  await showDialog<void>(
-                    context: context,
-                    builder: (context) => AlertDialog(
-                      title: Text(l10n.titleResetProgress),
-                      content: Text(l10n.titleResetProgressConfirm),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(context),
-                          child: Text(l10n.titleCancel),
-                        ),
-                        TextButton(
-                          onPressed: () {
-                            // TODO: lógica real de reset
-                            Navigator.pop(context);
-                          },
-                          child: Text(l10n.titleConfirm),
-                        ),
-                      ],
-                    ),
-                  );
-                },
-                icon: const Icon(Icons.refresh),
-                label: Text(l10n.titleButtonRestart),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.accent,
-                ),
-              ),
-              const SizedBox(height: 12),
-              ElevatedButton(
-                onPressed: () {
-                  context.go('/levels');
-                },
-                child: Text(l10n.titleButtonLevelSelect),
-              ),
-              const SizedBox(height: 12),
-              const ControlModeSelector(),
+              const SizedBox(height: 24),
+              ControlModeSelector(l10n: l10n),
+
+              // 👇 ESPACIADOR PARA MANTENER ABAJO
               const Spacer(),
+
+              // 🌍 Selector de idioma
+              const LanguageSelector(),
+              const SizedBox(height: 20),
+
+              // 🧾 Firma del desarrollador
+              Text(
+                'Developed by Guillermo Rojo',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: Colors.white60,
+                  fontStyle: FontStyle.italic,
+                ),
+                textAlign: TextAlign.center,
+              ),
             ],
           ),
         ),
         const SoundToggleFab(),
       ],
     );
+  }
+}
+
+class _MenuParallaxGame extends FlameGame {
+  _MenuParallaxGame();
+
+  @override
+  Future<void> onLoad() async {
+    final layer1 = await ParallaxLayer.load(
+      ParallaxImageData('parallax/layer1.png'),
+      velocityMultiplier: Vector2.zero(),
+    );
+    final layer2 = await ParallaxLayer.load(
+      ParallaxImageData('parallax/layer2.png'),
+      velocityMultiplier: Vector2(0.2, 0),
+    );
+    final layer3 = await ParallaxLayer.load(
+      ParallaxImageData('parallax/layer3.png'),
+      velocityMultiplier: Vector2(0.5, 0),
+    );
+
+    final parallax = ParallaxComponent(
+      parallax: Parallax(
+        [layer1, layer2, layer3],
+        baseVelocity: Vector2(20, 0),
+      ),
+    );
+
+    await add(parallax);
   }
 }

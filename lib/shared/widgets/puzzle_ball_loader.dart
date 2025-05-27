@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:puzzle_ball_gklabs/gen/assets.gen.dart';
+import 'package:puzzle_ball_gklabs/l10n/l10n.dart';
 
 class PuzzleBallLoader extends StatefulWidget {
   const PuzzleBallLoader({
@@ -20,29 +21,19 @@ class PuzzleBallLoader extends StatefulWidget {
 class _PuzzleBallLoaderState extends State<PuzzleBallLoader>
     with TickerProviderStateMixin {
   late final AnimationController _rotationController;
-  late final AnimationController _scaleController;
 
   @override
   void initState() {
     super.initState();
-
     _rotationController = AnimationController(
       duration: const Duration(seconds: 5),
       vsync: this,
     )..repeat();
-
-    _scaleController = AnimationController(
-      duration: const Duration(milliseconds: 800),
-      vsync: this,
-      lowerBound: 0.97,
-      upperBound: 1.03,
-    )..repeat(reverse: true);
   }
 
   @override
   void dispose() {
     _rotationController.dispose();
-    _scaleController.dispose();
     super.dispose();
   }
 
@@ -69,60 +60,28 @@ class _PuzzleBallLoaderState extends State<PuzzleBallLoader>
         children: [
           RotationTransition(
             turns: _rotationController,
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                SizedBox(
-                  height: 180,
-                  width: 180,
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      Assets.images.loadingBall.image(),
-                      if (widget.progress != null)
-                        SizedBox(
-                          width: 196,
-                          height: 196,
-                          child: CircularProgressIndicator(
-                            value: progress,
-                            strokeWidth: 6,
-                            backgroundColor: Colors.transparent,
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              theme.colorScheme.primary.withOpacity(0.8),
-                            ),
-                          ),
+            child: SizedBox(
+              height: 180,
+              width: 180,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  Assets.images.loadingBall.image(),
+                  if (widget.progress != null)
+                    SizedBox(
+                      width: 196,
+                      height: 196,
+                      child: CircularProgressIndicator(
+                        value: progress,
+                        strokeWidth: 6,
+                        backgroundColor: Colors.transparent,
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          theme.colorScheme.primary.withOpacity(0.8),
                         ),
-                    ],
-                  ),
-                ),
-                ScaleTransition(
-                  scale: _scaleController,
-                  child: Container(
-                    height: 32,
-                    width: 32,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: theme.colorScheme.primary,
-                      boxShadow: [
-                        BoxShadow(
-                          color: theme.colorScheme.primary.withOpacity(0.5),
-                          blurRadius: 6,
-                          spreadRadius: 2,
-                        ),
-                      ],
+                      ),
                     ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 24),
-          Text(
-            'LOADING...',
-            style: theme.textTheme.bodyLarge?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: theme.colorScheme.primary,
-              letterSpacing: 2,
+                ],
+              ),
             ),
           ),
         ],

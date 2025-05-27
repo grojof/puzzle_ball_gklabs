@@ -1,8 +1,12 @@
 {
   "@@locale": "en",
-  "titleAppBarTitle": "Puzzle Ball",
+  "titleAppBarTitle": "Ball Odyssey",
   "@titleAppBarTitle": {
     "description": "Text shown in the AppBar of the Title Page"
+  },
+  "settingsLanguage": "Language",
+  "@settingsLanguage": {
+    "description": "Label for the language option in settings"
   },
   "labelLevel": "Level",
   "@labelLevel": {
@@ -11,10 +15,6 @@
   "titleButtonContinue": "Continue",
   "@titleButtonContinue": {
     "description": "Text for the button that continues from the current level"
-  },
-  "titleButtonRestart": "Start Over",
-  "@titleButtonRestart": {
-    "description": "Text for the button that restarts the game from level 1"
   },
   "titleButtonLevelSelect": "Select Level",
   "@titleButtonLevelSelect": {
@@ -50,7 +50,7 @@
       "loadingPhase": {}
     }
   },
-  "titleSelectSavegame": "Select a savegame",
+  "titleSelectSavegame": "Saved games",
   "@titleSelectSavegame": {
     "description": "Title for the savegame selector page"
   },
@@ -125,5 +125,21 @@
   "titleCreate": "Create",
   "@titleCreate": {
     "description": "Button label for creating a new savegame"
+  },
+  "controlTilt": "Tilt control",
+  "@controlTilt": {
+    "description": "Label for tilt/accelerometer control mode"
+  },
+  "controlJoystick": "Joystick control",
+  "@controlJoystick": {
+    "description": "Label for joystick/touch control mode"
+  },
+  "controlTiltDesc": "Use the device accelerometer to move the ball.",
+  "@controlTiltDesc": {
+    "description": "Description for tilt/accelerometer control mode"
+  },
+  "controlJoystickDesc": "Use the touch joystick or keys to move the ball.",
+  "@controlJoystickDesc": {
+    "description": "Description for joystick/touch control mode"
   }
 }

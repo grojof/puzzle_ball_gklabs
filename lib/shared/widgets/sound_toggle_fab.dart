@@ -32,7 +32,6 @@ class SoundToggleFab extends StatelessWidget {
           child: Icon(
             isEnabled ? Icons.volume_up : Icons.volume_off,
             key: ValueKey<bool>(isEnabled),
-            color: Colors.white,
             size: 20,
           ),
         ),
