@@ -13,6 +13,7 @@ import 'package:puzzle_ball_gklabs/game/components/floor_component.dart';
 import 'package:puzzle_ball_gklabs/game/components/goal_component.dart';
 import 'package:puzzle_ball_gklabs/game/components/keyboard_joystick_controller.dart';
 import 'package:puzzle_ball_gklabs/game/components/ramp_component.dart';
+import 'package:puzzle_ball_gklabs/game/cubit/cubit.dart';
 import 'package:puzzle_ball_gklabs/game/levels/levels.dart';
 import 'package:puzzle_ball_gklabs/game/puzzle_ball_gklabs.dart';
 import 'package:puzzle_ball_gklabs/gen/assets.gen.dart';
@@ -21,14 +22,14 @@ import 'package:sensors_plus/sensors_plus.dart';
 
 class BallComponent extends BodyComponent with ContactCallbacks {
   BallComponent({
-    required this.effectPlayer,
+    required this.audioCubit,
     required this.initialPosition,
     required this.radius,
     this.textureImage,
     this.onFall,
   });
 
-  final AudioPlayer effectPlayer;
+  final AudioCubit audioCubit;
   final Vector2 initialPosition;
   final double radius;
   final VoidCallback? onFall;
@@ -108,11 +109,11 @@ class BallComponent extends BodyComponent with ContactCallbacks {
     if (_boostActive) return;
     switch (type) {
       case BoostType.jump:
-        effectPlayer.play(AssetSource(Assets.audio.boostJump));
+        audioCubit.playEffect(Assets.audio.boostJump);
       case BoostType.speed:
-        effectPlayer.play(AssetSource(Assets.audio.boostSpeed));
+        audioCubit.playEffect(Assets.audio.boostSpeed);
       case BoostType.gravity:
-        effectPlayer.play(AssetSource(Assets.audio.boostGravity));
+        audioCubit.playEffect(Assets.audio.boostGravity);
     }
 
     _boostActive = true;
@@ -276,7 +277,7 @@ class BallComponent extends BodyComponent with ContactCallbacks {
       canJump = false;
 
       // 🔊 Reproducir sonido de salto
-      effectPlayer.play(AssetSource(Assets.audio.jump));
+      audioCubit.playEffect(Assets.audio.jump);
     }
   }
 

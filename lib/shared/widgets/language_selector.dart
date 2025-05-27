@@ -15,6 +15,7 @@ class LanguageSelector extends StatelessWidget {
           crossAxisAlignment: WrapCrossAlignment.center,
           runAlignment: WrapAlignment.center,
           spacing: 16,
+          runSpacing: 12,
           children: [
             _LanguageOption(
               code: 'ca',

@@ -34,8 +34,8 @@ class App extends StatelessWidget {
             final preload = context.read<PreloadCubit>();
             final cubit = AudioCubit(audioCache: preload.audio);
 
-            // final settings = context.read<SettingsCubit>().state;
-            // cubit.setVolume(settings.soundEnabled ? 0.0 : 1.0);
+            final settings = context.read<SettingsCubit>().state;
+            cubit.setVolume(settings.soundEnabled ? 1.0 : 0.0);
 
             return cubit;
           },

@@ -67,7 +67,7 @@ class GamePage extends StatelessWidget {
 
     final game = PuzzleBallGklabs(
       l10n: context.l10n,
-      effectPlayer: context.read<AudioCubit>().effectPlayer,
+      audioCubit: context.read<AudioCubit>(),
       textStyle: textStyle,
       images: preload.images,
       levelIndex: level - 1,
@@ -165,7 +165,7 @@ class GameView extends StatelessWidget {
 
     final game = PuzzleBallGklabs(
       l10n: context.l10n,
-      effectPlayer: context.read<AudioCubit>().effectPlayer,
+      audioCubit: context.read<AudioCubit>(),
       textStyle: textStyle,
       images: preload.images,
       levelIndex: level - 1,

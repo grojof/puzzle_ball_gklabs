@@ -9,24 +9,40 @@ part 'audio_state.dart';
 
 class AudioCubit extends Cubit<AudioState> {
   AudioCubit({required AudioCache audioCache})
-      : effectPlayer = AudioPlayer()..audioCache = audioCache,
+      : _audioCache = audioCache,
+        effectPlayer = AudioPlayer()..audioCache = audioCache,
         bgm = Bgm(audioCache: audioCache),
         super(const AudioState());
 
-  @visibleForTesting
-  AudioCubit.test({
-    required this.effectPlayer,
-    required this.bgm,
-    double volume = 1.0,
-  }) : super(AudioState(volume: volume));
-
+  final AudioCache _audioCache;
   final AudioPlayer effectPlayer;
   final Bgm bgm;
+  final List<AudioPlayer> _activeEffects = [];
 
   Future<void> _changeVolume(double volume) async {
     await effectPlayer.setVolume(volume);
     await bgm.audioPlayer.setVolume(volume);
     emit(state.copyWith(volume: volume));
+  }
+
+  /// Reproduce un efecto de sonido sin interrumpir otros.
+  Future<void> playEffect(String assetPath) async {
+    try {
+      final player = AudioPlayer();
+      player.audioCache = _audioCache;
+
+      await player.setVolume(state.volume);
+      _activeEffects.add(player);
+
+      await player.play(AssetSource(assetPath));
+
+      player.onPlayerComplete.listen((_) {
+        player.dispose();
+        _activeEffects.remove(player);
+      });
+    } catch (e) {
+      debugPrint('[AudioCubit] Error al reproducir efecto: $e');
+    }
   }
 
   Future<void> toggleVolume() async {
@@ -62,6 +78,10 @@ class AudioCubit extends Cubit<AudioState> {
   @override
   Future<void> close() {
     effectPlayer.dispose();
+    for (final p in _activeEffects) {
+      p.dispose();
+    }
+    _activeEffects.clear();
     bgm.dispose();
     return super.close();
   }

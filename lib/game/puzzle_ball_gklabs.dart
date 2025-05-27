@@ -1,13 +1,11 @@
-import 'package:audioplayers/audioplayers.dart';
 import 'package:flame/cache.dart';
 import 'package:flame/components.dart';
-import 'package:flame/effects.dart';
 import 'package:flame/input.dart';
 import 'package:flame/parallax.dart';
 import 'package:flame_forge2d/flame_forge2d.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/painting.dart';
 import 'package:puzzle_ball_gklabs/game/components/components.dart';
+import 'package:puzzle_ball_gklabs/game/cubit/cubit.dart';
 import 'package:puzzle_ball_gklabs/game/levels/levels.dart';
 import 'package:puzzle_ball_gklabs/game/utils/camera_utils.dart';
 import 'package:puzzle_ball_gklabs/gen/assets.gen.dart';
@@ -15,8 +13,8 @@ import 'package:puzzle_ball_gklabs/l10n/l10n.dart';
 
 class PuzzleBallGklabs extends Forge2DGame with HasKeyboardHandlerComponents {
   PuzzleBallGklabs({
+    required this.audioCubit,
     required this.l10n,
-    required this.effectPlayer,
     required this.textStyle,
     required Images images,
     required this.levelIndex,
@@ -27,8 +25,8 @@ class PuzzleBallGklabs extends Forge2DGame with HasKeyboardHandlerComponents {
     this.images = images;
   }
 
+  final AudioCubit audioCubit;
   final AppLocalizations l10n;
-  final AudioPlayer effectPlayer;
   final TextStyle textStyle;
   final int levelIndex;
   final VoidCallback? onLevelCompleted;
@@ -304,7 +302,7 @@ class PuzzleBallGklabs extends Forge2DGame with HasKeyboardHandlerComponents {
 
     // ⚽ Bola física
     ball = BallComponent(
-      effectPlayer: effectPlayer,
+      audioCubit: audioCubit,
       initialPosition: level.ballStart,
       radius: 0.2,
       onFall: resetLevel,

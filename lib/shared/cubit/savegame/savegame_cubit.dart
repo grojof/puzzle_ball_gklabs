@@ -27,8 +27,24 @@ class SavegameCubit extends Cubit<SavegameState> {
   }
 
   Future<void> updateGame(SavedGame updated) async {
-    final games =
-        state.games.map((g) => g.id == updated.id ? updated : g).toList();
+    final games = state.games.map((g) {
+      if (g.id != updated.id) return g;
+
+      // 🔒 Solo actualiza el currentLevel si es mayor
+      final newCurrentLevel = updated.currentLevel > g.currentLevel
+          ? updated.currentLevel
+          : g.currentLevel;
+
+      return SavedGame(
+        id: g.id,
+        seed: g.seed,
+        totalLevels: g.totalLevels,
+        currentLevel: newCurrentLevel,
+        createdAt: g.createdAt,
+        lastPlayed: DateTime.now(), // Actualiza siempre el timestamp
+      );
+    }).toList();
+
     await _saveGames(games);
   }
 

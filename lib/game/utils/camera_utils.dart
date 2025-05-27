@@ -93,7 +93,7 @@ void adjustCameraHeightForTerrain(
     } else {
       camera.viewfinder.anchor = anchorLower;
     }
-    print('Sin bloques: camara baja (ver abajo)');
+    // print('Sin bloques: camara baja (ver abajo)');
     return;
   }
 
