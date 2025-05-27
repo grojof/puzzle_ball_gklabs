@@ -25,12 +25,19 @@ class $AssetsAudioGen {
 class $AssetsImagesGen {
   const $AssetsImagesGen();
 
-  /// File path: assets/images/loading_maze.png
-  AssetGenImage get loadingMaze =>
-      const AssetGenImage('assets/images/loading_maze.png');
+  /// Directory path: assets/images/components
+  $AssetsImagesComponentsGen get components =>
+      const $AssetsImagesComponentsGen();
+
+  /// File path: assets/images/loading_ball.png
+  AssetGenImage get loadingBall =>
+      const AssetGenImage('assets/images/loading_ball.png');
+
+  /// Directory path: assets/images/parallax
+  $AssetsImagesParallaxGen get parallax => const $AssetsImagesParallaxGen();
 
   /// List of all assets
-  List<AssetGenImage> get values => [loadingMaze];
+  List<AssetGenImage> get values => [loadingBall];
 }
 
 class $AssetsLicensesGen {
@@ -38,6 +45,63 @@ class $AssetsLicensesGen {
 
   /// Directory path: assets/licenses/poppins
   $AssetsLicensesPoppinsGen get poppins => const $AssetsLicensesPoppinsGen();
+}
+
+class $AssetsImagesComponentsGen {
+  const $AssetsImagesComponentsGen();
+
+  /// File path: assets/images/components/ball.png
+  AssetGenImage get ball =>
+      const AssetGenImage('assets/images/components/ball.png');
+
+  /// File path: assets/images/components/floor.png
+  AssetGenImage get floor =>
+      const AssetGenImage('assets/images/components/floor.png');
+
+  /// File path: assets/images/components/goal.png
+  AssetGenImage get goal =>
+      const AssetGenImage('assets/images/components/goal.png');
+
+  /// File path: assets/images/components/gravity_boost.png
+  AssetGenImage get gravityBoost =>
+      const AssetGenImage('assets/images/components/gravity_boost.png');
+
+  /// File path: assets/images/components/jump_boost.png
+  AssetGenImage get jumpBoost =>
+      const AssetGenImage('assets/images/components/jump_boost.png');
+
+  /// File path: assets/images/components/speed_boost.png
+  AssetGenImage get speedBoost =>
+      const AssetGenImage('assets/images/components/speed_boost.png');
+
+  /// List of all assets
+  List<AssetGenImage> get values => [
+    ball,
+    floor,
+    goal,
+    gravityBoost,
+    jumpBoost,
+    speedBoost,
+  ];
+}
+
+class $AssetsImagesParallaxGen {
+  const $AssetsImagesParallaxGen();
+
+  /// File path: assets/images/parallax/layer1.png
+  AssetGenImage get layer1 =>
+      const AssetGenImage('assets/images/parallax/layer1.png');
+
+  /// File path: assets/images/parallax/layer2.png
+  AssetGenImage get layer2 =>
+      const AssetGenImage('assets/images/parallax/layer2.png');
+
+  /// File path: assets/images/parallax/layer3.png
+  AssetGenImage get layer3 =>
+      const AssetGenImage('assets/images/parallax/layer3.png');
+
+  /// List of all assets
+  List<AssetGenImage> get values => [layer1, layer2, layer3];
 }
 
 class $AssetsLicensesPoppinsGen {

@@ -43,4 +43,6 @@ flutter:
   assets:
     - assets/audio/
     - assets/images/
+    - assets/images/components/
+    - assets/images/parallax/
     - assets/licenses/poppins/

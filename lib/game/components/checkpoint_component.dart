@@ -49,7 +49,11 @@ class CheckPointComponent extends BodyComponent with ContactCallbacks {
   void render(Canvas canvas) {
     final paint = Paint()..color = color;
     canvas.drawRect(
-      Rect.fromCenter(center: Offset.zero, width: size.x, height: size.y),
+      Rect.fromCenter(
+        center: Offset.zero,
+        width: size.x,
+        height: size.y,
+      ),
       paint,
     );
     // TODO: dibujar sprite si se define

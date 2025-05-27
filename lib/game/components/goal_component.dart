@@ -1,3 +1,4 @@
+import 'package:flame/components.dart';
 import 'package:flame_forge2d/flame_forge2d.dart';
 import 'package:flutter/painting.dart';
 
@@ -5,18 +6,28 @@ class GoalComponent extends BodyComponent with ContactCallbacks {
   GoalComponent({
     required this.position,
     required this.size,
-    Paint? paint,
-  }) : _customPaint = paint ?? (Paint()..color = const Color(0xFF81C784));
+    this.color = const Color(0xFF43A047),
+    this.sprite,
+  });
 
   @override
   final Vector2 position;
-
   final Vector2 size;
-
-  late final Paint _customPaint;
+  final Color color;
+  final Sprite? sprite;
 
   @override
-  Paint get paint => _customPaint;
+  Future<void> onLoad() async {
+    await super.onLoad();
+    if (sprite != null) {
+      final spriteComponent = SpriteComponent(
+        sprite: sprite,
+        size: size,
+        anchor: Anchor.center,
+      );
+      add(spriteComponent);
+    }
+  }
 
   @override
   Body createBody() {
@@ -41,11 +52,12 @@ class GoalComponent extends BodyComponent with ContactCallbacks {
 
   @override
   void render(Canvas canvas) {
-    final rect = Rect.fromCenter(
-      center: Offset.zero,
-      width: size.x,
-      height: size.y,
-    );
-    canvas.drawRect(rect, paint);
+    if (sprite == null) {
+      final paint = Paint()..color = color;
+      canvas.drawRect(
+        Rect.fromCenter(center: Offset.zero, width: size.x, height: size.y),
+        paint,
+      );
+    }
   }
 }

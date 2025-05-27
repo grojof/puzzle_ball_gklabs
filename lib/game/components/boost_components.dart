@@ -1,3 +1,4 @@
+import 'package:flame/components.dart';
 import 'package:flame_forge2d/flame_forge2d.dart';
 import 'package:flutter/painting.dart';
 import 'package:puzzle_ball_gklabs/game/components/ball_component.dart';
@@ -17,7 +18,20 @@ class JumpBoostComponent extends BodyComponent with ContactCallbacks {
   final Vector2 size;
   final double force;
   final Color color;
-  final dynamic sprite; // Para futuro uso con Flame Sprite
+  final Sprite? sprite; // Para futuro uso con Flame Sprite
+
+  @override
+  Future<void> onLoad() async {
+    await super.onLoad();
+    if (sprite != null) {
+      final spriteComponent = SpriteComponent(
+        sprite: sprite,
+        size: size,
+        anchor: Anchor.center,
+      );
+      add(spriteComponent);
+    }
+  }
 
   @override
   Body createBody() {
@@ -46,12 +60,13 @@ class JumpBoostComponent extends BodyComponent with ContactCallbacks {
 
   @override
   void render(Canvas canvas) {
-    final paint = Paint()..color = color;
-    canvas.drawRect(
-      Rect.fromCenter(center: Offset.zero, width: size.x, height: size.y),
-      paint,
-    );
-    // TODO: dibujar sprite si se define
+    if (sprite == null) {
+      final paint = Paint()..color = color;
+      canvas.drawRect(
+        Rect.fromCenter(center: Offset.zero, width: size.x, height: size.y),
+        paint,
+      );
+    }
   }
 }
 
@@ -72,7 +87,20 @@ class SpeedBoostComponent extends BodyComponent with ContactCallbacks {
   final double force;
   final Vector2 direction;
   final Color color;
-  final dynamic sprite;
+  final Sprite? sprite;
+
+  @override
+  Future<void> onLoad() async {
+    await super.onLoad();
+    if (sprite != null) {
+      final spriteComponent = SpriteComponent(
+        sprite: sprite,
+        size: size,
+        anchor: Anchor.center,
+      );
+      add(spriteComponent);
+    }
+  }
 
   @override
   Body createBody() {
@@ -101,12 +129,13 @@ class SpeedBoostComponent extends BodyComponent with ContactCallbacks {
 
   @override
   void render(Canvas canvas) {
-    final paint = Paint()..color = color;
-    canvas.drawRect(
-      Rect.fromCenter(center: Offset.zero, width: size.x, height: size.y),
-      paint,
-    );
-    // TODO: dibujar sprite si se define
+    if (sprite == null) {
+      final paint = Paint()..color = color;
+      canvas.drawRect(
+        Rect.fromCenter(center: Offset.zero, width: size.x, height: size.y),
+        paint,
+      );
+    }
   }
 }
 
@@ -127,7 +156,20 @@ class GravityBoostComponent extends BodyComponent with ContactCallbacks {
   final double duration;
   final double gravityScale;
   final Color color;
-  final dynamic sprite;
+  final Sprite? sprite;
+
+  @override
+  Future<void> onLoad() async {
+    await super.onLoad();
+    if (sprite != null) {
+      final spriteComponent = SpriteComponent(
+        sprite: sprite,
+        size: size,
+        anchor: Anchor.center,
+      );
+      add(spriteComponent);
+    }
+  }
 
   @override
   Body createBody() {
@@ -163,11 +205,12 @@ class GravityBoostComponent extends BodyComponent with ContactCallbacks {
 
   @override
   void render(Canvas canvas) {
-    final paint = Paint()..color = color;
-    canvas.drawRect(
-      Rect.fromCenter(center: Offset.zero, width: size.x, height: size.y),
-      paint,
-    );
-    // TODO: dibujar sprite si se define
+    if (sprite == null) {
+      final paint = Paint()..color = color;
+      canvas.drawRect(
+        Rect.fromCenter(center: Offset.zero, width: size.x, height: size.y),
+        paint,
+      );
+    }
   }
 }

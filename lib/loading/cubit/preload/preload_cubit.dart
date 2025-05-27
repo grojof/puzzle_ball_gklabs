@@ -25,7 +25,18 @@ class PreloadCubit extends Cubit<PreloadState> {
       ),
       PreloadPhase(
         'images',
-        () => images.loadAll([Assets.images.loadingMaze.path]),
+        () => images.loadAll([
+          Assets.images.loadingBall.path,
+          Assets.images.parallax.layer1.path,
+          Assets.images.parallax.layer2.path,
+          Assets.images.parallax.layer3.path,
+          Assets.images.components.ball.path,
+          Assets.images.components.floor.path,
+          Assets.images.components.goal.path,
+          Assets.images.components.gravityBoost.path,
+          Assets.images.components.jumpBoost.path,
+          Assets.images.components.speedBoost.path,
+        ]),
       ),
     ];
 

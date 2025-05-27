@@ -6,7 +6,12 @@ import 'package:puzzle_ball_gklabs/loading/loading.dart';
 import 'package:puzzle_ball_gklabs/shared/widgets/puzzle_ball_loader.dart';
 
 class LoadingPage extends StatelessWidget {
-  const LoadingPage({super.key});
+  const LoadingPage({
+    this.redirectTo,
+    super.key,
+  });
+
+  final String? redirectTo;
 
   @override
   Widget build(BuildContext context) {
@@ -17,7 +22,7 @@ class LoadingPage extends StatelessWidget {
       listenWhen: (prev, next) => !prev.isComplete && next.isComplete,
       listener: (context, _) {
         Future.delayed(loaderTotalDelay, () {
-          if (context.mounted) context.go('/menu');
+          if (context.mounted) context.go(redirectTo ?? '/menu');
         });
       },
       child: const Scaffold(

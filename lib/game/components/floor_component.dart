@@ -1,3 +1,4 @@
+import 'package:flame/components.dart';
 import 'package:flame_forge2d/flame_forge2d.dart';
 import 'package:flutter/painting.dart';
 
@@ -6,6 +7,7 @@ class FloorComponent extends BodyComponent with ContactCallbacks {
     required this.position,
     required this.size,
     Paint? paint,
+    this.sprite,
     this.friction = 0.8,
     this.restitution = 0.0,
   }) {
@@ -17,6 +19,19 @@ class FloorComponent extends BodyComponent with ContactCallbacks {
   final Vector2 size;
   final double friction;
   final double restitution;
+  final Sprite? sprite;
+
+  @override
+  Future<void> onLoad() async {
+    await super.onLoad();
+
+    final spriteComponent = SpriteComponent(
+      sprite: sprite,
+      size: size,
+      anchor: Anchor.center,
+    );
+    add(spriteComponent);
+  }
 
   @override
   Body createBody() {
@@ -35,7 +50,7 @@ class FloorComponent extends BodyComponent with ContactCallbacks {
 
     final bodyDef = BodyDef()
       ..type = BodyType.static
-      ..position = position;
+      ..position = position + size / 2;
 
     return world.createBody(bodyDef)..createFixture(fixtureDef);
   }

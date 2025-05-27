@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui';
 
 import 'package:flame/components.dart';
 import 'package:flame_forge2d/flame_forge2d.dart';
@@ -18,19 +19,14 @@ class BallComponent extends BodyComponent with ContactCallbacks {
   BallComponent({
     required this.initialPosition,
     required this.radius,
-    required Paint paint,
+    this.textureImage,
     this.onFall,
-  }) {
-    _paint = paint;
-  }
+  });
 
   final Vector2 initialPosition;
   final double radius;
   final VoidCallback? onFall;
-
-  late final Paint _paint;
-  @override
-  Paint get paint => _paint;
+  final Image? textureImage;
 
   // 🎯 Configuración física ajustable
   static double density = 50; // Masa (más alto = más pesada)
@@ -58,7 +54,7 @@ class BallComponent extends BodyComponent with ContactCallbacks {
   int _canJumpUntil = 0;
 
   // Variables para caída libre
-  double _lastGroundY = 0;
+  // double _lastGroundY = 0;
   int _lastGroundTime = 0;
   bool _onGround = false;
 
@@ -80,8 +76,10 @@ class BallComponent extends BodyComponent with ContactCallbacks {
   }
 
   void applySpeedBoost({double? force, Vector2? direction}) {
-    body.applyLinearImpulse((direction ?? speedBoostDirection).normalized() *
-        (force ?? speedBoostForce));
+    body.applyLinearImpulse(
+      (direction ?? speedBoostDirection).normalized() *
+          (force ?? speedBoostForce),
+    );
     _triggerBoost(BoostType.speed);
   }
 
@@ -269,7 +267,7 @@ class BallComponent extends BodyComponent with ContactCallbacks {
       _canJumpUntil = DateTime.now().millisecondsSinceEpoch + 150;
       // Si toca suelo/rampa, resetea caída libre
       _onGround = true;
-      _lastGroundY = body.position.y;
+      // _lastGroundY = body.position.y;
       _lastGroundTime = DateTime.now().millisecondsSinceEpoch;
     }
   }
@@ -298,30 +296,32 @@ class BallComponent extends BodyComponent with ContactCallbacks {
       ..save()
       ..scale(scale, scale);
 
-    // Sombra
-    final shadowPaint = Paint()
-      ..color = const Color(0x22000000)
-      ..style = PaintingStyle.fill;
-    canvas.drawOval(
-      Rect.fromCenter(
-        center: Offset(0, radius * 1.2),
-        width: radius * 2.4,
-        height: radius * 0.5,
-      ),
-      shadowPaint,
-    );
+    if (textureImage != null) {
+      final dst = Rect.fromCircle(center: Offset.zero, radius: radius);
+      final src = Rect.fromLTWH(
+        0,
+        0,
+        textureImage!.width.toDouble(),
+        textureImage!.height.toDouble(),
+      );
 
-    // Bola
-    final gradientPaint = Paint()
-      ..shader = RadialGradient(
-        colors: [paint.color, paint.color.withAlpha(180)],
-        center: Alignment.topLeft,
-        radius: 0.9,
-      ).createShader(Rect.fromCircle(center: Offset.zero, radius: radius));
+      canvas
+        ..save()
+        ..clipPath(Path()..addOval(dst))
+        ..drawImageRect(textureImage!, src, dst, Paint())
+        ..restore();
+    } else {
+      // Fallback al degradado si no se ha cargado la textura
+      final gradientPaint = Paint()
+        ..shader = RadialGradient(
+          colors: [paint.color, paint.color.withAlpha(180)],
+          center: Alignment.topLeft,
+          radius: 0.9,
+        ).createShader(Rect.fromCircle(center: Offset.zero, radius: radius));
 
-    canvas
-      ..drawCircle(Offset.zero, radius, gradientPaint)
-      ..restore();
+      canvas.drawCircle(Offset.zero, radius, gradientPaint);
+    }
+    canvas.restore();
   }
 
   double _calculateDepthScale(double y) {

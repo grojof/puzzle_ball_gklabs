@@ -8,7 +8,7 @@ List<LevelData> generatePredefinedLevels(int totalLevels, String seed) {
       final level = index + 1;
 
       // 📈 Progresión de dificultad normalizada (0.0 → 1.0)
-      final t = level / totalLevels;
+      final t = level / totalLevels * 10;
 
       // Puedes usar la seed para personalizar la generación si lo deseas
       return LevelGenerator.generate(

@@ -26,8 +26,11 @@ class FloorData {
 }
 
 class RampData {
-  RampData(
-      {required this.position, required this.size, required this.inverted});
+  RampData({
+    required this.position,
+    required this.size,
+    required this.inverted,
+  });
   final Vector2 position;
   final Vector2 size;
   final bool inverted;

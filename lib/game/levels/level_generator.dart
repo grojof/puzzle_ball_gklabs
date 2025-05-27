@@ -125,26 +125,35 @@ class LevelGenerator {
     final ballStart = path.first + Vector2(0, -tileSize);
 
     // Calcular posición de la meta (goal)
-    var goalPosition = path.last + Vector2(0, -tileSize * 0.8);
+    var goalPosition = path.last;
     // Verifica que no se solape con ningún Floor ni Ramp
     var overlaps = true;
     var tries = 0;
     while (overlaps && tries < 10) {
       overlaps = false;
+      var additionalLiftH = 0.0;
+      var additionalLiftV = 0.0;
+
       for (final floor in floorData) {
-        if ((goalPosition - floor.position).length < tileSize * 0.8) {
+        if ((goalPosition - floor.position).length < tileSize) {
           overlaps = true;
           break;
         }
       }
+
       for (final ramp in rampData) {
-        if ((goalPosition - ramp.position).length < tileSize * 0.8) {
+        if ((goalPosition - ramp.position).length < tileSize) {
           overlaps = true;
+          // Eleva un poco más si hay rampa
+          additionalLiftH = tileSize + (tileSize / 2);
+          additionalLiftV = 1;
           break;
         }
       }
+
       if (overlaps) {
-        goalPosition += Vector2(0, -tileSize * 0.5); // Eleva más la meta
+        goalPosition +=
+            Vector2(additionalLiftH, -((tileSize * 0.6) / 2) - additionalLiftV);
         tries++;
       }
     }

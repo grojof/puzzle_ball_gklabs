@@ -56,7 +56,13 @@ class AppView extends StatelessWidget {
     final router = GoRouter(
       initialLocation: '/loading',
       routes: [
-        GoRoute(path: '/loading', builder: (_, __) => const LoadingPage()),
+        GoRoute(
+          path: '/loading',
+          builder: (context, state) {
+            final redirectTo = state.uri.queryParameters['redirect'];
+            return LoadingPage(redirectTo: redirectTo);
+          },
+        ),
         GoRoute(path: '/menu', builder: (_, __) => const TitlePage()),
         GoRoute(
           path: '/game',
@@ -78,7 +84,8 @@ class AppView extends StatelessWidget {
     return MaterialApp.router(
       debugShowCheckedModeBanner: false,
       routerConfig: router,
-      theme: AppTheme.light,
+      theme: AppTheme.dark,
+      themeMode: ThemeMode.dark,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
     );

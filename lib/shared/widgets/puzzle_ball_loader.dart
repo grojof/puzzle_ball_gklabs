@@ -78,7 +78,7 @@ class _PuzzleBallLoaderState extends State<PuzzleBallLoader>
                   child: Stack(
                     alignment: Alignment.center,
                     children: [
-                      Assets.images.loadingMaze.image(),
+                      Assets.images.loadingBall.image(),
                       if (widget.progress != null)
                         SizedBox(
                           width: 196,
