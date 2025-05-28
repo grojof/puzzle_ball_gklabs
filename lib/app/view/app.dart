@@ -9,7 +9,6 @@ import 'package:puzzle_ball_gklabs/l10n/l10n.dart';
 import 'package:puzzle_ball_gklabs/loading/loading.dart';
 import 'package:puzzle_ball_gklabs/shared/cubit/savegame/savegame_cubit.dart';
 import 'package:puzzle_ball_gklabs/shared/cubit/settings/settings_cubit.dart';
-import 'package:puzzle_ball_gklabs/shared/cubit/settings/settings_state.dart';
 import 'package:puzzle_ball_gklabs/shared/theme/app_theme.dart';
 import 'package:puzzle_ball_gklabs/title/view/view.dart';
 

@@ -40,9 +40,16 @@ class $AssetsAudioGen {
 class $AssetsImagesGen {
   const $AssetsImagesGen();
 
+  /// File path: assets/images/catalonia_flag.png
+  AssetGenImage get cataloniaFlag =>
+      const AssetGenImage('assets/images/catalonia_flag.png');
+
   /// Directory path: assets/images/components
   $AssetsImagesComponentsGen get components =>
       const $AssetsImagesComponentsGen();
+
+  /// File path: assets/images/icon.png
+  AssetGenImage get icon => const AssetGenImage('assets/images/icon.png');
 
   /// File path: assets/images/loading_ball.png
   AssetGenImage get loadingBall =>
@@ -51,8 +58,17 @@ class $AssetsImagesGen {
   /// Directory path: assets/images/parallax
   $AssetsImagesParallaxGen get parallax => const $AssetsImagesParallaxGen();
 
+  /// File path: assets/images/splash_screen.png
+  AssetGenImage get splashScreen =>
+      const AssetGenImage('assets/images/splash_screen.png');
+
   /// List of all assets
-  List<AssetGenImage> get values => [loadingBall];
+  List<AssetGenImage> get values => [
+    cataloniaFlag,
+    icon,
+    loadingBall,
+    splashScreen,
+  ];
 }
 
 class $AssetsLicensesGen {

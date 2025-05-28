@@ -1,6 +1,5 @@
 import 'package:audioplayers/audioplayers.dart';
 import 'package:equatable/equatable.dart';
-import 'package:flame_audio/bgm.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:puzzle_ball_gklabs/gen/assets.gen.dart';
@@ -10,79 +9,97 @@ part 'audio_state.dart';
 class AudioCubit extends Cubit<AudioState> {
   AudioCubit({required AudioCache audioCache})
       : _audioCache = audioCache,
-        effectPlayer = AudioPlayer()..audioCache = audioCache,
-        bgm = Bgm(audioCache: audioCache),
-        super(const AudioState());
+        super(const AudioState()) {
+    _configureGlobalAudioContext();
+    _initMusicPlayer();
+  }
 
   final AudioCache _audioCache;
-  final AudioPlayer effectPlayer;
-  final Bgm bgm;
+  final AudioPlayer musicPlayer = AudioPlayer();
   final List<AudioPlayer> _activeEffects = [];
 
+  void _configureGlobalAudioContext() {
+    AudioPlayer.global.setAudioContext(
+      AudioContext(
+        android: const AudioContextAndroid(
+          isSpeakerphoneOn: true,
+          stayAwake: false,
+          contentType: AndroidContentType.music,
+          usageType: AndroidUsageType.game,
+          audioFocus: AndroidAudioFocus.none, // ✅ No interrumpe música
+        ),
+      ),
+    );
+  }
+
+  Future<void> _initMusicPlayer() async {
+    await musicPlayer.setPlayerMode(PlayerMode.mediaPlayer);
+  }
+
   Future<void> _changeVolume(double volume) async {
-    await effectPlayer.setVolume(volume);
-    await bgm.audioPlayer.setVolume(volume);
+    await musicPlayer.setVolume(volume);
+    for (final p in _activeEffects) {
+      await p.setVolume(volume);
+    }
     emit(state.copyWith(volume: volume));
   }
 
-  /// Reproduce un efecto de sonido sin interrumpir otros.
   Future<void> playEffect(String assetPath) async {
     try {
-      final player = AudioPlayer();
-      player.audioCache = _audioCache;
+      final effectPlayer = AudioPlayer();
+      await effectPlayer.setPlayerMode(PlayerMode.lowLatency);
+      await effectPlayer.setVolume(state.volume);
 
-      await player.setVolume(state.volume);
-      _activeEffects.add(player);
+      final path = assetPath.replaceFirst('assets/', '');
+      await effectPlayer.play(AssetSource(path));
 
-      await player.play(AssetSource(assetPath));
-
-      player.onPlayerComplete.listen((_) {
-        player.dispose();
-        _activeEffects.remove(player);
+      effectPlayer.onPlayerComplete.listen((_) {
+        _activeEffects.remove(effectPlayer);
+        effectPlayer.dispose();
       });
+
+      _activeEffects.add(effectPlayer);
     } catch (e) {
       debugPrint('[AudioCubit] Error al reproducir efecto: $e');
     }
   }
 
-  Future<void> toggleVolume() async {
-    final newVolume = state.volume == 0 ? 1.0 : 0.0;
-    await _changeVolume(newVolume);
-
-    if (newVolume > 0 && bgm.audioPlayer.state != PlayerState.playing) {
-      await bgm.play(Assets.audio.background);
-    } else if (newVolume == 0) {
-      await bgm.pause();
-    }
-  }
-
-  Future<void> setVolume(double volume) async {
-    await _changeVolume(volume);
-  }
-
   Future<void> enableAndPlay() async {
-    await _changeVolume(1);
-
-    if (bgm.audioPlayer.state == PlayerState.playing) {
-      await bgm.stop();
+    try {
+      await _changeVolume(1);
+      await musicPlayer.stop();
+      await musicPlayer.setReleaseMode(ReleaseMode.loop);
+      final bgmPath = Assets.audio.background.replaceFirst('assets/', '');
+      await musicPlayer.setSourceAsset(bgmPath);
+      await musicPlayer.resume();
+    } catch (e, stack) {
+      debugPrint('[AudioCubit] Error en enableAndPlay: $e\n$stack');
     }
-
-    await bgm.play(Assets.audio.background);
   }
 
   Future<void> disable() async {
     await _changeVolume(0);
-    await bgm.pause();
+    await musicPlayer.pause();
   }
 
-  @override
-  Future<void> close() {
-    effectPlayer.dispose();
-    for (final p in _activeEffects) {
-      p.dispose();
+  Future<void> toggleVolume() async {
+    final newVolume = state.volume == 0 ? 1.0 : 0.0;
+    await _changeVolume(newVolume);
+    if (newVolume > 0) {
+      await enableAndPlay();
+    } else {
+      await disable();
     }
-    _activeEffects.clear();
-    bgm.dispose();
+  }
+
+  Future<void> setVolume(double volume) async => _changeVolume(volume);
+
+  @override
+  Future<void> close() async {
+    for (final p in _activeEffects) {
+      await p.dispose();
+    }
+    await musicPlayer.dispose();
     return super.close();
   }
 }

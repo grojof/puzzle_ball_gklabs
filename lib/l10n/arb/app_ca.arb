@@ -1,69 +1,149 @@
 {
   "@@locale": "ca",
   "titleAppBarTitle": "Ball Odyssey",
-  "@titleAppBarTitle": {"description": "Text mostrat a l'AppBar de la pàgina de títol"},
+  "@titleAppBarTitle": {
+    "description": "Text mostrat a l'AppBar de la pàgina de títol"
+  },
   "settingsLanguage": "Idioma",
-  "@settingsLanguage": {"description": "Etiqueta per a l'opció d'idioma a la configuració"},
+  "@settingsLanguage": {
+    "description": "Etiqueta per a l'opció d'idioma a la configuració"
+  },
   "labelLevel": "Nivell",
-  "@labelLevel": {"description": "Text per a l'etiqueta de nivell utilitzada arreu del joc"},
+  "@labelLevel": {
+    "description": "Text per a l'etiqueta de nivell utilitzada arreu del joc"
+  },
   "titleButtonContinue": "Continuar",
-  "@titleButtonContinue": {"description": "Text per al botó que continua des del nivell actual"},
+  "@titleButtonContinue": {
+    "description": "Text per al botó que continua des del nivell actual"
+  },
   "titleButtonLevelSelect": "Seleccionar nivell",
-  "@titleButtonLevelSelect": {"description": "Text per al botó que obre el selector de nivells"},
+  "@titleButtonLevelSelect": {
+    "description": "Text per al botó que obre el selector de nivells"
+  },
   "titleButtonMenu": "Menú principal",
-  "@titleButtonMenu": {"description": "Tooltip i etiqueta per al botó de tornar al menú principal"},
+  "@titleButtonMenu": {
+    "description": "Tooltip i etiqueta per al botó de tornar al menú principal"
+  },
   "titleSoundToggle": "So activat",
-  "@titleSoundToggle": {"description": "Etiqueta per al commutador que activa/desactiva el so"},
+  "@titleSoundToggle": {
+    "description": "Etiqueta per al commutador que activa/desactiva el so"
+  },
   "titleSelectLevel": "Selecciona un nivell",
-  "@titleSelectLevel": {"description": "Títol del diàleg que mostra el selector de nivells"},
+  "@titleSelectLevel": {
+    "description": "Títol del diàleg que mostra el selector de nivells"
+  },
   "loading": "Carregant {label}...",
-  "@loading": {"description": "Text per a la pàgina de càrrega", "placeholders": {"label": {"type": "String", "example": "Coses", "description": "Etiqueta del que s'està carregant"}}},
+  "@loading": {
+    "description": "Text per a la pàgina de càrrega",
+    "placeholders": {
+      "label": {
+        "type": "String",
+        "example": "Coses",
+        "description": "Etiqueta del que s'està carregant"
+      }
+    }
+  },
   "loadingPhaseLabel": "{loadingPhase, select, audio{música} images{imatges} other{ }}",
-  "@loadingPhaseLabel": {"description": "Fases de càrrega", "placeholders": {"loadingPhase": {}}},
+  "@loadingPhaseLabel": {
+    "description": "Fases de càrrega",
+    "placeholders": {
+      "loadingPhase": {
+        "type": "String",
+        "example": "audio",
+        "description": "Fase actual de càrrega (audio, images, etc.)"
+      }
+    }
+  },
   "titleSelectSavegame": "Partides desades",
-  "@titleSelectSavegame": {"description": "Títol per a la pàgina de selecció de partides desades"},
+  "@titleSelectSavegame": {
+    "description": "Títol per a la pàgina de selecció de partides desades"
+  },
   "titleNewSavegame": "Nova partida",
-  "@titleNewSavegame": {"description": "Tooltip per al botó de crear una nova partida"},
+  "@titleNewSavegame": {
+    "description": "Tooltip per al botó de crear una nova partida"
+  },
   "titleSeed": "Llavor",
-  "@titleSeed": {"description": "Etiqueta per a la llavor d'una partida desada"},
+  "@titleSeed": {
+    "description": "Etiqueta per a la llavor d'una partida desada"
+  },
   "titleLevels": "Nivells",
-  "@titleLevels": {"description": "Etiqueta per a la informació de nivells en una partida desada"},
+  "@titleLevels": {
+    "description": "Etiqueta per a la informació de nivells en una partida desada"
+  },
   "titleCreated": "Creat",
-  "@titleCreated": {"description": "Etiqueta per a la data de creació d'una partida desada"},
+  "@titleCreated": {
+    "description": "Etiqueta per a la data de creació d'una partida desada"
+  },
   "titleLastPlayed": "Última partida",
-  "@titleLastPlayed": {"description": "Etiqueta per a la data de l'última partida d'una partida desada"},
+  "@titleLastPlayed": {
+    "description": "Etiqueta per a la data de l'última partida d'una partida desada"
+  },
   "titleResetProgress": "Reiniciar progrés",
-  "@titleResetProgress": {"description": "Títol del diàleg per reiniciar el progrés"},
+  "@titleResetProgress": {
+    "description": "Títol del diàleg per reiniciar el progrés"
+  },
   "titleResetProgressConfirm": "Segur que vols reiniciar tot el progrés? Això no es pot desfer.",
-  "@titleResetProgressConfirm": {"description": "Contingut del diàleg de confirmació per reiniciar el progrés"},
+  "@titleResetProgressConfirm": {
+    "description": "Contingut del diàleg de confirmació per reiniciar el progrés"
+  },
   "titleCancel": "Cancel·lar",
-  "@titleCancel": {"description": "Etiqueta del botó cancel·lar"},
+  "@titleCancel": {
+    "description": "Etiqueta del botó cancel·lar"
+  },
   "titleConfirm": "Confirmar",
-  "@titleConfirm": {"description": "Etiqueta del botó confirmar"},
+  "@titleConfirm": {
+    "description": "Etiqueta del botó confirmar"
+  },
   "titleDeleteSavegame": "Eliminar aquesta partida desada? Això no es pot desfer.",
-  "@titleDeleteSavegame": {"description": "Contingut del diàleg per eliminar una partida desada"},
+  "@titleDeleteSavegame": {
+    "description": "Contingut del diàleg per eliminar una partida desada"
+  },
   "titleSavegameIconTooltip": "Informació de la partida",
-  "@titleSavegameIconTooltip": {"description": "Tooltip per a la icona/avatar de la partida desada a la llista"},
+  "@titleSavegameIconTooltip": {
+    "description": "Tooltip per a la icona/avatar de la partida desada a la llista"
+  },
   "titlePlaySavegame": "Jugar aquesta partida",
-  "@titlePlaySavegame": {"description": "Tooltip per al botó de jugar a la llista de partides desades"},
+  "@titlePlaySavegame": {
+    "description": "Tooltip per al botó de jugar a la llista de partides desades"
+  },
   "titleDelete": "Eliminar",
-  "@titleDelete": {"description": "Etiqueta per al botó eliminar"},
+  "@titleDelete": {
+    "description": "Etiqueta per al botó eliminar"
+  },
   "titleLevelsHelper": "Nombre de nivells per a aquesta partida.",
-  "@titleLevelsHelper": {"description": "Text d'ajuda per al camp de nombre de nivells en crear una partida"},
+  "@titleLevelsHelper": {
+    "description": "Text d'ajuda per al camp de nombre de nivells en crear una partida"
+  },
   "titleLevelsMinError": "Mínim 10 nivells.",
-  "@titleLevelsMinError": {"description": "Error de validació per al mínim de nivells"},
+  "@titleLevelsMinError": {
+    "description": "Error de validació per al mínim de nivells"
+  },
   "titleImportLevels": "Importar nivells (usar llavor)",
-  "@titleImportLevels": {"description": "Tooltip per al botó d'importar nivells (mostrar camp llavor)"},
+  "@titleImportLevels": {
+    "description": "Tooltip per al botó d'importar nivells (mostrar camp llavor)"
+  },
   "titleSeedHelper": "Opcional: introdueix una llavor per generar els mateixos nivells.",
-  "@titleSeedHelper": {"description": "Text d'ajuda per al camp llavor en crear una partida"},
+  "@titleSeedHelper": {
+    "description": "Text d'ajuda per al camp llavor en crear una partida"
+  },
   "titleCreate": "Crear",
-  "@titleCreate": {"description": "Etiqueta del botó per crear una nova partida"},
+  "@titleCreate": {
+    "description": "Etiqueta del botó per crear una nova partida"
+  },
   "controlTilt": "Control per inclinació",
-  "@controlTilt": {"description": "Etiqueta per al mode de control per inclinació/acceleròmetre"},
+  "@controlTilt": {
+    "description": "Etiqueta per al mode de control per inclinació/acceleròmetre"
+  },
   "controlJoystick": "Control per joystick",
-  "@controlJoystick": {"description": "Etiqueta per al mode de control per joystick/tàctil"},
+  "@controlJoystick": {
+    "description": "Etiqueta per al mode de control per joystick/tàctil"
+  },
   "controlTiltDesc": "Utilitza l'acceleròmetre del dispositiu per moure la bola.",
-  "@controlTiltDesc": {"description": "Descripció per al mode de control per inclinació/acceleròmetre"},
+  "@controlTiltDesc": {
+    "description": "Descripció per al mode de control per inclinació/acceleròmetre"
+  },
   "controlJoystickDesc": "Utilitza el joystick tàctil o les tecles per moure la bola.",
-  "@controlJoystickDesc": {"description": "Descripció per al mode de control per joystick/tàctil"}
+  "@controlJoystickDesc": {
+    "description": "Descripció per al mode de control per joystick/tàctil"
+  }
 }
