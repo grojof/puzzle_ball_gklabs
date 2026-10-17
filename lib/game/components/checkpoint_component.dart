@@ -2,22 +2,29 @@ import 'package:flame_forge2d/flame_forge2d.dart';
 import 'package:flutter/painting.dart';
 import 'package:puzzle_ball_gklabs/game/components/ball_component.dart';
 
-/// Componente de checkpoint para respawn
+/// A checkpoint: the ball activates it by passing through, and respawns
+/// above the last active one after a fall (game-session spec).
 class CheckPointComponent extends BodyComponent with ContactCallbacks {
-  new({
-    required this.position,
-    required this.size,
-    this.color = const Color(0xFF43A047),
-    this.sprite,
-  });
+  new({required this.position, required this.size, required this.onActivated})
+    : super(renderBody: false);
 
+  /// Centre of the sensor, in meters.
   @override
   final Vector2 position;
   final Vector2 size;
-  final Color color;
-  final dynamic sprite;
 
-  bool activated = false;
+  /// Called once, when the ball first passes the checkpoint.
+  final void Function(CheckPointComponent checkpoint) onActivated;
+
+  static final _idle = Paint()..color = const Color(0xFF43A047);
+  static final _active = Paint()..color = const Color(0xFFFFC107);
+
+  bool _activated = false;
+
+  bool get isActivated => _activated;
+
+  /// Where the ball reappears: at rest, a little above the checkpoint.
+  Vector2 get respawnPoint => Vector2(position.x, position.y - 0.75);
 
   @override
   Body createBody() {
@@ -29,19 +36,18 @@ class CheckPointComponent extends BodyComponent with ContactCallbacks {
 
   @override
   void beginContact(Object other, Contact contact) {
-    if (other is BallComponent && !activated) {
-      activated = true;
-      // TODO(grojof): notificar al juego para actualizar el respawn
+    if (other is BallComponent && !_activated) {
+      _activated = true;
+      onActivated(this);
     }
   }
 
   @override
   void render(Canvas canvas) {
-    final paint = Paint()..color = color;
-    canvas.drawRect(
-      Rect.fromCenter(center: Offset.zero, width: size.x, height: size.y),
-      paint,
-    );
-    // TODO(grojof): dibujar sprite si se define
+    // A post with a flag that turns gold once activated.
+    final paint = _activated ? _active : _idle;
+    canvas
+      ..drawRect(Rect.fromLTWH(-0.05, size.y / 2 - 1.6, 0.1, 1.6), paint)
+      ..drawRect(Rect.fromLTWH(0.05, size.y / 2 - 1.6, 0.5, 0.35), paint);
   }
 }

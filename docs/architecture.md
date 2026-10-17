@@ -1,7 +1,7 @@
 ---
 type: explanation
 title: "Architecture"
-description: "How Ball Odyssey is structured: the Flutter app, the Flame game session, audio, and the local packages."
+description: "How Ball Odyssey is structured: the Flutter app, the Flame game session, level generation, audio, and the local packages."
 tags: [architecture, flame, bloc]
 audience: maintainer
 ---
@@ -26,6 +26,7 @@ flowchart TB
     SAVE["savegame_repository"]
     KV["key_value_store"]
     UI_PKG["app_ui<br/>theme · Poppins"]
+    GEN["level_generator<br/>curve · generator · validator"]
   end
   SP[("shared_preferences<br/>adapter in lib/")]
   APP --> MENUS & GAME & AUDIO
@@ -35,6 +36,7 @@ flowchart TB
   SET & SAVE --> KV
   KV -. implemented by .-> SP
   MENUS & GAME --> UI_PKG
+  GAME -- "seed + level → LevelData" --> GEN
 ```
 
 ## App shell
@@ -68,10 +70,15 @@ web it retries the music at the first tap or key press, because browsers block a
 
 The game receives settings as a `GameConfig` value and reports progress through callbacks; it never reads Blocs.
 
-Each level is a single `LevelComponent` under the world, holding terrain, sensors, the goal and the ball:
+Each level is a single `LevelComponent` under the world, built from the `LevelData` that `GamePage` asks the
+generator for, with the savegame's seed. It holds terrain, sensors, the goal and the ball:
 
+- **Terrain:** one static body per floor run, with the tile sprite repeated along it and only the visible tiles
+  drawn; ramps, boosts and checkpoints are their own components.
 - **Restart and advance:** replace that component in place. Body components destroy their bodies when removed.
-- **Falling:** detected in constant time, by comparing the ball with the level's lowest terrain point.
+- **Falling:** detected in constant time, by comparing the ball with the level's lowest terrain point. The ball
+  respawns at rest above the last checkpoint it passed, with any boost cancelled; with no checkpoint, the level
+  restarts.
 - **The goal:** plays its flash-and-fade sequence on the camera viewport and then completes the level.
 
 Input writes a `MovementIntent` (horizontal push and jump requests) that the ball reads:
@@ -81,6 +88,24 @@ Input writes a `MovementIntent` (horizontal push and jump requests) that the bal
 - `applyConfig` swaps the two when the setting changes.
 
 Boosts end on a game-time `Timer` owned by the ball, so they pause with the game and vanish with the level.
+
+## Level generation
+
+`packages/level_generator` turns a seed and a level number into `LevelData`, the same on every platform
+([ADR-0009](decisions/0009-level-generator-and-movement-envelope.md)):
+
+1. `DifficultyCurve` maps the level number to `LevelParameters`: stage, breather, intensity, safety margin, obstacle
+   share, target duration, checkpoint spacing and section weights.
+2. `LevelGenerator` walks a cursor from the start platform to the goal and appends sections until the estimated
+   duration reaches the target. Each gap and climb is sized from the speed the player can have there, within the
+   `MovementEnvelope` times the margin. Checkpoints go at the start of a floor run once enough time has passed since
+   the last respawn point.
+3. `LevelValidator` re-checks a level independently: geometry, ramp joins, and every gap and climb against the
+   envelope.
+
+The game's `ballEnvelope` (`lib/game/ball_envelope.dart`) holds the numbers measured with the real physics. Two game
+tests keep them honest: `movement_envelope_test.dart` drives the real ball and fails if the physics stops reaching
+them, and `level_playthrough_test.dart` has a bot play one level per stage plus two deep levels.
 
 ## Audio
 
@@ -97,6 +122,7 @@ preloads into the global `audioplayers` cache that playback reads. The shipped f
 | `settings_repository` | Dart | `PlayerSettings` with per-field validation and legacy key migration |
 | `savegame_repository` | Dart | `SavedGame` list in the stored JSON format; progress never goes back |
 | `app_ui` | Flutter | `AppTheme.dark`, `AppColors`, bundled Poppins and its license |
+| `level_generator` | Dart | Deterministic levels: PRNG, difficulty curve, movement envelope, generator, validator |
 
 The app's `SharedPreferencesKeyValueStore` uses the legacy `SharedPreferences` API on purpose, so data stored by
 earlier versions stays readable on Android.
@@ -105,12 +131,9 @@ earlier versions stays readable on Android.
 |---|---|
 | `lib/app/` | `App`, `AppView`, `router.dart` (`AppRoutes`) |
 | `lib/audio/` | `AudioService`, backend, settings listener |
-| `lib/game/` | Game, level and ball components, inputs, camera helpers, `GamePage`, pause menu |
+| `lib/game/` | Game, level and ball components, inputs, camera helpers, `ballEnvelope`, `GamePage`, pause menu |
 | `lib/settings/` | `SettingsCubit` and the settings screen |
 | `lib/loading/`, `lib/title/` | Preload screen, menu, savegame and level selectors |
 | `lib/shared/` | `SavegameCubit`, storage adapter, shared widgets |
 | `lib/l10n/` | ARB files and the `context.l10n` extension; generated code in `lib/l10n/gen/` |
 | `lib/gen/` | Asset paths generated by FlutterGen |
-
-The level generator and its difficulty curve are still the baseline ones in `lib/game/levels/`; the next change moves
-them into a pure Dart package and rebuilds them for infinite, scaling levels.

@@ -1,10 +1,12 @@
 import 'dart:async';
+import 'dart:ui';
 
 import 'package:flame/cache.dart';
 import 'package:flame_forge2d/flame_forge2d.dart';
 import 'package:flame_test/flame_test.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:puzzle_ball_gklabs/audio/audio_service.dart';
+import 'package:puzzle_ball_gklabs/game/ball_envelope.dart';
 import 'package:puzzle_ball_gklabs/game/components/components.dart';
 import 'package:puzzle_ball_gklabs/game/components/level_component.dart';
 import 'package:puzzle_ball_gklabs/game/game_config.dart';
@@ -116,6 +118,61 @@ void main() {
         game.teardown();
 
         expect(game.world.physicsWorld.isValid, isFalse);
+      },
+    );
+  });
+
+  group('checkpoints', () {
+    testWithGame(
+      'a fall respawns the ball at rest above the last active checkpoint',
+      () => testGame(
+        images: images,
+        levelFor: (_) => flatLevel(checkpoints: [4.5, 9]),
+      ),
+      (game) async {
+        final level = game.level!;
+        final ball = level.ball;
+        for (final x in [4.5, 9.0]) {
+          ball.body.setTransform(Vector2(x, 3.75), const Rot.identity());
+          game.update(1 / 60);
+        }
+        final last = level.activeCheckpoint!;
+        expect(last.position.x, 9);
+        expect(last.isActivated, isTrue);
+
+        ball.body
+          ..setTransform(Vector2(20, level.fallLine + 1), const Rot.identity())
+          ..linearVelocity = Vector2(5, 20);
+        game.update(1 / 60);
+
+        expect(game.level, same(level));
+        expect(ball.body.position.x, closeTo(9, 1e-6));
+        expect(ball.body.position.y, closeTo(last.respawnPoint.y, 0.2));
+        expect(ball.body.linearVelocity.length, lessThan(1));
+      },
+    );
+
+    testWithGame(
+      'a respawn cancels a running gravity boost',
+      () => testGame(
+        images: images,
+        levelFor: (_) => flatLevel(checkpoints: [4.5]),
+      ),
+      (game) async {
+        final level = game.level!;
+        final ball = level.ball
+          ..body.setTransform(Vector2(4.5, 3.75), const Rot.identity());
+        game.update(1 / 60);
+        ball
+          ..applyGravityBoost(0.1)
+          ..body.setTransform(
+            Vector2(20, level.fallLine + 1),
+            const Rot.identity(),
+          );
+        game.update(1 / 60);
+
+        expect(ball.isBoosted, isFalse);
+        expect(ball.body.gravityScale, 1);
       },
     );
   });
@@ -256,6 +313,29 @@ void main() {
 
         await emit(tilt(0, z: 30));
         expect(game.intent.consumeJump(), isTrue);
+      },
+    );
+  });
+
+  group('rendering', () {
+    testWithGame(
+      'draws a level with every element',
+      () => testGame(
+        images: images,
+        levelFor: (_) => levelGenerator.generate(seed: 'render', level: 45),
+      ),
+      (game) async {
+        final level = game.level!;
+        expect(level.data.ramps, isNotEmpty);
+        expect(level.data.boosts, isNotEmpty);
+        expect(level.data.checkpoints, isNotEmpty);
+        expect(level.data.floors.any((run) => run.size.y > 1.5), isTrue);
+        // Move the camera along the level so every component is in view once.
+        for (final run in level.data.floors) {
+          game.camera.moveTo(Vector2(run.left + run.size.x / 2, run.top));
+          game.update(0);
+          level.renderTree(Canvas(PictureRecorder()));
+        }
       },
     );
   });

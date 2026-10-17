@@ -1,0 +1,25 @@
+name: level_generator
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Runs only when the package changes, to keep CI minutes low.
+on:
+  pull_request:
+    branches:
+      - main
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - "packages/level_generator/**"
+      - ".github/workflows/level_generator.yaml"
+
+jobs:
+  build:
+    if: ${{ !github.event.pull_request.draft }}
+    uses: VeryGoodOpenSource/very_good_workflows/.github/workflows/dart_package.yml@v1
+    with:
+      dart_sdk: "3.13.5"
+      working_directory: packages/level_generator
+      # Determinism across platforms is a requirement (level-generation spec).
+      platform: "vm,chrome"

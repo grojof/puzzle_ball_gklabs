@@ -1,22 +1,22 @@
 import 'dart:async';
-import 'dart:math' as math;
 
 import 'package:flame/components.dart';
 import 'package:flame/effects.dart';
 import 'package:flame_forge2d/flame_forge2d.dart';
 import 'package:flutter/animation.dart';
 import 'package:flutter/painting.dart';
+import 'package:level_generator/level_generator.dart';
 import 'package:puzzle_ball_gklabs/audio/audio_service.dart';
 import 'package:puzzle_ball_gklabs/game/components/components.dart';
 import 'package:puzzle_ball_gklabs/game/input/movement_intent.dart';
-import 'package:puzzle_ball_gklabs/game/levels/level_data.dart';
 import 'package:puzzle_ball_gklabs/gen/assets.gen.dart';
 
 /// Everything one level is made of, under a single root, so unloading the
 /// level is removing this component (design D1).
 ///
-/// It detects falls in constant time from the level's lowest terrain point
-/// (design D3) and plays the goal sequence.
+/// It detects falls in constant time from the level's lowest terrain point,
+/// respawns the ball at the last active checkpoint, and plays the goal
+/// sequence.
 class LevelComponent extends Component with HasGameReference<Forge2DGame> {
   new({
     required this.data,
@@ -24,7 +24,7 @@ class LevelComponent extends Component with HasGameReference<Forge2DGame> {
     required this.audio,
     required this.onFell,
     required this.onCompleted,
-  }) : fallLine = lowestTerrainPoint(data) + fallMargin;
+  }) : fallLine = data.lowestPoint + fallMargin;
 
   /// How far below the lowest terrain the ball counts as fallen, in meters.
   static const fallMargin = 10.0;
@@ -35,7 +35,7 @@ class LevelComponent extends Component with HasGameReference<Forge2DGame> {
   final MovementIntent intent;
   final AudioSink audio;
 
-  /// The ball fell below [fallLine].
+  /// The ball fell below [fallLine] with no active checkpoint.
   final VoidCallback onFell;
 
   /// The goal sequence finished.
@@ -46,19 +46,13 @@ class LevelComponent extends Component with HasGameReference<Forge2DGame> {
 
   late final BallComponent ball;
   final List<Component> _overlays = [];
+  CheckPointComponent? _activeCheckpoint;
   bool _fell = false;
 
-  /// The bottom of the lowest floor or ramp, in world y (downwards).
-  static double lowestTerrainPoint(LevelData data) {
-    var lowest = data.ballStart.y;
-    for (final floor in data.floorData) {
-      lowest = math.max(lowest, floor.position.y + floor.size.y);
-    }
-    for (final ramp in data.rampData) {
-      lowest = math.max(lowest, ramp.position.y + ramp.size.y);
-    }
-    return lowest;
-  }
+  /// The last checkpoint the ball passed, if any.
+  CheckPointComponent? get activeCheckpoint => _activeCheckpoint;
+
+  static Vector2 _vector(Vec2 v) => Vector2(v.x, v.y);
 
   @override
   Future<void> onLoad() async {
@@ -70,44 +64,36 @@ class LevelComponent extends Component with HasGameReference<Forge2DGame> {
     ball = BallComponent(
       intent: intent,
       audio: audio,
-      initialPosition: data.ballStart,
+      initialPosition: _vector(data.ballStart),
       radius: ballRadius,
       onGoalReached: _onGoalReached,
       textureImage: images.fromCache(components.ball.path),
     );
 
     await addAll([
-      for (final f in data.floorData)
-        FloorComponent(position: f.position, size: f.size, sprite: floor),
-      for (final r in data.rampData)
-        RampComponent(
-          position: r.position,
-          size: r.size,
-          inverted: r.inverted,
+      for (final run in data.floors)
+        FloorComponent(
+          position: _vector(run.position),
+          size: _vector(run.size),
           sprite: floor,
         ),
-      for (final c in data.checkpointData)
-        CheckPointComponent(position: c.position, size: Vector2.all(0.5)),
-      for (final b in data.boostData)
-        switch (b.type) {
-          BoostType.jump => JumpBoostComponent(
-            position: b.position,
-            size: Vector2.all(1),
-            sprite: sprite(components.jumpBoost.path),
-          ),
-          BoostType.speed => SpeedBoostComponent(
-            position: b.position,
-            size: Vector2.all(1),
-            sprite: sprite(components.speedBoost.path),
-          ),
-          BoostType.gravity => GravityBoostComponent(
-            position: b.position,
-            size: Vector2.all(1),
-            sprite: sprite(components.gravityBoost.path),
-          ),
-        },
+      for (final ramp in data.ramps)
+        RampComponent(
+          position: _vector(ramp.position),
+          size: _vector(ramp.size),
+          // A ramp component "inverted" is high on its left.
+          inverted: !ramp.ascending,
+          sprite: floor,
+        ),
+      for (final checkpoint in data.checkpoints)
+        CheckPointComponent(
+          position: _vector(checkpoint.position),
+          size: Vector2.all(0.5),
+          onActivated: (component) => _activeCheckpoint = component,
+        ),
+      for (final boost in data.boosts) _boost(boost, sprite),
       GoalComponent(
-        position: data.goalPosition,
+        position: _vector(data.goal),
         size: Vector2(1, 3.5),
         sprite: sprite(components.goal.path),
       ),
@@ -115,13 +101,41 @@ class LevelComponent extends Component with HasGameReference<Forge2DGame> {
     ]);
   }
 
+  static Component _boost(Boost boost, Sprite Function(String) sprite) {
+    final components = Assets.images.components;
+    final position = _vector(boost.position);
+    final size = Vector2.all(1);
+    return switch (boost.type) {
+      BoostType.jump => JumpBoostComponent(
+        position: position,
+        size: size,
+        sprite: sprite(components.jumpBoost.path),
+      ),
+      BoostType.speed => SpeedBoostComponent(
+        position: position,
+        size: size,
+        sprite: sprite(components.speedBoost.path),
+      ),
+      BoostType.gravity => GravityBoostComponent(
+        position: position,
+        size: size,
+        sprite: sprite(components.gravityBoost.path),
+      ),
+    };
+  }
+
   @override
   void update(double dt) {
     super.update(dt);
-    if (!_fell && ball.isMounted && ball.body.position.y > fallLine) {
-      _fell = true;
-      onFell();
+    if (_fell || !ball.isMounted || ball.body.position.y <= fallLine) return;
+    final checkpoint = _activeCheckpoint;
+    if (checkpoint != null) {
+      ball.respawn(checkpoint.respawnPoint);
+      intent.reset();
+      return;
     }
+    _fell = true;
+    onFell();
   }
 
   void _onGoalReached() {

@@ -141,6 +141,18 @@ class BallComponent extends BodyComponent with ContactCallbacks {
     }
   }
 
+  /// Puts the ball at rest at [position], cancelling any boost: a respawn at
+  /// a checkpoint (game-session spec).
+  void respawn(Vector2 position) {
+    _boostTimer.stop();
+    _endBoost();
+    _sinceGround = double.infinity;
+    body
+      ..setTransform(position, const Rot.identity())
+      ..linearVelocity = Vector2.zero()
+      ..angularVelocity = 0;
+  }
+
   /// Freezes the ball once the goal sequence starts.
   void freeze() {
     body

@@ -28,9 +28,11 @@ What the current baseline does (the rebuild changes it through OpenSpec changes)
 | Element | Behavior |
 |---|---|
 | Ball | Rolls with proportional tilt (Android), the on-screen joystick or `A`/`D`; jumps with the button, `Space` or a shake, from the ground only |
-| Terrain | Floor tiles and ramps, flat runs, height changes and gaps |
-| Boosts | Jump (upward impulse), speed (forward impulse) and gravity (low gravity for 2 s) |
-| Checkpoints | Shown, but falling still restarts the whole level |
+| Levels | Generated from the savegame's seed and the level number; about 35 s long at first, growing to two or three minutes deep |
+| Difficulty | Stages of ten levels, the first five each introducing elements; two gentler breather levels per stage; it keeps rising with no ceiling |
+| Terrain | Floor runs, ramps, gaps (level, rising or falling), drops, steps up and chained gaps, all sized to what the ball can do |
+| Boosts | Jump (upward impulse), speed (forward impulse) and gravity (low gravity for 2 s), each placed before the section that needs it |
+| Checkpoints | From the second stage; passing one turns its flag gold, and a fall respawns the ball there |
 | Goal | Reaching it flashes the screen and loads the next level in place |
 | Pause | A pause button and the app going to the background open the pause menu: resume, restart, settings, levels |
 | Settings | Music and effects volume, quick mute, control mode (tilt hidden on the web), language (device by default) |
@@ -40,16 +42,17 @@ What the current baseline does (the rebuild changes it through OpenSpec changes)
 
 ## Known gaps
 
-- The savegame seed is ignored: every savegame plays the same levels.
-- The difficulty curve overflows its intended range on later levels, so generation parameters stop making sense.
-- Levels are finite per savegame, which contradicts the infinite-climb vision.
-- The generator can place ramps on top of tiles between height changes.
+- Levels are still finite per savegame, which contradicts the infinite-climb vision; the next change replaces the
+  progression model.
+- There is one mode, with unlimited retries. The challenge mode, the original world, the daily challenge and shared
+  seeds come in the next change.
+- The difficulty curve's numbers are first estimates, to be tuned by playing.
 - Physics feel has not been re-tuned since the move to Box2D v3.
 
 ## Open product questions
 
 To be answered with the author while specifying the rebuild, and recorded as ADRs:
 
-- How progress is kept in an infinite climb (runs, best level reached, lives or checkpoints).
-- How difficulty scales and which mechanics are introduced as levels advance.
-- Whether seeds are shareable and whether there is a daily or fixed-seed mode to compare runs.
+- How progress is kept in an infinite climb: best level reached per mode, and lives in the challenge mode.
+- How the daily challenge and shared seeds are offered in the menus.
+- Which new mechanics, if any, join the generator once the existing elements are tuned.

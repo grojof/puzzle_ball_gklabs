@@ -8,9 +8,9 @@ import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:puzzle_ball_gklabs/app/router.dart';
 import 'package:puzzle_ball_gklabs/audio/audio_service.dart';
+import 'package:puzzle_ball_gklabs/game/ball_envelope.dart';
 import 'package:puzzle_ball_gklabs/game/ball_odyssey_game.dart';
 import 'package:puzzle_ball_gklabs/game/game_config.dart';
-import 'package:puzzle_ball_gklabs/game/levels/predefined_levels.dart';
 import 'package:puzzle_ball_gklabs/game/view/pause_menu.dart';
 import 'package:puzzle_ball_gklabs/l10n/l10n.dart';
 import 'package:puzzle_ball_gklabs/loading/loading.dart';
@@ -77,7 +77,7 @@ class GamePageState extends State<GamePage> {
   BallOdysseyGame _createGame(SavedGame savegame) {
     final theme = Theme.of(context);
     return BallOdysseyGame(
-      levelFor: (n) => predefinedLevel(n, savegame.totalLevels),
+      levelFor: (n) => levelGenerator.generate(seed: savegame.seed, level: n),
       startLevel: widget.level.clamp(1, savegame.totalLevels),
       totalLevels: savegame.totalLevels,
       audio: context.read<AudioService>(),

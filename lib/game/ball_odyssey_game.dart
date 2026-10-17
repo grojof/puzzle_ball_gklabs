@@ -6,6 +6,7 @@ import 'package:flame/events.dart';
 import 'package:flame/parallax.dart';
 import 'package:flame_forge2d/flame_forge2d.dart';
 import 'package:flutter/painting.dart';
+import 'package:level_generator/level_generator.dart';
 import 'package:puzzle_ball_gklabs/audio/audio_service.dart';
 import 'package:puzzle_ball_gklabs/game/components/jump_button_component.dart';
 import 'package:puzzle_ball_gklabs/game/components/level_component.dart';
@@ -13,7 +14,6 @@ import 'package:puzzle_ball_gklabs/game/game_config.dart';
 import 'package:puzzle_ball_gklabs/game/input/manual_input.dart';
 import 'package:puzzle_ball_gklabs/game/input/movement_intent.dart';
 import 'package:puzzle_ball_gklabs/game/input/tilt_input.dart';
-import 'package:puzzle_ball_gklabs/game/levels/level_data.dart';
 import 'package:puzzle_ball_gklabs/game/utils/camera_utils.dart';
 import 'package:puzzle_ball_gklabs/gen/assets.gen.dart';
 import 'package:sensors_plus/sensors_plus.dart';
@@ -250,7 +250,7 @@ class BallOdysseyGame extends Forge2DGame with HasKeyboardHandlerComponents {
 
     adjustCameraHeightForTerrain(
       camera,
-      level.data.floorData,
+      level.data.floors,
       ball.position,
       lookAhead: 8,
       lookBehind: 8,
@@ -263,7 +263,7 @@ class BallOdysseyGame extends Forge2DGame with HasKeyboardHandlerComponents {
     );
     adjustCameraForBoostsSmooth(
       camera,
-      level.data.boostData,
+      level.data.boosts,
       ball.position,
       1,
       camera.viewfinder.zoom,

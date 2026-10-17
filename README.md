@@ -57,6 +57,8 @@ The ADRs are:
 - [ADR-0006](docs/decisions/0006-box2d-v3-physics.md): Box2D v3 physics
 - [ADR-0007](docs/decisions/0007-app-identity.md): app identity
 - [ADR-0008](docs/decisions/0008-material-ui.md): Material from `material_ui`
+- [ADR-0009](docs/decisions/0009-level-generator-and-movement-envelope.md): level generator bounded by a measured
+  movement envelope
 
 Contributors (human or AI) start with [AGENTS.md](AGENTS.md).
 

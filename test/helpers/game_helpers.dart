@@ -1,13 +1,12 @@
 import 'dart:async';
 
 import 'package:flame/cache.dart';
-import 'package:flame_forge2d/flame_forge2d.dart';
 import 'package:flame_test/flame_test.dart';
 import 'package:flutter/painting.dart';
+import 'package:level_generator/level_generator.dart';
 import 'package:puzzle_ball_gklabs/audio/audio_service.dart';
 import 'package:puzzle_ball_gklabs/game/ball_odyssey_game.dart';
 import 'package:puzzle_ball_gklabs/game/game_config.dart';
-import 'package:puzzle_ball_gklabs/game/levels/level_data.dart';
 import 'package:puzzle_ball_gklabs/gen/assets.gen.dart';
 import 'package:sensors_plus/sensors_plus.dart';
 
@@ -34,26 +33,35 @@ class RecordingAudioSink implements AudioSink {
   void play(GameSound sound) => played.add(sound);
 }
 
-/// A flat level: [tiles] floor tiles at y = 4, the ball above the first one
-/// and the goal far to the right.
-LevelData flatLevel({int tiles = 6, List<BoostData> boosts = const []}) {
-  const tile = 1.5;
+/// A flat level: one run of [tiles] tiles at y = 4, the ball above its first
+/// tile and the goal near its end; [checkpoints] at the given x positions.
+LevelData flatLevel({
+  int tiles = 12,
+  List<Boost> boosts = const [],
+  List<double> checkpoints = const [],
+}) {
+  const top = 4.0;
+  final width = tiles * tileSize;
   return LevelData(
-    ballStart: Vector2(tile / 2, 4 - tile),
-    goalPosition: Vector2(tile * (tiles + 4), 4 - tile),
-    floorData: [
-      for (var i = 0; i < tiles; i++)
-        FloorData(position: Vector2(i * tile, 4), size: Vector2.all(tile)),
+    seed: 'test',
+    level: 1,
+    ballStart: const Vec2(tileSize / 2, top - 1),
+    goal: Vec2(width - tileSize / 2, top - 1.75),
+    floors: [
+      FloorRun(position: const Vec2(0, top), size: Vec2(width, tileSize)),
     ],
-    rampData: const [],
-    boostData: boosts,
-    checkpointData: const [],
+    ramps: const [],
+    boosts: boosts,
+    checkpoints: [for (final x in checkpoints) Checkpoint(Vec2(x, top - 0.25))],
+    sections: const [],
+    estimatedDuration: 10,
   );
 }
 
 /// A game on flat levels with recorded audio and a controllable sensor.
 BallOdysseyGame testGame({
   required Images images,
+  LevelData Function(int level)? levelFor,
   int totalLevels = 3,
   int startLevel = 1,
   GameConfig config = const GameConfig(),
@@ -63,7 +71,7 @@ BallOdysseyGame testGame({
   void Function()? onSessionCompleted,
 }) {
   return BallOdysseyGame(
-    levelFor: (_) => flatLevel(),
+    levelFor: levelFor ?? (_) => flatLevel(),
     startLevel: startLevel,
     totalLevels: totalLevels,
     audio: audio ?? RecordingAudioSink(),
