@@ -4,57 +4,11 @@ import 'package:puzzle_ball_gklabs/game/levels/level_data.dart';
 /// --- AJUSTES DE CÁMARA ---
 /// Tune these values to control camera smoothing and zoom.
 class CameraBehaviorConfig {
-  /// Suavidad de animación (0.0-1.0, más alto = más rápido)
-  static double lerp = 0.01;
-
   /// Rango para considerar un boost "cercano" (metros)
   static double boostRange = 2.5;
 
   /// Zoom de la cámara cuando hay boost cerca
   static double boostZoom = 22 / 40;
-}
-
-/// Utilidad para animar suavemente el zoom de la cámara
-void animateCameraZoom(
-  CameraComponent camera,
-  double targetZoom, {
-  double duration = 0.8,
-}) {
-  final startZoom = camera.viewfinder.zoom;
-  final delta = targetZoom - startZoom;
-  double t = 0;
-  void step(double dt) {
-    t += dt;
-    final progress = (t / duration).clamp(0, 1);
-    camera.viewfinder.zoom = startZoom + delta * progress;
-    if (progress < 1) {
-      Future.delayed(const Duration(milliseconds: 18), () => step(0.018));
-    }
-  }
-
-  step(0);
-}
-
-/// Ajusta el zoom de la cámara si hay boosts cercanos
-void adjustCameraForBoosts(
-  CameraComponent camera,
-  List<BoostData> boosts,
-  Vector2 ballPos,
-  double defaultZoom,
-) {
-  final boostNear = boosts.any(
-    (b) => (b.position.x - ballPos.x).abs() < CameraBehaviorConfig.boostRange,
-  );
-  if (boostNear) {
-    camera.viewfinder.zoom =
-        camera.viewfinder.zoom +
-        (CameraBehaviorConfig.boostZoom - camera.viewfinder.zoom) *
-            CameraBehaviorConfig.lerp;
-  } else {
-    camera.viewfinder.zoom =
-        camera.viewfinder.zoom +
-        (defaultZoom - camera.viewfinder.zoom) * CameraBehaviorConfig.lerp;
-  }
 }
 
 /// Moves the camera anchor towards the terrain ahead of the ball, using the

@@ -103,7 +103,7 @@ class SpeedBoostComponent extends BodyComponent with ContactCallbacks {
   @override
   void beginContact(Object other, Contact contact) {
     if (other is BallComponent) {
-      other.applySpeedBoost(force: force, direction: direction);
+      other.applySpeedBoost(force, direction);
     }
   }
 
@@ -124,7 +124,6 @@ class GravityBoostComponent extends BodyComponent with ContactCallbacks {
   new({
     required this.position,
     required this.size,
-    this.duration = 2.0,
     this.gravityScale = 0.1,
     this.color = const Color(0xFFB39DDB),
     this.sprite,
@@ -133,7 +132,6 @@ class GravityBoostComponent extends BodyComponent with ContactCallbacks {
   @override
   final Vector2 position;
   final Vector2 size;
-  final double duration;
   final double gravityScale;
   final Color color;
   final Sprite? sprite;
@@ -162,7 +160,7 @@ class GravityBoostComponent extends BodyComponent with ContactCallbacks {
   @override
   void beginContact(Object other, Contact contact) {
     if (other is BallComponent) {
-      other.applyGravityBoost(gravityScale: gravityScale, duration: duration);
+      other.applyGravityBoost(gravityScale);
     }
   }
 

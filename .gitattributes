@@ -1,2 +1,6 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+# Shell scripts must keep LF to run in bash (Windows defaults to core.autocrlf=true).
+*.sh text eol=lf
+# Generated asset paths are compared by build_runner; keep them LF everywhere.
+lib/gen/*.dart text eol=lf

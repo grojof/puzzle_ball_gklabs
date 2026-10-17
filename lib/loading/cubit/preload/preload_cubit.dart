@@ -1,7 +1,7 @@
-import 'package:audioplayers/audioplayers.dart';
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flame/cache.dart';
+import 'package:puzzle_ball_gklabs/audio/audio_service.dart';
 import 'package:puzzle_ball_gklabs/gen/assets.gen.dart';
 
 part 'preload_state.dart';
@@ -10,21 +10,12 @@ class PreloadCubit extends Cubit<PreloadState> {
   new(this._images, this._audio) : super(const PreloadState.initial());
 
   final Images _images;
-  final AudioCache _audio;
+  final AudioService _audio;
 
   /// Load items sequentially allows display of what is being loaded
   Future<void> loadSequentially() async {
     final phases = [
-      PreloadPhase(
-        'audio',
-        () => _audio.loadAll([
-          Assets.audio.background,
-          Assets.audio.boostGravity,
-          Assets.audio.boostJump,
-          Assets.audio.boostSpeed,
-          Assets.audio.jump,
-        ]),
-      ),
+      PreloadPhase('audio', _audio.preload),
       PreloadPhase(
         'images',
         () => _images.loadAll([

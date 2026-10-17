@@ -8,6 +8,8 @@ environment:
   flutter: ^3.47.0
 
 dependencies:
+  app_ui:
+    path: packages/app_ui
   audioplayers: ^6.8.1
   bloc: ^9.2.1
   equatable: ^3.0.0
@@ -19,10 +21,15 @@ dependencies:
   flutter_localizations:
     sdk: flutter
   go_router: ^18.1.0
-  google_fonts: ^9.0.0
   intl: ^0.20.2
+  key_value_store:
+    path: packages/key_value_store
   material_ui: ^1.7.0
+  savegame_repository:
+    path: packages/savegame_repository
   sensors_plus: ^7.1.1
+  settings_repository:
+    path: packages/settings_repository
   shared_preferences: ^2.5.6
 
 dev_dependencies:
@@ -48,7 +55,6 @@ flutter:
     - assets/images/
     - assets/images/components/
     - assets/images/parallax/
-    - assets/licenses/poppins/
 
 flutter_native_splash:
   # Usa una imagen de fondo completa que cubre todo (fondo + icono en uno)

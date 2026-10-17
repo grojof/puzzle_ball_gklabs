@@ -1,110 +1,31 @@
-import 'dart:async';
-
-import 'dart:convert';
-
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:savegame_repository/savegame_repository.dart';
+
+export 'package:savegame_repository/savegame_repository.dart' show SavedGame;
 
 part 'savegame_state.dart';
 
+/// The stored savegames, kept in sync with the repository.
 class SavegameCubit extends Cubit<SavegameState> {
-  new() : super(const SavegameState.initial()) {
-    unawaited(loadGames());
-  }
+  new(this._repository) : super(const SavegameState());
 
-  static const _key = 'savedGames';
+  final SavegameRepository _repository;
 
-  Future<void> loadGames() async {
-    final prefs = await SharedPreferences.getInstance();
-    final list = prefs.getStringList(_key) ?? [];
-    final games = list
-        .map((e) => SavedGame.fromJson(jsonDecode(e) as Map<String, dynamic>))
-        .toList();
+  Future<void> load() async =>
+      emit(SavegameState(games: await _repository.loadAll(), isLoaded: true));
+
+  Future<void> add(SavedGame game) async =>
+      emit(state.copyWith(games: await _repository.add(game)));
+
+  /// Records that [level] was reached; progress never goes back.
+  Future<void> recordProgress(String id, int level) async {
+    final game = state.byId(id);
+    if (game == null) return;
+    final games = await _repository.update(game.copyWith(currentLevel: level));
     emit(state.copyWith(games: games));
   }
 
-  Future<void> addGame(SavedGame game) async {
-    final games = List<SavedGame>.from(state.games)..add(game);
-    await _saveGames(games);
-  }
-
-  Future<void> updateGame(SavedGame updated) async {
-    final games = state.games.map((g) {
-      if (g.id != updated.id) return g;
-
-      // 🔒 Solo actualiza el currentLevel si es mayor
-      final newCurrentLevel = updated.currentLevel > g.currentLevel
-          ? updated.currentLevel
-          : g.currentLevel;
-
-      return SavedGame(
-        id: g.id,
-        seed: g.seed,
-        totalLevels: g.totalLevels,
-        currentLevel: newCurrentLevel,
-        createdAt: g.createdAt,
-        lastPlayed: DateTime.now(), // Actualiza siempre el timestamp
-      );
-    }).toList();
-
-    await _saveGames(games);
-  }
-
-  Future<void> deleteGame(String id) async {
-    final games = state.games.where((g) => g.id != id).toList();
-    await _saveGames(games);
-  }
-
-  Future<void> _saveGames(List<SavedGame> games) async {
-    final prefs = await SharedPreferences.getInstance();
-    final list = games.map((g) => jsonEncode(g.toJson())).toList();
-    await prefs.setStringList(_key, list);
-    emit(state.copyWith(games: games));
-  }
-}
-
-class SavedGame extends Equatable {
-  const new({
-    required this.id,
-    required this.seed,
-    required this.totalLevels,
-    required this.currentLevel,
-    required this.createdAt,
-    required this.lastPlayed,
-  });
-
-  new fromJson(Map<String, dynamic> json)
-    : id = json['id'] as String,
-      seed = json['seed'] as String,
-      totalLevels = json['totalLevels'] as int,
-      currentLevel = json['currentLevel'] as int,
-      createdAt = DateTime.parse(json['createdAt'] as String),
-      lastPlayed = DateTime.parse(json['lastPlayed'] as String);
-
-  final String id;
-  final String seed;
-  final int totalLevels;
-  final int currentLevel;
-  final DateTime createdAt;
-  final DateTime lastPlayed;
-
-  Map<String, dynamic> toJson() => {
-    'id': id,
-    'seed': seed,
-    'totalLevels': totalLevels,
-    'currentLevel': currentLevel,
-    'createdAt': createdAt.toIso8601String(),
-    'lastPlayed': lastPlayed.toIso8601String(),
-  };
-
-  @override
-  List<Object> get props => [
-    id,
-    seed,
-    totalLevels,
-    currentLevel,
-    createdAt,
-    lastPlayed,
-  ];
+  Future<void> delete(String id) async =>
+      emit(state.copyWith(games: await _repository.delete(id)));
 }

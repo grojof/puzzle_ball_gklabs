@@ -1,32 +1,52 @@
+import 'dart:async';
+
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:puzzle_ball_gklabs/shared/cubit/settings/settings_cubit.dart';
+import 'package:puzzle_ball_gklabs/gen/assets.gen.dart';
+import 'package:puzzle_ball_gklabs/l10n/l10n.dart';
+import 'package:puzzle_ball_gklabs/settings/cubit/settings_cubit.dart';
 
+/// Picks the interface language, or the device language.
 class LanguageSelector extends StatelessWidget {
   const new({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return const Column(
-      children: [
-        SizedBox(height: 12),
-        Wrap(
-          alignment: WrapAlignment.center,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          runAlignment: WrapAlignment.center,
-          spacing: 16,
-          runSpacing: 12,
-          children: [
-            _LanguageOption(
-              code: 'ca',
-              label: 'Català',
-              flag: 'asset:assets/images/catalonia_flag.png',
+    final l10n = context.l10n;
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: Wrap(
+        alignment: WrapAlignment.center,
+        spacing: 12,
+        runSpacing: 12,
+        children: [
+          _LanguageOption(
+            code: null,
+            label: l10n.settingsLanguageDevice,
+            flag: const Icon(Icons.smartphone, size: 22),
+          ),
+          _LanguageOption(
+            code: 'ca',
+            label: 'Català',
+            flag: Image.asset(
+              Assets.images.cataloniaFlag.path,
+              height: 22,
+              width: 30,
+              fit: BoxFit.contain,
             ),
-            _LanguageOption(code: 'es', label: 'Español', flag: '🇪🇸'),
-            _LanguageOption(code: 'en', label: 'English', flag: '🇬🇧'),
-          ],
-        ),
-      ],
+          ),
+          const _LanguageOption(
+            code: 'es',
+            label: 'Español',
+            flag: Text('🇪🇸', style: TextStyle(fontSize: 20)),
+          ),
+          const _LanguageOption(
+            code: 'en',
+            label: 'English',
+            flag: Text('🇬🇧', style: TextStyle(fontSize: 20)),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -34,46 +54,28 @@ class LanguageSelector extends StatelessWidget {
 class _LanguageOption extends StatelessWidget {
   const new({required this.code, required this.label, required this.flag});
 
-  final String code;
+  /// The language code, or null for the device language.
+  final String? code;
   final String label;
-  final String flag;
+  final Widget flag;
 
   @override
   Widget build(BuildContext context) {
-    final current = context.watch<SettingsCubit>().state.languageCode;
+    final current = context.select<SettingsCubit, String?>(
+      (cubit) => cubit.state.settings.languageCode,
+    );
     final isSelected = current == code;
+    final colors = Theme.of(context).colorScheme;
 
-    final isAsset = flag.startsWith('asset:');
-    final flagWidget = isAsset
-        ? Image.asset(
-            flag.replaceFirst('asset:', ''),
-            height: 30,
-            width: 36,
-            fit: BoxFit.contain,
-          )
-        : Text(flag, style: const TextStyle(fontSize: 20));
-
-    return GestureDetector(
-      onTap: () => context.read<SettingsCubit>().changeLanguage(code),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 250),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        decoration: BoxDecoration(
-          color: isSelected ? Colors.blueAccent : Colors.grey[800],
-          borderRadius: BorderRadius.circular(12),
-          border: isSelected
-              ? Border.all(color: Colors.white70, width: 2)
-              : null,
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            flagWidget,
-            const SizedBox(width: 8),
-            Text(label, style: const TextStyle(color: Colors.white)),
-          ],
-        ),
-      ),
+    return ChoiceChip(
+      key: Key('language_${code ?? 'device'}'),
+      avatar: flag,
+      label: Text(label),
+      selected: isSelected,
+      showCheckmark: false,
+      selectedColor: colors.primary.withValues(alpha: 0.3),
+      onSelected: (_) =>
+          unawaited(context.read<SettingsCubit>().setLanguage(code)),
     );
   }
 }

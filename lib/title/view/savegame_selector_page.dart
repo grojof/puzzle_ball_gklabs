@@ -2,6 +2,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:puzzle_ball_gklabs/app/router.dart';
 import 'package:puzzle_ball_gklabs/l10n/l10n.dart';
 import 'package:puzzle_ball_gklabs/shared/cubit/savegame/savegame_cubit.dart';
 
@@ -20,7 +21,7 @@ class SavegameSelectorPage extends StatelessWidget {
           IconButton(
             icon: const Icon(Icons.home),
             tooltip: l10n.titleButtonMenu,
-            onPressed: () => context.go('/menu'),
+            onPressed: () => context.go(AppRoutes.menu),
           ),
           IconButton(
             icon: const Icon(Icons.add),
@@ -106,9 +107,7 @@ class _SavegameTileState extends State<_SavegameTile> {
                   ),
                 );
                 if ((confirm ?? false) && context.mounted) {
-                  await context.read<SavegameCubit>().deleteGame(
-                    widget.game.id,
-                  );
+                  await context.read<SavegameCubit>().delete(widget.game.id);
                 }
               },
             ),
@@ -116,7 +115,7 @@ class _SavegameTileState extends State<_SavegameTile> {
               icon: const Icon(Icons.play_arrow),
               tooltip: l10n.titleButtonContinue,
               onPressed: () {
-                context.go('/levels?savegame=${widget.game.id}');
+                context.go(AppRoutes.levelsOf(widget.game.id));
               },
             ),
           ],
@@ -223,7 +222,7 @@ class _NewSavegameDialogState extends State<_NewSavegameDialog> {
                 createdAt: now,
                 lastPlayed: now,
               );
-              await context.read<SavegameCubit>().addGame(newGame);
+              await context.read<SavegameCubit>().add(newGame);
               if (!context.mounted) return;
               Navigator.pop(context);
             }

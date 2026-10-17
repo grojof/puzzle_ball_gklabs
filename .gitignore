@@ -29,3 +29,6 @@ lib/l10n/gen/
 
 # Coverage reports
 coverage/
+
+# Local packages resolve against the app's lockfile
+packages/**/pubspec.lock

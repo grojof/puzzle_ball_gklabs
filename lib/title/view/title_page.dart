@@ -4,6 +4,7 @@ import 'package:flame/parallax.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:puzzle_ball_gklabs/app/router.dart';
 import 'package:puzzle_ball_gklabs/l10n/l10n.dart';
 import 'package:puzzle_ball_gklabs/shared/cubit/cubit.dart';
 import 'package:puzzle_ball_gklabs/shared/widgets/widgets.dart';
@@ -60,34 +61,28 @@ class _TitleViewState extends State<TitleView> {
               const SizedBox(height: 48),
               ElevatedButton(
                 onPressed: () {
-                  final games = context.read<SavegameCubit>().state.games;
-                  if (games.isEmpty) {
-                    context.go('/savegames');
-                  } else {
-                    final sorted = List<SavedGame>.from(games)
-                      ..sort((a, b) => b.lastPlayed.compareTo(a.lastPlayed));
-                    final lastGame = sorted.first;
-                    context.go('/levels?savegame=${lastGame.id}');
-                  }
+                  final last = context.read<SavegameCubit>().state.lastPlayed;
+                  context.go(
+                    last == null
+                        ? AppRoutes.savegames
+                        : AppRoutes.levelsOf(last.id),
+                  );
                 },
                 child: Text(l10n.titleButtonContinue),
               ),
               const SizedBox(height: 12),
               ElevatedButton(
-                onPressed: () => context.go('/savegames'),
+                onPressed: () => context.go(AppRoutes.savegames),
                 child: Text(l10n.titleSelectSavegame),
               ),
-              const SizedBox(height: 24),
-              ControlModeSelector(l10n: l10n),
-
-              // 👇 ESPACIADOR PARA MANTENER ABAJO
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                key: const Key('title_settings'),
+                icon: const Icon(Icons.settings),
+                label: Text(l10n.settingsTitle),
+                onPressed: () => context.push(AppRoutes.settings),
+              ),
               const Spacer(),
-
-              // 🌍 Selector de idioma
-              const LanguageSelector(),
-              const SizedBox(height: 20),
-
-              // 🧾 Firma del desarrollador
               Text(
                 'Developed by Guillermo Rojo',
                 style: theme.textTheme.bodySmall?.copyWith(

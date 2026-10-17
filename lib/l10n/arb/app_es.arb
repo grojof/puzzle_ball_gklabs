@@ -145,5 +145,17 @@
   "controlJoystickDesc": "Usa el joystick táctil o las teclas para mover la bola.",
   "@controlJoystickDesc": {
     "description": "Descripción para el modo de control por joystick/táctil"
-  }
+  },
+  "settingsTitle": "Ajustes",
+  "settingsMusicVolume": "Música",
+  "settingsEffectsVolume": "Efectos de sonido",
+  "settingsControls": "Controles",
+  "settingsLanguageDevice": "Idioma del dispositivo",
+  "soundMute": "Silenciar sonido",
+  "soundUnmute": "Activar sonido",
+  "pauseButton": "Pausa",
+  "pauseTitle": "En pausa",
+  "pauseResume": "Continuar",
+  "pauseRestart": "Reiniciar nivel",
+  "noSavegameSelected": "No hay ninguna partida seleccionada."
 }
