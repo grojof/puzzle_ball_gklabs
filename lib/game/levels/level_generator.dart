@@ -1,4 +1,5 @@
 import 'dart:math';
+
 import 'package:flame_forge2d/flame_forge2d.dart';
 import 'package:puzzle_ball_gklabs/game/levels/level_data.dart';
 
@@ -18,7 +19,6 @@ class LevelGenerator {
     int maxFlatSegmentLength = 4,
     double flatSegmentChance = 0.6, // 60% de posibilidad de checkpoint
     double maxHorizontalGap = 5.0, // solo usado si no es bloque seguido
-
     // ──────────────── ⬇️ Caídas (saltos) ────────────────
     double dropChance = 0.25,
     double maxDropHeight = 2.5,
@@ -41,10 +41,20 @@ class LevelGenerator {
     const minDistBetweenDrops = 3;
     final tiles = <_Tile>[];
 
+    // Flat start platform, so the ball spawns and starts on level ground.
+    const startPlatformTiles = 3;
+    for (var i = 0; i < startPlatformTiles; i++) {
+      tiles.add(_Tile(Vector2(x, y)));
+      x += tileSize;
+      totalFloors++;
+      stepsSinceLastDrop++;
+    }
+
     while (totalFloors < segmentCount) {
       final isFlatSegment = rand.nextDouble() < flatSegmentChance;
-      final flatLength =
-          isFlatSegment ? rand.nextInt(maxFlatSegmentLength) + 1 : 1;
+      final flatLength = isFlatSegment
+          ? rand.nextInt(maxFlatSegmentLength) + 1
+          : 1;
 
       for (var i = 0; i < flatLength && totalFloors < segmentCount; i++) {
         tiles.add(_Tile(Vector2(x, y)));
@@ -55,7 +65,8 @@ class LevelGenerator {
 
         // Variación de altura
         if (!lastJump && rand.nextDouble() < heightVariationChance) {
-          final deltaY = tileSize *
+          final deltaY =
+              tileSize *
               (rand.nextInt((maxHeightChange * 2).round() + 1) -
                       maxHeightChange)
                   .round();
@@ -68,7 +79,8 @@ class LevelGenerator {
       }
 
       // Intentar colocar una caída
-      final canDrop = totalFloors > 4 &&
+      final canDrop =
+          totalFloors > 4 &&
           dropsMade < maxDrops &&
           stepsSinceLastDrop >= minDistBetweenDrops &&
           rand.nextDouble() < dropChance &&
@@ -122,7 +134,8 @@ class LevelGenerator {
       }
     }
 
-    final ballStart = path.first + Vector2(0, -tileSize);
+    // Spawn above the middle of the first tile: positions are top-left corners.
+    final ballStart = path.first + Vector2(tileSize / 2, -tileSize);
 
     // Calcular posición de la meta (goal)
     var goalPosition = path.last;
@@ -152,8 +165,10 @@ class LevelGenerator {
       }
 
       if (overlaps) {
-        goalPosition +=
-            Vector2(additionalLiftH, -((tileSize * 0.6) / 2) - additionalLiftV);
+        goalPosition += Vector2(
+          additionalLiftH,
+          -((tileSize * 0.6) / 2) - additionalLiftV,
+        );
         tries++;
       }
     }
@@ -162,11 +177,14 @@ class LevelGenerator {
     if (!classicMode) {
       // Añadir checkpoints según longitud
       if (enableCheckpoints && segmentCount > 20) {
-        final numCheckpoints = minCheckpoints +
+        final numCheckpoints =
+            minCheckpoints +
             (segmentCount ~/ 50).clamp(0, maxCheckpoints - minCheckpoints);
         for (var i = 1; i <= numCheckpoints; i++) {
-          final idx = (tiles.length * i ~/ (numCheckpoints + 1))
-              .clamp(1, tiles.length - 2);
+          final idx = (tiles.length * i ~/ (numCheckpoints + 1)).clamp(
+            1,
+            tiles.length - 2,
+          );
           checkpointData.add(
             CheckPointData(
               position: tiles[idx].position - Vector2(0, tileSize * 0.5),
@@ -228,7 +246,7 @@ class LevelGenerator {
 }
 
 class _Tile {
-  _Tile(this.position, {this.hasFloor = true});
+  new(this.position, {this.hasFloor = true});
   final Vector2 position;
   final bool hasFloor;
 }

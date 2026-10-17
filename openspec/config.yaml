@@ -1,0 +1,41 @@
+schema: spec-driven
+
+context: |
+  Ball Odyssey: a Flutter + Flame/Forge2D physics game with infinite, procedurally generated levels
+  whose difficulty keeps rising. Android and web only (see AGENTS.md).
+  Write all artifacts in English.
+  Level generation must be deterministic for a given seed and testable without Flutter.
+  Very Good conventions: Bloc/Cubit, very_good_analysis and bloc_lint with zero issues; packages at 100 % coverage.
+  Any new package, plugin, SDK or tool cites the official source for the chosen version.
+  Architecture and product decisions are recorded as ADRs in docs/decisions/.
+
+# Project context (optional)
+# Add only constraints that should guide OpenSpec artifacts and workflows.
+# Include constraints an agent cannot infer by reading the code.
+# Keep general project documentation and discoverable codebase facts out.
+# Example:
+#   context: |
+#     Designs and tasks must cover Windows, macOS, and Linux
+#     Write all artifacts in Spanish
+
+# Per-artifact rules (optional)
+# Add custom rules for specific artifacts.
+# Example:
+#   rules:
+#     proposal:
+#       - Keep proposals under 500 words
+#       - Always state what is out of scope
+#     tasks:
+#       - Break tasks into chunks of max 2 hours
+
+# Per-operation guidance (optional)
+# Add advisory guidance for how apply and archive work should be conducted.
+# This is separate from artifact rules above.
+# Example:
+#   operations:
+#     apply:
+#       guidance:
+#         - Keep test summaries concise
+#     archive:
+#       guidance:
+#         - Summarize the archive outcome before finishing

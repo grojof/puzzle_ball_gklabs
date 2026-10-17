@@ -6,7 +6,7 @@ import 'package:puzzle_ball_gklabs/shared/cubit/settings/settings_cubit.dart';
 
 class KeyboardJoystickController extends KeyboardListenerComponent
     with HasGameReference {
-  KeyboardJoystickController(this.ball);
+  new(this.ball);
 
   final BallComponent ball;
   Vector2 keyboardDelta = Vector2.zero();
@@ -16,7 +16,7 @@ class KeyboardJoystickController extends KeyboardListenerComponent
   bool onKeyEvent(KeyEvent event, Set<LogicalKeyboardKey> keysPressed) {
     final useSensor =
         game.buildContext?.read<SettingsCubit>().state.useSensorControl ??
-            false;
+        false;
 
     if (!useSensor) {
       this.keysPressed = keysPressed;
@@ -35,7 +35,7 @@ class KeyboardJoystickController extends KeyboardListenerComponent
   void update(double dt) {
     final useSensor =
         game.buildContext?.read<SettingsCubit>().state.useSensorControl ??
-            false;
+        false;
 
     if (useSensor) {
       keyboardDelta.setZero();

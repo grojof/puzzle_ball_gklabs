@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'dart:convert';
+
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -6,8 +9,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 part 'savegame_state.dart';
 
 class SavegameCubit extends Cubit<SavegameState> {
-  SavegameCubit() : super(const SavegameState.initial()) {
-    loadGames();
+  new() : super(const SavegameState.initial()) {
+    unawaited(loadGames());
   }
 
   static const _key = 'savedGames';
@@ -62,7 +65,7 @@ class SavegameCubit extends Cubit<SavegameState> {
 }
 
 class SavedGame extends Equatable {
-  const SavedGame({
+  const new({
     required this.id,
     required this.seed,
     required this.totalLevels,
@@ -71,13 +74,13 @@ class SavedGame extends Equatable {
     required this.lastPlayed,
   });
 
-  SavedGame.fromJson(Map<String, dynamic> json)
-      : id = json['id'] as String,
-        seed = json['seed'] as String,
-        totalLevels = json['totalLevels'] as int,
-        currentLevel = json['currentLevel'] as int,
-        createdAt = DateTime.parse(json['createdAt'] as String),
-        lastPlayed = DateTime.parse(json['lastPlayed'] as String);
+  new fromJson(Map<String, dynamic> json)
+    : id = json['id'] as String,
+      seed = json['seed'] as String,
+      totalLevels = json['totalLevels'] as int,
+      currentLevel = json['currentLevel'] as int,
+      createdAt = DateTime.parse(json['createdAt'] as String),
+      lastPlayed = DateTime.parse(json['lastPlayed'] as String);
 
   final String id;
   final String seed;
@@ -87,15 +90,21 @@ class SavedGame extends Equatable {
   final DateTime lastPlayed;
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'seed': seed,
-        'totalLevels': totalLevels,
-        'currentLevel': currentLevel,
-        'createdAt': createdAt.toIso8601String(),
-        'lastPlayed': lastPlayed.toIso8601String(),
-      };
+    'id': id,
+    'seed': seed,
+    'totalLevels': totalLevels,
+    'currentLevel': currentLevel,
+    'createdAt': createdAt.toIso8601String(),
+    'lastPlayed': lastPlayed.toIso8601String(),
+  };
 
   @override
-  List<Object> get props =>
-      [id, seed, totalLevels, currentLevel, createdAt, lastPlayed];
+  List<Object> get props => [
+    id,
+    seed,
+    totalLevels,
+    currentLevel,
+    createdAt,
+    lastPlayed,
+  ];
 }

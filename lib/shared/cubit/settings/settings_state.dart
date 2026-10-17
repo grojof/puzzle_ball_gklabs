@@ -1,20 +1,20 @@
 import 'package:equatable/equatable.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 class SettingsState extends Equatable {
-  const SettingsState({
+  const new({
     required this.currentLevel,
     required this.languageCode,
     required this.soundEnabled,
     required this.useSensorControl,
   });
 
-  factory SettingsState.initial() => const SettingsState(
-        currentLevel: 1,
-        languageCode: 'es',
-        soundEnabled: true,
-        useSensorControl: false,
-      );
+  factory initial() => const SettingsState(
+    currentLevel: 1,
+    languageCode: 'es',
+    soundEnabled: true,
+    useSensorControl: false,
+  );
 
   final int currentLevel;
   final String languageCode;
@@ -40,9 +40,9 @@ class SettingsState extends Equatable {
 
   @override
   List<Object> get props => [
-        currentLevel,
-        languageCode,
-        soundEnabled,
-        useSensorControl,
-      ];
+    currentLevel,
+    languageCode,
+    soundEnabled,
+    useSensorControl,
+  ];
 }

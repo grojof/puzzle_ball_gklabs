@@ -1,18 +1,15 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:puzzle_ball_gklabs/gen/assets.gen.dart';
-import 'package:puzzle_ball_gklabs/l10n/l10n.dart';
 
 class PuzzleBallLoader extends StatefulWidget {
-  const PuzzleBallLoader({
-    super.key,
-    this.progress,
-  });
+  const new({super.key, this.progress});
 
   /// Optional loading progress (0.0 to 1.0) for circular indicator
   final double? progress;
 
-  static const Duration intrinsicAnimationDuration =
-      Duration(milliseconds: 300);
+  static const Duration intrinsicAnimationDuration = Duration(
+    milliseconds: 300,
+  );
 
   @override
   State<PuzzleBallLoader> createState() => _PuzzleBallLoaderState();
@@ -49,10 +46,7 @@ class _PuzzleBallLoaderState extends State<PuzzleBallLoader>
       builder: (context, value, child) {
         return Opacity(
           opacity: 1 - (value / 40),
-          child: Transform.translate(
-            offset: Offset(0, value),
-            child: child,
-          ),
+          child: Transform.translate(offset: Offset(0, value), child: child),
         );
       },
       child: Column(
@@ -76,7 +70,7 @@ class _PuzzleBallLoaderState extends State<PuzzleBallLoader>
                         strokeWidth: 6,
                         backgroundColor: Colors.transparent,
                         valueColor: AlwaysStoppedAnimation<Color>(
-                          theme.colorScheme.primary.withOpacity(0.8),
+                          theme.colorScheme.primary.withValues(alpha: 0.8),
                         ),
                       ),
                     ),

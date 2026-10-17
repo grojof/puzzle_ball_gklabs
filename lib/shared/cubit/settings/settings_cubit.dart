@@ -1,11 +1,13 @@
+import 'dart:async';
+
 import 'package:bloc/bloc.dart';
 import 'package:puzzle_ball_gklabs/game/cubit/cubit.dart';
 import 'package:puzzle_ball_gklabs/shared/cubit/settings/settings_state.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class SettingsCubit extends Cubit<SettingsState> {
-  SettingsCubit() : super(SettingsState.initial()) {
-    _loadSettings();
+  new() : super(SettingsState.initial()) {
+    unawaited(_loadSettings());
   }
 
   Future<void> _loadSettings() async {

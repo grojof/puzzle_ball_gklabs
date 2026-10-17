@@ -1,13 +1,12 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:puzzle_ball_gklabs/l10n/l10n.dart';
 import 'package:puzzle_ball_gklabs/shared/cubit/savegame/savegame_cubit.dart';
-import 'package:puzzle_ball_gklabs/shared/widgets/sound_toggle_fab.dart';
 
 class SavegameSelectorPage extends StatelessWidget {
-  const SavegameSelectorPage({super.key});
+  const new({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -41,7 +40,7 @@ class SavegameSelectorPage extends StatelessWidget {
             child: ListView.separated(
               padding: const EdgeInsets.all(16),
               itemCount: games.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 12),
+              separatorBuilder: (_, _) => const SizedBox(height: 12),
               itemBuilder: (context, index) {
                 final game = games[index];
                 return _SavegameTile(game: game);
@@ -55,7 +54,7 @@ class SavegameSelectorPage extends StatelessWidget {
 }
 
 class _SavegameTile extends StatefulWidget {
-  const _SavegameTile({required this.game});
+  const new({required this.game});
   final SavedGame game;
 
   @override
@@ -106,10 +105,10 @@ class _SavegameTileState extends State<_SavegameTile> {
                     ],
                   ),
                 );
-                if (confirm ?? false) {
-                  await context
-                      .read<SavegameCubit>()
-                      .deleteGame(widget.game.id);
+                if ((confirm ?? false) && context.mounted) {
+                  await context.read<SavegameCubit>().deleteGame(
+                    widget.game.id,
+                  );
                 }
               },
             ),
@@ -129,10 +128,12 @@ class _SavegameTileState extends State<_SavegameTile> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '${l10n.titleCreated}: ${dateFormat.format(widget.game.createdAt)}',
+                  '${l10n.titleCreated}: '
+                  '${dateFormat.format(widget.game.createdAt)}',
                 ),
                 Text(
-                  '${l10n.titleLastPlayed}: ${dateFormat.format(widget.game.lastPlayed)}',
+                  '${l10n.titleLastPlayed}: '
+                  '${dateFormat.format(widget.game.lastPlayed)}',
                 ),
               ],
             ),
@@ -223,6 +224,7 @@ class _NewSavegameDialogState extends State<_NewSavegameDialog> {
                 lastPlayed: now,
               );
               await context.read<SavegameCubit>().addGame(newGame);
+              if (!context.mounted) return;
               Navigator.pop(context);
             }
           },

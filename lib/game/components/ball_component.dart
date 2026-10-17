@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:ui';
 
-import 'package:audioplayers/audioplayers.dart';
 import 'package:flame/components.dart';
 import 'package:flame/effects.dart';
 import 'package:flame_forge2d/flame_forge2d.dart';
@@ -21,7 +20,7 @@ import 'package:puzzle_ball_gklabs/shared/cubit/settings/settings_cubit.dart';
 import 'package:sensors_plus/sensors_plus.dart';
 
 class BallComponent extends BodyComponent with ContactCallbacks {
-  BallComponent({
+  new({
     required this.audioCubit,
     required this.initialPosition,
     required this.radius,
@@ -75,7 +74,6 @@ class BallComponent extends BodyComponent with ContactCallbacks {
   Vector2 speedBoostDirection = Vector2(1, 0);
   double gravityBoostScale = 0.1; // Por defecto, gravedad lunar
   double? _originalGravityScaleY;
-  double? _originalDensity;
 
   // Métodos para boost externos
   void applyJumpBoost([double? force]) {
@@ -93,92 +91,38 @@ class BallComponent extends BodyComponent with ContactCallbacks {
 
   void applyGravityBoost({double? gravityScale, double? duration}) {
     // Guarda el valor original solo la primera vez
-    _originalGravityScaleY ??= body.gravityScale?.y ?? 1.0;
-    body.gravityScale = Vector2(0, gravityScale ?? gravityBoostScale);
+    _originalGravityScaleY ??= body.gravityScale;
+    body.gravityScale = gravityScale ?? gravityBoostScale;
     _triggerBoost(BoostType.gravity, duration: duration);
-    Future.delayed(Duration(milliseconds: ((duration ?? 2.0) * 1000).toInt()),
-        () {
-      if (body.isActive && _originalGravityScaleY != null) {
-        body.gravityScale = Vector2(0, _originalGravityScaleY!);
-        _originalGravityScaleY = null;
-      }
-    });
+    Future.delayed(
+      Duration(milliseconds: ((duration ?? 2.0) * 1000).toInt()),
+      () {
+        if (body.isValid && _originalGravityScaleY != null) {
+          body.gravityScale = _originalGravityScaleY!;
+          _originalGravityScaleY = null;
+        }
+      },
+    );
   }
 
   void _triggerBoost(BoostType type, {double? duration}) {
     if (_boostActive) return;
     switch (type) {
       case BoostType.jump:
-        audioCubit.playEffect(Assets.audio.boostJump);
+        unawaited(audioCubit.playEffect(Assets.audio.boostJump));
       case BoostType.speed:
-        audioCubit.playEffect(Assets.audio.boostSpeed);
+        unawaited(audioCubit.playEffect(Assets.audio.boostSpeed));
       case BoostType.gravity:
-        audioCubit.playEffect(Assets.audio.boostGravity);
+        unawaited(audioCubit.playEffect(Assets.audio.boostGravity));
     }
 
     _boostActive = true;
     onBoostActivated?.call(type);
-    Future.delayed(Duration(milliseconds: ((duration ?? 2.0) * 1000).toInt()),
-        () {
-      _boostActive = false;
-      onBoostDeactivated?.call();
-    });
-  }
-
-  /// Aplica un boost de densidad (simula masa) temporalmente
-  void applyDensityBoost({double? density, double? duration}) {
-    // Cambia la densidad del primer fixture temporalmente
-    _originalDensity ??= body.fixtures.first.density;
-    body.fixtures.first.density = density ?? 0.1;
     Future.delayed(
       Duration(milliseconds: ((duration ?? 2.0) * 1000).toInt()),
       () {
-        if (body.isActive && _originalDensity != null) {
-          body.fixtures.first.density = _originalDensity!;
-          _originalDensity = null;
-        }
-      },
-    );
-  }
-
-  /// Aplica un boost de fricción temporalmente
-  void applyFrictionBoost({double? friction, double? duration}) {
-    final originalFriction = body.fixtures.first.friction;
-    body.fixtures.first.friction = friction ?? 0.1;
-    Future.delayed(
-      Duration(milliseconds: ((duration ?? 2.0) * 1000).toInt()),
-      () {
-        if (body.isActive) {
-          body.fixtures.first.friction = originalFriction;
-        }
-      },
-    );
-  }
-
-  /// Aplica un boost de restitución (rebote) temporalmente
-  void applyRestitutionBoost({double? restitution, double? duration}) {
-    final originalRestitution = body.fixtures.first.restitution;
-    body.fixtures.first.restitution = restitution ?? 1.0;
-    Future.delayed(
-      Duration(milliseconds: ((duration ?? 2.0) * 1000).toInt()),
-      () {
-        if (body.isActive) {
-          body.fixtures.first.restitution = originalRestitution;
-        }
-      },
-    );
-  }
-
-  /// Aplica un boost de frenado natural (linearDamping) temporalmente
-  void applyLinearDampingBoost({double? damping, double? duration}) {
-    final originalDamping = body.linearDamping;
-    body.linearDamping = damping ?? 0.1;
-    Future.delayed(
-      Duration(milliseconds: ((duration ?? 2.0) * 1000).toInt()),
-      () {
-        if (body.isActive) {
-          body.linearDamping = originalDamping;
-        }
+        _boostActive = false;
+        onBoostDeactivated?.call();
       },
     );
   }
@@ -199,19 +143,22 @@ class BallComponent extends BodyComponent with ContactCallbacks {
 
   @override
   Body createBody() {
-    final shape = CircleShape()..radius = radius;
-    final fixtureDef = FixtureDef(shape)
-      ..density = density
-      ..friction = friction
-      ..restitution = restitution
-      ..userData = this;
-
-    final bodyDef = BodyDef()
-      ..type = BodyType.dynamic
-      ..position = initialPosition
-      ..linearDamping = linearDamping;
-
-    return world.createBody(bodyDef)..createFixture(fixtureDef);
+    return world.createBody(
+      BodyDef(
+        type: BodyType.dynamic,
+        position: initialPosition,
+        linearDamping: linearDamping,
+      ),
+    )..createShape(
+      Circle(radius: radius),
+      ShapeDef(
+        density: density,
+        material: SurfaceMaterial(friction: friction, restitution: restitution),
+        enableContactEvents: true,
+        enableSensorEvents: true,
+        userData: this,
+      ),
+    );
   }
 
   @override
@@ -219,8 +166,8 @@ class BallComponent extends BodyComponent with ContactCallbacks {
     super.update(dt);
     final dir = _getInputDirection();
 
-    if (dir.length > 0.1) {
-      body.applyForce(dir.normalized() * baseForce);
+    if (dir.x != 0) {
+      body.applyForce(dir * baseForce);
     }
 
     // Lógica avanzada de caída libre
@@ -230,10 +177,7 @@ class BallComponent extends BodyComponent with ContactCallbacks {
       final ballPos = body.position;
       double? minDist;
       // Buscar el suelo/rampa más cercano por debajo
-      final bodies = (game as PuzzleBallGklabs)
-          .gameWorld
-          .children
-          .whereType<BodyComponent>();
+      final bodies = game.world.children.whereType<BodyComponent>();
       for (final b in bodies) {
         if (b is FloorComponent || b is RampComponent) {
           final compPos = b.body.position;
@@ -254,20 +198,25 @@ class BallComponent extends BodyComponent with ContactCallbacks {
   Vector2 _getInputDirection() {
     final useSensor =
         game.buildContext?.read<SettingsCubit>().state.useSensorControl ??
-            false;
+        false;
+
+    if (useSensor) {
+      // Tilt is proportional: a full push needs about 30° of tilt, and small
+      // tilts inside the dead zone do nothing.
+      final tilt = (sensorVelocity.x / 5).clamp(-1.0, 1.0);
+      return Vector2(tilt.abs() < 0.08 ? 0 : tilt, 0);
+    }
 
     var direction = Vector2.zero();
 
-    if (useSensor && sensorVelocity.length > 0.1) {
-      direction = sensorVelocity;
-    } else if (!useSensor && keyboardController!.keyboardDelta.length > 0.1) {
+    if (!useSensor && keyboardController!.keyboardDelta.length > 0.1) {
       direction = keyboardController!.keyboardDelta;
     } else if (!useSensor && joystick!.delta.length > 0.1) {
       direction = joystick!.delta;
     }
 
-    // ⚠️ Forzamos movimiento solo horizontal
-    return Vector2(direction.x, 0);
+    // Keyboard and joystick push at full force; movement is horizontal only.
+    return direction.x == 0 ? Vector2.zero() : Vector2(direction.x.sign, 0);
   }
 
   void jump() {
@@ -277,7 +226,7 @@ class BallComponent extends BodyComponent with ContactCallbacks {
       canJump = false;
 
       // 🔊 Reproducir sonido de salto
-      audioCubit.playEffect(Assets.audio.jump);
+      unawaited(audioCubit.playEffect(Assets.audio.jump));
     }
   }
 
@@ -286,66 +235,58 @@ class BallComponent extends BodyComponent with ContactCallbacks {
     if (other is GoalComponent && !_portalActivated) {
       _portalActivated = true;
 
-      final gameRef = game as PuzzleBallGklabs;
-      final screenSize = gameRef.size;
-
-      // 🚫 Detener física de la bola
-      Future.microtask(() {
-        body.linearVelocity = Vector2.zero();
-        body.setActive(false);
-      });
-
-      // 🔵 Azul parpadeante
-      final portalFlashOverlay = RectangleComponent(
-        size: screenSize,
-        position: Vector2.zero(),
-        paint: Paint()..color = const Color(0xFF42A5F5).withOpacity(0.0),
+      // Stop the ball after the physics step that reported the contact.
+      unawaited(
+        Future.microtask(() {
+          body
+            ..linearVelocity = Vector2.zero()
+            ..isEnabled = false;
+        }),
       );
-
-      gameRef.camera.viewport.add(portalFlashOverlay);
-
-      portalFlashOverlay.add(
-        SequenceEffect(
-          [
-            OpacityEffect.to(
-              0.6,
-              EffectController(duration: 0.4, curve: Curves.easeOut),
-            ),
-            OpacityEffect.to(
-              0.0,
-              EffectController(duration: 0.4, curve: Curves.easeIn),
-            ),
-          ],
-          onComplete: () {
-            portalFlashOverlay.removeFromParent();
-
-            // ⚫ Luego fundido a negro
-            final blackoutOverlay = RectangleComponent(
-              size: screenSize,
-              position: Vector2.zero(),
-              paint: Paint()..color = const Color(0xFF000000).withOpacity(0.0),
-            );
-
-            gameRef.camera.viewport.add(blackoutOverlay);
-
-            blackoutOverlay.add(
-              OpacityEffect.to(
-                1.0,
-                EffectController(duration: 0.4, curve: Curves.easeIn),
-                onComplete: () {
-                  gameRef.onLevelCompleted?.call();
-                },
-              ),
-            );
-          },
-        ),
-      );
+      unawaited(_playGoalSequence(game as PuzzleBallGklabs));
     } else {
       canJump = true;
       _canJumpUntil = DateTime.now().millisecondsSinceEpoch + 150;
       _onGround = true;
       _lastGroundTime = DateTime.now().millisecondsSinceEpoch;
     }
+  }
+
+  /// Flashes blue, fades to black and then completes the level.
+  Future<void> _playGoalSequence(PuzzleBallGklabs gameRef) async {
+    final screenSize = gameRef.size;
+
+    final flash = SequenceEffect([
+      OpacityEffect.to(
+        0.6,
+        EffectController(duration: 0.4, curve: Curves.easeOut),
+      ),
+      OpacityEffect.to(
+        0,
+        EffectController(duration: 0.4, curve: Curves.easeIn),
+      ),
+    ]);
+    final flashOverlay = RectangleComponent(
+      size: screenSize,
+      paint: Paint()..color = const Color(0xFF42A5F5).withValues(alpha: 0),
+      children: [flash],
+    );
+    await gameRef.camera.viewport.add(flashOverlay);
+    await flash.completed;
+    flashOverlay.removeFromParent();
+
+    final fade = OpacityEffect.to(
+      1,
+      EffectController(duration: 0.4, curve: Curves.easeIn),
+    );
+    final blackoutOverlay = RectangleComponent(
+      size: screenSize,
+      paint: Paint()..color = const Color(0xFF000000).withValues(alpha: 0),
+      children: [fade],
+    );
+    await gameRef.camera.viewport.add(blackoutOverlay);
+    await fade.completed;
+    gameRef.onLevelCompleted?.call();
   }
 
   @override
@@ -360,7 +301,7 @@ class BallComponent extends BodyComponent with ContactCallbacks {
 
   @override
   void onRemove() {
-    _accelSub?.cancel();
+    unawaited(_accelSub?.cancel());
     super.onRemove();
   }
 

@@ -1,19 +1,22 @@
-import 'package:flutter/material.dart';
+import 'dart:async';
+
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:puzzle_ball_gklabs/l10n/l10n.dart';
 import 'package:puzzle_ball_gklabs/shared/cubit/cubit.dart';
 import 'package:puzzle_ball_gklabs/shared/cubit/savegame/savegame_cubit.dart';
 
 class LevelSelectorPage extends StatelessWidget {
-  const LevelSelectorPage({super.key});
+  const new({super.key});
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     // Obtén el id de la partida seleccionada desde la ruta
-    final savegameId =
-        GoRouterState.of(context).uri.queryParameters['savegame'];
+    final savegameId = GoRouterState.of(context)
+        .uri
+        .queryParameters['savegame'];
     final games = context.watch<SavegameCubit>().state.games;
     final partida = games.firstWhere(
       (g) => g.id == savegameId,
@@ -25,7 +28,8 @@ class LevelSelectorPage extends StatelessWidget {
               totalLevels: 0,
               currentLevel: 0,
               createdAt: DateTime.now(),
-              lastPlayed: DateTime.now()),
+              lastPlayed: DateTime.now(),
+            ),
     );
     final isValid = partida.id.isNotEmpty;
 
@@ -68,7 +72,7 @@ class LevelSelectorPage extends StatelessWidget {
 }
 
 class _LevelGrid extends StatelessWidget {
-  const _LevelGrid({required this.partida});
+  const new({required this.partida});
   final SavedGame partida;
 
   @override
@@ -94,7 +98,7 @@ class _LevelGrid extends StatelessWidget {
 }
 
 class _LevelButton extends StatelessWidget {
-  const _LevelButton({
+  const new({
     required this.levelNumber,
     required this.isUnlocked,
     required this.partida,
@@ -117,7 +121,7 @@ class _LevelButton extends StatelessWidget {
                 createdAt: partida.createdAt,
                 lastPlayed: DateTime.now(),
               );
-              context.read<SavegameCubit>().updateGame(updated);
+              unawaited(context.read<SavegameCubit>().updateGame(updated));
               context.go('/game?level=$levelNumber&savegame=${partida.id}');
             }
           : null,

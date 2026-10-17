@@ -1,28 +1,24 @@
-import 'package:flame/cache.dart';
 import 'package:flame/components.dart';
 import 'package:flame/game.dart';
 import 'package:flame/parallax.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:puzzle_ball_gklabs/l10n/l10n.dart';
-import 'package:puzzle_ball_gklabs/loading/cubit/preload/preload_cubit.dart';
 import 'package:puzzle_ball_gklabs/shared/cubit/cubit.dart';
 import 'package:puzzle_ball_gklabs/shared/widgets/widgets.dart';
 
 class TitlePage extends StatelessWidget {
-  const TitlePage({super.key});
+  const new({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      body: SafeArea(child: TitleView()),
-    );
+    return const Scaffold(body: SafeArea(child: TitleView()));
   }
 }
 
 class TitleView extends StatefulWidget {
-  const TitleView({super.key});
+  const new({super.key});
   @override
   State<TitleView> createState() => _TitleViewState();
 }
@@ -45,7 +41,7 @@ class _TitleViewState extends State<TitleView> {
       fit: StackFit.expand,
       children: [
         GameWidget(game: _game),
-        Container(color: Colors.black.withOpacity(0.3)),
+        Container(color: Colors.black.withValues(alpha: 0.3)),
         Padding(
           padding: const EdgeInsets.all(24),
           child: Column(
@@ -57,13 +53,7 @@ class _TitleViewState extends State<TitleView> {
                 style: theme.textTheme.headlineMedium?.copyWith(
                   fontWeight: FontWeight.bold,
                   color: Colors.white,
-                  shadows: const [
-                    Shadow(
-                      blurRadius: 4,
-                      color: Colors.black,
-                      offset: Offset(2, 2),
-                    ),
-                  ],
+                  shadows: const [Shadow(blurRadius: 4, offset: Offset(2, 2))],
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -116,7 +106,7 @@ class _TitleViewState extends State<TitleView> {
 }
 
 class _MenuParallaxGame extends FlameGame {
-  _MenuParallaxGame();
+  new();
 
   @override
   Future<void> onLoad() async {
@@ -134,10 +124,11 @@ class _MenuParallaxGame extends FlameGame {
     );
 
     final parallax = ParallaxComponent(
-      parallax: Parallax(
-        [layer1, layer2, layer3],
-        baseVelocity: Vector2(20, 0),
-      ),
+      parallax: Parallax([
+        layer1,
+        layer2,
+        layer3,
+      ], baseVelocity: Vector2(20, 0)),
     );
 
     await add(parallax);

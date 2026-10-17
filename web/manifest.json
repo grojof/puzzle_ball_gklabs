@@ -1,11 +1,11 @@
 {
-    "name": "Puzzle Ball Gklabs",
-    "short_name": "Puzzle Ball Gklabs",
+    "name": "Ball Odyssey",
+    "short_name": "Ball Odyssey",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0b1627",
     "theme_color": "#0b1627",
-    "description": "A Very Good Project created by Very Good CLI.",
+    "description": "Ball Odyssey, a physics ball game with procedurally generated levels.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

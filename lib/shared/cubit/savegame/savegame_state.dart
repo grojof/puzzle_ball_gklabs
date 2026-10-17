@@ -1,9 +1,9 @@
 part of 'savegame_cubit.dart';
 
 class SavegameState extends Equatable {
-  const SavegameState({required this.games});
+  const new({required this.games});
 
-  const SavegameState.initial() : games = const [];
+  const new initial() : games = const [];
 
   final List<SavedGame> games;
 

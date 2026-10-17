@@ -1,7 +1,10 @@
+import 'dart:async';
+
+import 'package:flame/cache.dart';
 import 'package:flame/game.dart' hide Route;
-import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:puzzle_ball_gklabs/game/game.dart';
 import 'package:puzzle_ball_gklabs/game/levels/levels.dart';
 import 'package:puzzle_ball_gklabs/game/levels/predefined_levels.dart';
@@ -20,11 +23,7 @@ final nullSavedGame = SavedGame(
 );
 
 class GamePage extends StatelessWidget {
-  const GamePage({
-    super.key,
-    this.level = 1,
-    this.savegameId,
-  });
+  const new({super.key, this.level = 1, this.savegameId});
 
   final int level;
   final String? savegameId;
@@ -36,7 +35,8 @@ class GamePage extends StatelessWidget {
     // 🔁 Si aún no ha terminado de cargar, redirige a la página de carga
     if (!preload.state.isComplete) {
       // ⚠️ Evita loops infinitos: solo redirige si no estás ya en /loading
-      Future.microtask(() {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!context.mounted) return;
         final current = GoRouter.of(context).state.path;
         if (current != '/loading') {
           context.go(
@@ -48,16 +48,14 @@ class GamePage extends StatelessWidget {
     }
 
     // 🔽 Continúa con el resto del build (idéntico al tuyo)
-    final textStyle = Theme.of(context).textTheme.bodySmall!.copyWith(
-          color: Colors.white,
-          fontSize: 4,
-        );
+    final textStyle = Theme.of(context).textTheme.bodySmall!
+        .copyWith(color: Colors.white, fontSize: 4);
 
     final savegame = savegameId != null
         ? context.read<SavegameCubit>().state.games.firstWhere(
-              (SavedGame g) => g.id == savegameId,
-              orElse: () => nullSavedGame,
-            )
+            (g) => g.id == savegameId,
+            orElse: () => nullSavedGame,
+          )
         : nullSavedGame;
 
     final isValidSavegame = savegame.id.isNotEmpty;
@@ -69,7 +67,7 @@ class GamePage extends StatelessWidget {
       l10n: context.l10n,
       audioCubit: context.read<AudioCubit>(),
       textStyle: textStyle,
-      images: preload.images,
+      images: context.read<Images>(),
       levelIndex: level - 1,
       levelsList: levelsList,
       onLevelCompleted: () {
@@ -83,7 +81,7 @@ class GamePage extends StatelessWidget {
             createdAt: savegame.createdAt,
             lastPlayed: DateTime.now(),
           );
-          context.read<SavegameCubit>().updateGame(updated);
+          unawaited(context.read<SavegameCubit>().updateGame(updated));
         }
         if (nextLevel <= totalLevels) {
           GoRouter.of(context)
@@ -102,108 +100,7 @@ class GamePage extends StatelessWidget {
     return Stack(
       children: [
         Positioned.fill(
-          child: GameWidget(
-            game: game,
-            focusNode: FocusNode(),
-          ),
-        ),
-        const SoundToggleFab(),
-        Positioned(
-          top: 24,
-          left: 24,
-          child: FloatingActionButton.small(
-            heroTag: 'back_to_levels',
-            tooltip: context.l10n.titleButtonLevelSelect,
-            backgroundColor: Theme.of(context).colorScheme.primary,
-            child: const Icon(Icons.list),
-            onPressed: () {
-              GoRouter.of(context).go('/levels?savegame=${savegame.id}');
-            },
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class GameView extends StatelessWidget {
-  const GameView({
-    required this.level,
-    this.savegameId,
-    super.key,
-  });
-
-  final int level;
-  final String? savegameId;
-
-  @override
-  Widget build(BuildContext context) {
-    final textStyle = Theme.of(context).textTheme.bodySmall!.copyWith(
-          color: Colors.white,
-          fontSize: 4,
-        );
-
-    final preload = context.read<PreloadCubit>();
-
-    // 🔄 Forzar recarga si no está completo (por ejemplo tras F5 en web)
-    if (!preload.state.isComplete) {
-      preload.loadSequentially();
-      return const Center(child: CircularProgressIndicator());
-    }
-
-    final savegame = savegameId != null
-        ? context.read<SavegameCubit>().state.games.firstWhere(
-              (SavedGame g) => g.id == savegameId,
-              orElse: () => nullSavedGame,
-            )
-        : nullSavedGame;
-
-    final isValidSavegame = savegame.id.isNotEmpty;
-    final totalLevels = isValidSavegame ? savegame.totalLevels : 100;
-    final seed = isValidSavegame ? savegame.seed : '';
-    final levelsList = generatePredefinedLevels(totalLevels, seed);
-
-    final game = PuzzleBallGklabs(
-      l10n: context.l10n,
-      audioCubit: context.read<AudioCubit>(),
-      textStyle: textStyle,
-      images: preload.images,
-      levelIndex: level - 1,
-      levelsList: levelsList,
-      onLevelCompleted: () {
-        final nextLevel = level + 1;
-        if (isValidSavegame) {
-          final updated = SavedGame(
-            id: savegame.id,
-            seed: savegame.seed,
-            totalLevels: savegame.totalLevels,
-            currentLevel: nextLevel,
-            createdAt: savegame.createdAt,
-            lastPlayed: DateTime.now(),
-          );
-          context.read<SavegameCubit>().updateGame(updated);
-        }
-        if (nextLevel <= totalLevels) {
-          GoRouter.of(context)
-              .go('/game?level=$nextLevel&savegame=${savegame.id}');
-        } else {
-          GoRouter.of(context).go('/menu');
-        }
-      },
-      onResetRequested: () {
-        final now = DateTime.now().millisecondsSinceEpoch;
-        GoRouter.of(context)
-            .go('/game?level=$level&savegame=${savegame.id}&restart=$now');
-      },
-    );
-
-    return Stack(
-      children: [
-        Positioned.fill(
-          child: GameWidget(
-            game: game,
-            focusNode: FocusNode(),
-          ),
+          child: GameWidget(game: game, focusNode: FocusNode()),
         ),
         const SoundToggleFab(),
         Positioned(

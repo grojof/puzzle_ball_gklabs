@@ -6,7 +6,7 @@ import 'package:flame/image_composition.dart';
 import 'package:flame_forge2d/flame_forge2d.dart';
 
 class RampComponent extends BodyComponent with ContactCallbacks {
-  RampComponent({
+  new({
     required this.position,
     required this.size,
     this.inverted = false,
@@ -51,18 +51,16 @@ class RampComponent extends BodyComponent with ContactCallbacks {
             Vector2(halfW, -halfH),
           ];
 
-    final shape = PolygonShape()..set(vertices);
-
-    final fixtureDef = FixtureDef(shape)
-      ..friction = friction
-      ..restitution = restitution
-      ..userData = this;
-
-    final bodyDef = BodyDef()
-      ..type = BodyType.static
-      ..position = position + size / 2;
-
-    return world.createBody(bodyDef)..createFixture(fixtureDef);
+    return world.createBody(
+      BodyDef(position: position + size / 2),
+    )..createShape(
+      Polygon(vertices),
+      ShapeDef(
+        material: SurfaceMaterial(friction: friction, restitution: restitution),
+        enableContactEvents: true,
+        userData: this,
+      ),
+    );
   }
 
   @override
