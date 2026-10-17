@@ -41,6 +41,14 @@ void main() {
       expect(testEnvelope.airTime(10), isNull);
     });
 
+    test('falling from the jump height takes half a jump', () {
+      expect(
+        testEnvelope.fallTime(testEnvelope.jumpHeight),
+        closeTo(testEnvelope.flightTime / 2, 1e-9),
+      );
+      expect(testEnvelope.fallTime(0), 0);
+    });
+
     test('gaps scale with speed and margin, and need a reachable landing', () {
       final slow = testEnvelope.maxGap(speed: 3, rise: 0, margin: 0.5);
       final fast = testEnvelope.maxGap(speed: 7, rise: 0, margin: 0.5);

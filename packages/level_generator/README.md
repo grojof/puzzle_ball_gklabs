@@ -12,4 +12,4 @@ final level = generator.generate(seed: 'abc', level: 12);
   `DifficultyCurve`.
 - `LevelValidator` checks any `LevelData` against the envelope.
 
-Pure Dart: no Flutter or physics dependency. See `docs/decisions/0009-level-generation.md` in the app.
+Pure Dart: no Flutter or physics dependency. See `docs/decisions/0009-level-generator-and-movement-envelope.md` in the app.

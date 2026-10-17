@@ -131,16 +131,20 @@ few dozen bodies instead of hundreds.
 
 How the curve is built:
 
-- **Stage and position:** `stage = (level - 1) ~/ 10`, and `position = (level - 1) % 10`.
-- **Intensity:** `1 - e^(-(level - 1)/40)`, times a sawtooth factor. Positions 3 and 7 are breathers (×0.65), and
-  position 0 eases in the stage's new element (×0.85). Intensity approaches 1 and never stops rising.
+- **Stage and position:** `stage = (level - 1) ~/ 5`, and `position = (level - 1) % 5`.
+- **Intensity:** `0.45 + 0.55 (1 - e^(-(level - 1)/60))`, times a sawtooth factor. The first level already sits at
+  0.45, about what level 25 had in the first draft: the author found a gentle start pointless after playing it.
+  Position 3 is the stage's breather (×0.65), and position 0 eases in the stage's new element (×0.85). Intensity
+  approaches 1 and never stops rising.
 - **Margins:** the safety margin is `0.45 + 0.4 · intensity`, from 0.45 (forgiving) towards a cap of 0.85, so even
-  very deep levels keep a 15 % slack. The share of obstacle sections is `0.35 + 0.45 · intensity`.
+  very deep levels keep a 15 % slack; level 1 starts at about 0.63. The share of obstacle sections is
+  `0.35 + 0.45 · intensity`, 55 % on level 1.
 - **Duration:** `35 + 115 (1 - e^(-(level - 1)/60)) + 25 (1 - e^(-(level - 1)/600))` seconds: about 35 s at level 1,
   about 150 s around level 150, then slowly towards 175 s. Duration is estimated as length over a reference speed
   (5 m/s) plus 0.8 s per obstacle. The generator adds sections until the estimate reaches the target.
 - **Element introduction** follows the `level-generation` spec's stage list. A section type's weight is zero until its
-  stage and doubled in the stage that introduces it.
+  stage and doubled in the stage that introduces it. Stage 0 has ramps, gaps, drops and steps; each later stage adds a
+  boost (speed at level 6, jump with chained gaps at 11, gravity at 16).
 
 ### D6. Placement passes: boosts with purpose, checkpoints after hard sections, start and goal
 
@@ -150,9 +154,12 @@ How the curve is built:
   - **Speed:** before a gap wider than the run-up allows unboosted, but within the boosted envelope.
   - **Jump:** before a climb above `maxClimb`, within the boosted `maxClimb`.
   - **Gravity:** before a long low gap that relies on the floaty arc.
-- **Checkpoints:** from stage 1 on, at the start of a floor run at least two tiles long, once the estimated time since
-  the last respawn point passes the stage's spacing (three quarters of it after an obstacle). The spacing is 40 s,
-  shrinking to 35 s by stage 10.
+- **Checkpoints:** at the start of a floor run at least two tiles long, once the estimated time since the last respawn
+  point passes the spacing (three quarters of it after an obstacle). The spacing is 40 s, shrinking to 35 s by level
+  100.
+- **Speed after a landing:** after a drop or a gap, the estimated speed is capped at what still lands on the landing
+  run (the distance flown over the obstacle plus the landing, less a tile, over the flight time). A faster player has
+  to brake in the air, so the next obstacle is sized for the slower speed.
 
 ### D7. Three layers of verification
 

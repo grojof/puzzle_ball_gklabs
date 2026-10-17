@@ -145,9 +145,21 @@ class _Builder {
     if (kind == SectionKind.flat) {
       _maybeCheckpoint(threshold: 1);
     } else {
-      _flat(margin < 0.6 ? 3 : 2);
+      _flat(_landingTiles);
       _maybeCheckpoint(threshold: 0.75);
     }
+  }
+
+  /// The length of the landing run after an obstacle, in tiles.
+  int get _landingTiles => margin < 0.6 ? 3 : 2;
+
+  /// Caps the estimated speed after a flight of [time] seconds that covers
+  /// [covered] meters over the obstacle and must come down on a landing of
+  /// [landingTiles] tiles: a faster player brakes in the air to land on it,
+  /// and so reaches what follows slower.
+  void _land(double time, {double covered = 0, int? landingTiles}) {
+    final landing = ((landingTiles ?? _landingTiles) - 1) * tileSize;
+    speed = math.min(speed, (covered + landing) / time);
   }
 
   SectionKind _chooseKind() {
@@ -234,7 +246,7 @@ class _Builder {
   }
 
   double _gapRise() {
-    if (parameters.stage == 0 || random.chance(0.5)) return 0;
+    if (random.chance(0.5)) return 0;
     return random.range(-2.5, 0.6 * envelope.maxClimb(margin));
   }
 
@@ -242,26 +254,31 @@ class _Builder {
   ///
   /// Never wider than the reach at the current speed; the landings after
   /// every obstacle leave enough run-up for the minimum gap.
-  void _gap(double rise) {
+  void _gap(double rise, {int? landingTiles}) {
     const minGap = tileSize * 0.8;
     final allowed = _allowedGap(rise);
-    final (low, high) = parameters.stage == 0
-        ? (0.2, 0.4)
-        : (0.25 + 0.2 * intensity, 0.45 + 0.55 * intensity);
-    var width = math.max(minGap, allowed * random.range(low, high));
-    if (parameters.stage == 0) width = math.min(width, 3 * tileSize);
-    _jumpGap(math.min(width, allowed), rise);
+    final low = 0.25 + 0.2 * intensity;
+    final high = 0.45 + 0.55 * intensity;
+    final width = math.max(minGap, allowed * random.range(low, high));
+    _jumpGap(math.min(width, allowed), rise, landingTiles: landingTiles);
   }
 
   double _allowedGap(double rise) =>
       envelope.maxGap(speed: speed, rise: rise, margin: margin);
 
-  void _jumpGap(double width, double rise) {
+  /// A gap of [width] landing [rise] higher, flown in [time] seconds (a
+  /// plain jump's air time by default) onto a landing of [landingTiles].
+  void _jumpGap(double width, double rise, {double? time, int? landingTiles}) {
     _closeRun();
     x += width;
     y -= rise;
     _openRun();
     _time(width, obstacle: true);
+    _land(
+      time ?? envelope.airTime(rise) ?? envelope.flightTime,
+      covered: width,
+      landingTiles: landingTiles,
+    );
   }
 
   void _drop() {
@@ -270,6 +287,7 @@ class _Builder {
     y += height;
     _openRun();
     _time(tileSize / 2, obstacle: true);
+    _land(envelope.fallTime(height));
   }
 
   void _stepUp(double height) {
@@ -283,8 +301,10 @@ class _Builder {
   void _chainedGaps() {
     final count = random.intIn(2, 3);
     for (var i = 0; i < count; i++) {
-      _gap(0);
-      if (i < count - 1) _flat(random.intIn(1, 2));
+      final last = i == count - 1;
+      final between = last ? _landingTiles : random.intIn(1, 2);
+      _gap(0, landingTiles: between);
+      if (!last) _flat(between);
     }
   }
 
@@ -306,8 +326,9 @@ class _Builder {
 
   void _speedBoost() {
     _boostApproach(BoostType.speed, tiles: 3);
-    _jumpGap(_boostedWidth(envelope.maxSpeedBoostGap(margin)), 0);
+    final width = _boostedWidth(envelope.maxSpeedBoostGap(margin));
     speed = envelope.topSpeed;
+    _jumpGap(width, 0);
   }
 
   void _jumpBoost() {
@@ -323,7 +344,11 @@ class _Builder {
       speed: speed,
       margin: margin,
     );
-    _jumpGap(_boostedWidth(boostedMax), 0);
+    _jumpGap(
+      _boostedWidth(boostedMax),
+      0,
+      time: envelope.gravityBoostJumpDistance / envelope.topSpeed,
+    );
   }
 
   /// Places a checkpoint at the start of the current run once the time since

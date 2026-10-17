@@ -32,7 +32,8 @@ class LevelParameters {
   /// Whether this is one of the stage's gentler levels.
   final bool isBreather;
 
-  /// Overall difficulty from 0 (first level) towards 1.
+  /// Overall difficulty, from [DifficultyCurve.startIntensity] at the first
+  /// level towards 1.
   final double intensity;
 
   /// The fraction of the movement envelope that gaps and climbs may use.
@@ -44,26 +45,26 @@ class LevelParameters {
   /// The estimated play time to aim for, in seconds.
   final double targetDuration;
 
-  /// The longest stretch between respawn points, in seconds; infinite when
-  /// the stage has no checkpoints.
+  /// The longest stretch between respawn points, in seconds.
   final double checkpointSpacing;
 
   /// The relative frequency of each obstacle section allowed in this level.
   final Map<SectionKind, double> weights;
 }
 
-/// Maps a level number to [LevelParameters]: stages of ten that introduce
-/// elements in order, a sawtooth of gentler levels, growing length, and
-/// difficulty that keeps rising without ever leaving the movement envelope.
+/// Maps a level number to [LevelParameters]: a demanding start with the
+/// basic obstacles, stages of five that add the boosts in order, a sawtooth
+/// of gentler levels, growing length, and difficulty that keeps rising
+/// without ever leaving the movement envelope.
 class DifficultyCurve {
   /// The default curve.
   const new();
 
   /// Levels per stage.
-  static const stageLength = 10;
+  static const stageLength = 5;
 
   /// Positions inside a stage that are breathers.
-  static const breatherPositions = {3, 7};
+  static const breatherPositions = {3};
 
   /// How much easier a breather is.
   static const breatherFactor = 0.65;
@@ -72,26 +73,29 @@ class DifficultyCurve {
   /// element.
   static const introFactor = 0.85;
 
-  /// The margin of the very first level.
+  /// The intensity of the very first level: already a real challenge.
+  static const startIntensity = 0.45;
+
+  /// The margin at intensity 0, below the first level's.
   static const minMargin = 0.45;
 
   /// The margin that deep levels approach and never reach.
   static const maxMargin = 0.85;
 
-  /// Levels over which the base intensity rises most of the way.
-  static const intensityScale = 40.0;
+  /// Levels over which the base intensity rises most of the way to 1.
+  static const intensityScale = 60.0;
 
   /// The stage at which each obstacle becomes available.
   static const Map<SectionKind, int> introductionStage = {
     SectionKind.rampUp: 0,
     SectionKind.rampDown: 0,
     SectionKind.gap: 0,
-    SectionKind.drop: 1,
-    SectionKind.stepUp: 2,
-    SectionKind.speedBoost: 2,
-    SectionKind.chainedGaps: 3,
-    SectionKind.jumpBoost: 3,
-    SectionKind.gravityBoost: 4,
+    SectionKind.drop: 0,
+    SectionKind.stepUp: 0,
+    SectionKind.speedBoost: 1,
+    SectionKind.chainedGaps: 2,
+    SectionKind.jumpBoost: 2,
+    SectionKind.gravityBoost: 3,
   };
 
   static const Map<SectionKind, double> _baseWeights = {
@@ -119,7 +123,9 @@ class DifficultyCurve {
         : position == 0 && stage > 0
         ? introFactor
         : 1.0;
-    final base = 1 - math.exp(-(level - 1) / intensityScale);
+    final base =
+        startIntensity +
+        (1 - startIntensity) * (1 - math.exp(-(level - 1) / intensityScale));
     final intensity = _quantize(base * factor);
     final weights = {
       for (final MapEntry(key: kind, value: weight) in _baseWeights.entries)
@@ -142,9 +148,7 @@ class DifficultyCurve {
             115 * (1 - math.exp(-(level - 1) / 60)) +
             25 * (1 - math.exp(-(level - 1) / 600)),
       ),
-      checkpointSpacing: stage == 0
-          ? double.infinity
-          : _quantize(40 - 5 * math.min(1, stage / 10)),
+      checkpointSpacing: _quantize(40 - 5 * math.min(1, level / 100)),
       weights: weights,
     );
   }

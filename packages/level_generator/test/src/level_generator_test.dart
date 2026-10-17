@@ -62,23 +62,25 @@ void main() {
   });
 
   group('structure', () {
-    test('early levels use only flat ground, ramps and small gaps', () {
+    test('the first stage mixes the basic obstacles, without boosts', () {
+      const basics = {
+        SectionKind.flat,
+        SectionKind.rampUp,
+        SectionKind.rampDown,
+        SectionKind.gap,
+        SectionKind.drop,
+        SectionKind.stepUp,
+      };
+      final seen = <SectionKind>{};
       for (final seed in seeds) {
         for (var n = 1; n <= 5; n++) {
           final data = level(n, seed);
-          expect(
-            data.sections.toSet().difference({
-              SectionKind.flat,
-              SectionKind.rampUp,
-              SectionKind.rampDown,
-              SectionKind.gap,
-            }),
-            isEmpty,
-          );
+          expect(data.sections.toSet().difference(basics), isEmpty);
           expect(data.boosts, isEmpty);
-          expect(data.checkpoints, isEmpty);
+          seen.addAll(data.sections);
         }
       }
+      expect(seen, basics);
     });
 
     test('no level uses an element before its stage', () {
@@ -170,4 +172,4 @@ void main() {
   });
 }
 
-const goldenDigests = [2562794013, 633494331, 30535362];
+const goldenDigests = [4205256131, 4081506409, 1832030488];

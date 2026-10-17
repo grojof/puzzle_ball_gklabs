@@ -21,8 +21,8 @@ work. The second change adds play modes, the original world, the daily challenge
   - The same seed and level give the same level on every platform, the web included.
   - It uses its own 32-bit PRNG, because `dart:math`'s `Random` is not guaranteed stable across platforms.
 - **Difficulty curve:**
-  - Stages of ten levels; each stage introduces or combines an element.
-  - A sawtooth: gentler "breather" levels inside each stage.
+  - A demanding first level with the basic obstacles; stages of five levels that each add a boost.
+  - A sawtooth: a gentler "breather" level inside each stage.
   - Lengths grow from 30–45 s early to 2–3 min deep.
   - No ceiling: beyond the scripted stages, density and required precision keep rising, but never beyond what the
     ball can do.

@@ -63,6 +63,10 @@ class MovementEnvelope {
     return (launch + math.sqrt(discriminant)) / gravity;
   }
 
+  /// Time to fall [height] meters without jumping, on the same fitted arc.
+  double fallTime(double height) =>
+      math.sqrt(2 * height * flightTime * flightTime / (8 * jumpHeight));
+
   /// The widest gap a jump at [speed] can clear, landing [rise] meters
   /// higher, scaled by [margin].
   double maxGap({

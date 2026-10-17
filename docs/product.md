@@ -29,10 +29,10 @@ What the current baseline does (the rebuild changes it through OpenSpec changes)
 |---|---|
 | Ball | Rolls with proportional tilt (Android), the on-screen joystick or `A`/`D`; jumps with the button, `Space` or a shake, from the ground only |
 | Levels | Generated from the savegame's seed and the level number; about 35 s long at first, growing to two or three minutes deep |
-| Difficulty | Stages of ten levels, the first five each introducing elements; two gentler breather levels per stage; it keeps rising with no ceiling |
+| Difficulty | Demanding from level 1, with ramps, gaps, drops and steps; stages of five levels add the speed, jump and gravity boosts by level 16; one gentler breather level per stage; it keeps rising with no ceiling |
 | Terrain | Floor runs, ramps, gaps (level, rising or falling), drops, steps up and chained gaps, all sized to what the ball can do |
 | Boosts | Jump (upward impulse), speed (forward impulse) and gravity (low gravity for 2 s), each placed before the section that needs it |
-| Checkpoints | From the second stage; passing one turns its flag gold, and a fall respawns the ball there |
+| Checkpoints | In longer levels; passing one turns its flag gold, and a fall respawns the ball there |
 | Goal | Reaching it flashes the screen and loads the next level in place |
 | Pause | A pause button and the app going to the background open the pause menu: resume, restart, settings, levels |
 | Settings | Music and effects volume, quick mute, control mode (tilt hidden on the web), language (device by default) |

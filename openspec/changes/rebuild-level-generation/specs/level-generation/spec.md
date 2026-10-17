@@ -47,6 +47,10 @@ and jumps at the right moments SHALL be able to reach the goal.
 - **WHEN** a gap follows a platform that is too short to reach top speed
 - **THEN** the gap is no wider than the margin allows for the speed reachable on that platform
 
+#### Scenario: Short landing after a drop or a gap
+- **WHEN** an obstacle lands on a short run, so that a fast player must brake in the air to land on it
+- **THEN** the next obstacle is sized for the speed that player can still have, not for the speed before braking
+
 #### Scenario: Automated playthrough
 - **WHEN** a scripted player that pushes right and jumps before edges and steps plays sampled levels from every
   stage
@@ -69,24 +73,31 @@ overlap the terrain, and boosts, checkpoints and the goal SHALL sit above walkab
 - **THEN** the ramp starts at the end of the lower floor and ends at the start of the higher floor, without
   overlapping either
 
-### Requirement: Stages introduce elements
-Levels SHALL be grouped in stages of ten. The first stages SHALL introduce elements in this order:
+### Requirement: Demanding start
+The first level SHALL already be a real challenge: a majority of obstacle sections and gaps and climbs that use a
+substantial part of the ball's abilities, while staying within the forgiving end of the safety margin.
 
-1. flat ground, gentle ramps and small gaps;
-2. drops and longer gaps;
-3. jump steps and speed boosts;
-4. jump boosts and chained gaps;
-5. gravity boosts.
+#### Scenario: First level
+- **WHEN** level 1 is generated
+- **THEN** most of its sections are obstacles, mixing ramps, gaps, drops and steps
+
+### Requirement: Stages introduce elements
+Levels SHALL be grouped in stages of five. The first stages SHALL introduce elements in this order:
+
+1. ramps, gaps, drops and jump steps;
+2. speed boosts;
+3. jump boosts and chained gaps;
+4. gravity boosts.
 
 A stage SHALL NOT use elements that have not been introduced yet.
 
 #### Scenario: Early levels
 - **WHEN** levels 1 to 5 are generated
-- **THEN** they contain only flat ground, gentle ramps and small gaps
+- **THEN** they mix ramps, gaps, drops and steps, and contain no boosts
 
 #### Scenario: Element not introduced yet
-- **WHEN** a level of the second stage is generated
-- **THEN** it contains no boosts
+- **WHEN** a level of the second stage (levels 6 to 10) is generated
+- **THEN** it contains no jump or gravity boosts
 
 ### Requirement: Breather levels
 Inside each stage, a gentler level SHALL recur every few levels, so that difficulty rises in a sawtooth.
@@ -123,8 +134,8 @@ Boosts SHALL be placed only where they enable or assist the section that follows
 - **THEN** a jump boost is placed on the approach, and the climb is within the boosted jump height
 
 ### Requirement: Checkpoint placement
-Checkpoints SHALL be placed on flat ground right after hard sections, from the second stage on. Their spacing SHALL
-keep the replay after a fall short as levels get longer.
+Checkpoints SHALL be placed on flat ground right after hard sections. Their spacing SHALL keep the replay after a
+fall short as levels get longer.
 
 #### Scenario: Long deep level
 - **WHEN** a level estimated at two minutes is generated

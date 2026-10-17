@@ -29,10 +29,12 @@ completed ends a run unfairly, and with infinite levels nobody can check them by
 - **A movement envelope bounds every obstacle.** `MovementEnvelope` holds what the ball can do: jump height, flight
   time, top speed and its acceleration, and the reach of each boost. These numbers were measured with the real
   physics and rounded down. The generator sizes each gap and climb from the speed the player can have at that point,
-  times a safety margin of 0.45 (forgiving) to 0.85 (precise).
-- **Difficulty follows stages and a sawtooth, with no ceiling.** Stages are ten levels long, and each of the first five
-  introduces new elements in a fixed order. Two breather levels per stage are easier. Intensity, margins, obstacle density and length keep rising
-  with the level number.
+  times a safety margin that rises towards 0.85 (precise). When a fast player must brake in the air to land on a
+  short run, the next obstacle is sized for the slower speed.
+- **Difficulty starts high, follows stages and a sawtooth, and has no ceiling.** Level 1 is already a real challenge
+  with ramps, gaps, drops and steps; a gentle start felt pointless in play. Stages are five levels long, and each of
+  the next three adds a boost. One breather level per stage is easier. Intensity, margins, obstacle density and length
+  keep rising with the level number.
 - **Three layers of tests check that levels can be completed:**
   - the package's validator checks every generated level against the envelope, over many seeds and levels;
   - a game test drives the real ball and fails if the physics stops reaching an envelope number;

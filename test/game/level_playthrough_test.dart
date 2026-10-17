@@ -33,6 +33,9 @@ class _Bot {
   /// Time since the ball last touched the ground.
   double _airTime = 0;
 
+  /// The run chosen at take-off to land on.
+  FloorRun? _target;
+
   /// The world y of the terrain surface at [x], or null over a gap.
   double? surfaceAt(double x) {
     for (final run in data.floors) {
@@ -66,6 +69,7 @@ class _Bot {
       // Contacts linger for a frame or two after a jump.
       if (_airTime > 0.1) _jumped = false;
       _airTime = 0;
+      _target = null;
       for (final boost in data.boosts) {
         final near = (boost.position.x - p.x).abs() < 1;
         if (boost.type == BoostType.jump && near) _jumped = true;
@@ -88,19 +92,10 @@ class _Bot {
       return (push: 1, jump: jump);
     }
     _airTime += _dt;
-    // In the air: after a jump, aim for the run beyond the gap; after being
-    // launched (a ramp top, a drop), for the nearest run still ahead. Brake
-    // to land on it.
+    // In the air: brake to land on the chosen run.
     if (ball.body.gravityScale < 1) return (push: 1, jump: false);
-    FloorRun? target;
-    for (final run in data.floors) {
-      final candidate = _jumped
-          ? run.left >= _launchEnd - 0.01
-          : run.right - 1 > p.x && run.top > bottom - 0.1;
-      if (candidate && (target == null || run.left < target.left)) {
-        target = run;
-      }
-    }
+    // Commit to a landing at take-off, as a player does.
+    final target = _target ??= _landingRun(p.x, bottom);
     if (target == null) return (push: 1, jump: false);
     final landing = _landingX(p, v, target.top);
     if (landing == null) return (push: 1, jump: false);
@@ -109,6 +104,21 @@ class _Bot {
       target.right - math.min(1.5, target.size.x / 2),
     );
     return (push: landing > high ? -1 : 1, jump: false);
+  }
+
+  /// After a jump, the run beyond the gap; after being launched (a ramp top,
+  /// a drop), the nearest run still ahead and below the ball.
+  FloorRun? _landingRun(double x, double bottom) {
+    FloorRun? target;
+    for (final run in data.floors) {
+      final candidate = _jumped
+          ? run.left >= _launchEnd - 0.01
+          : run.right - 1 > x && run.top > bottom - 0.1;
+      if (candidate && (target == null || run.left < target.left)) {
+        target = run;
+      }
+    }
+    return target;
   }
 
   /// Where the ball would come down to [top] with no push, integrating like
@@ -136,7 +146,7 @@ void main() {
   setUpAll(() async => images = await testImages());
 
   // One level per scripted stage, plus two deep levels.
-  for (final number in [5, 15, 25, 35, 45, 120, 300]) {
+  for (final number in [3, 8, 13, 18, 45, 120, 300]) {
     final data = levelGenerator.generate(seed: 'bot', level: number);
     var completed = false;
     testWithGame(
