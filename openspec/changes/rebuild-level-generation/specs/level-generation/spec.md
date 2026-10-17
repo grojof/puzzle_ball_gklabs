@@ -84,20 +84,47 @@ substantial part of the ball's abilities, while staying within the forgiving end
 ### Requirement: Stages introduce elements
 Levels SHALL be grouped in stages of five. The first stages SHALL introduce elements in this order:
 
-1. ramps, gaps, drops and jump steps;
+1. ramps, gaps, drops and jump steps, and the staircase, cascade and valley set pieces;
 2. speed boosts;
-3. jump boosts and chained gaps;
+3. jump boosts and island hops;
 4. gravity boosts.
 
 A stage SHALL NOT use elements that have not been introduced yet.
 
 #### Scenario: Early levels
 - **WHEN** levels 1 to 5 are generated
-- **THEN** they mix ramps, gaps, drops and steps, and contain no boosts
+- **THEN** they mix ramps, gaps, drops, steps, staircases, cascades and valleys, and contain no boosts
 
 #### Scenario: Element not introduced yet
 - **WHEN** a level of the second stage (levels 6 to 10) is generated
 - **THEN** it contains no jump or gravity boosts
+
+### Requirement: Set pieces
+Besides single obstacles, levels SHALL use set pieces built from the same elements:
+
+- staircases: two or three steps up with a short tread between them;
+- cascades: two or three drops with a short tread between them;
+- valleys: a ramp down, a gap and a ramp up;
+- island hops: chained gaps whose platforms change height.
+
+Every part of a set piece SHALL respect the same envelope limits as a single obstacle.
+
+#### Scenario: Staircase
+- **WHEN** a staircase is generated
+- **THEN** it climbs two or three steps, each within a jump, with a tread between consecutive steps
+
+### Requirement: Level character
+Each level SHALL feature two or three of the sections and set pieces available to it, which appear clearly more often
+than the rest. Obstacles SHALL come in phrases of several back-to-back obstacles separated by rest stretches. So
+consecutive levels feel different from each other.
+
+#### Scenario: Consecutive levels
+- **WHEN** ten consecutive levels of a seed are generated
+- **THEN** they do not all feature the same sections
+
+#### Scenario: Featured sections dominate
+- **WHEN** a level is generated
+- **THEN** its featured sections make up most of its obstacles
 
 ### Requirement: Breather levels
 Inside each stage, a gentler level SHALL recur every few levels, so that difficulty rises in a sawtooth.

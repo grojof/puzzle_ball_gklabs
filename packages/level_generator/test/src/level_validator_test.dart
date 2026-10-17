@@ -155,7 +155,7 @@ void main() {
       );
     });
 
-    test('requires boosts and checkpoints above ground', () {
+    test('requires boosts above ground and checkpoints on it', () {
       final floating = course(
         boosts: const [Boost(position: Vec2(5, 3.4), type: BoostType.speed)],
         checkpoints: const [Checkpoint(Vec2(1, 1))],

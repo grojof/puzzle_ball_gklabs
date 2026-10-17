@@ -35,6 +35,9 @@ completed ends a run unfairly, and with infinite levels nobody can check them by
   with ramps, gaps, drops and steps; a gentle start felt pointless in play. Stages are five levels long, and each of
   the next three adds a boost. One breather level per stage is easier. Intensity, margins, obstacle density and length
   keep rising with the level number.
+- **Each level has its own character.** Besides single obstacles, set pieces combine the same elements (staircases,
+  cascades, valleys, island hops). Each level features two or three kinds, which make up most of its obstacles, and
+  alternates bursts of obstacles with rest stretches.
 - **Three layers of tests check that levels can be completed:**
   - the package's validator checks every generated level against the envelope, over many seeds and levels;
   - a game test drives the real ball and fails if the physics stops reaching an envelope number;

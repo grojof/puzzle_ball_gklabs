@@ -102,20 +102,24 @@ class LevelValidator {
   }
 
   void _checkElementsAboveGround(LevelData level, List<String> violations) {
-    final positions = [
-      for (final boost in level.boosts) ('boost', boost.position),
-      for (final checkpoint in level.checkpoints)
-        ('checkpoint', checkpoint.position),
-    ];
-    for (final (name, position) in positions) {
-      final grounded = level.floors.any(
-        (floor) =>
-            position.x >= floor.left &&
-            position.x <= floor.right &&
-            floor.top - position.y > 0 &&
-            floor.top - position.y <= 1.2,
-      );
-      if (!grounded) violations.add('$name at $position is not above ground');
+    bool over(Vec2 position, bool Function(double height) fits) =>
+        level.floors.any(
+          (floor) =>
+              position.x >= floor.left &&
+              position.x <= floor.right &&
+              fits(floor.top - position.y),
+        );
+    for (final boost in level.boosts) {
+      if (!over(boost.position, (height) => height > 0 && height <= 1.2)) {
+        violations.add('boost at ${boost.position} is not above ground');
+      }
+    }
+    for (final checkpoint in level.checkpoints) {
+      if (!over(checkpoint.position, (height) => height.abs() < _epsilon)) {
+        violations.add(
+          'checkpoint at ${checkpoint.position} does not stand on the ground',
+        );
+      }
     }
   }
 

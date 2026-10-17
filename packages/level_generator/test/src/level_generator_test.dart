@@ -61,6 +61,106 @@ void main() {
     });
   });
 
+  group('set pieces and character', () {
+    /// Consecutive floor runs that touch, as (previous, next) pairs.
+    Iterable<(FloorRun, FloorRun)> joined(LevelData data) sync* {
+      for (var i = 1; i < data.floors.length; i++) {
+        final (before, after) = (data.floors[i - 1], data.floors[i]);
+        if ((after.left - before.right).abs() < 1e-9) yield (before, after);
+      }
+    }
+
+    /// Whether [data] has two height changes in the [up] direction joined by
+    /// a tread of one or two tiles.
+    bool hasFlight(LevelData data, {required bool up}) {
+      final changes = [
+        for (final (before, after) in joined(data))
+          if (up ? after.top < before.top : after.top > before.top) after,
+      ];
+      for (var i = 0; i < changes.length - 1; i++) {
+        final tread = changes[i];
+        final next = changes[i + 1];
+        if ((next.left - tread.right).abs() < 1e-9 &&
+            tread.size.x <= 2 * tileSize + 1e-9) {
+          return true;
+        }
+      }
+      return false;
+    }
+
+    LevelData withSection(SectionKind kind) {
+      for (final seed in seeds) {
+        for (var n = 1; n <= 60; n++) {
+          final data = level(n, seed);
+          if (data.sections.contains(kind)) return data;
+        }
+      }
+      throw StateError('no $kind generated');
+    }
+
+    test('staircases and cascades chain their steps with short treads', () {
+      expect(hasFlight(withSection(SectionKind.staircase), up: true), isTrue);
+      expect(hasFlight(withSection(SectionKind.cascade), up: false), isTrue);
+    });
+
+    test('valleys go down and back up to the same height', () {
+      final data = withSection(SectionKind.valley);
+      final downs = data.ramps.where((ramp) => !ramp.ascending);
+      final ups = data.ramps.where((ramp) => ramp.ascending);
+      expect(
+        downs.any(
+          (down) => ups.any(
+            (up) =>
+                up.left > down.right &&
+                (up.size.y - down.size.y).abs() < 1e-9 &&
+                (up.top - down.top).abs() < 1e-9,
+          ),
+        ),
+        isTrue,
+      );
+    });
+
+    test('island hops change height between platforms', () {
+      final data = withSection(SectionKind.chainedGaps);
+      final tops = data.floors.map((run) => run.top).toSet();
+      expect(tops.length, greaterThan(2));
+    });
+
+    test('each level features two or three kinds of its own', () {
+      for (final seed in seeds) {
+        final featured = <String>{};
+        for (var n = 20; n < 30; n++) {
+          final data = level(n, seed);
+          expect(data.featured.length, inInclusiveRange(2, 3));
+          expect(
+            curve.parametersFor(n).weights.keys,
+            containsAll(data.featured),
+          );
+          featured.add(
+            (data.featured.map((k) => k.name).toList()..sort()).join(),
+          );
+        }
+        expect(featured.length, greaterThan(1), reason: seed);
+      }
+    });
+
+    test('featured kinds make up most obstacles', () {
+      var obstacles = 0;
+      var featured = 0;
+      for (final seed in seeds) {
+        for (var n = 1; n <= 100; n++) {
+          final data = level(n, seed);
+          for (final kind in data.sections) {
+            if (kind == SectionKind.flat) continue;
+            obstacles++;
+            if (data.featured.contains(kind)) featured++;
+          }
+        }
+      }
+      expect(featured / obstacles, greaterThan(0.55));
+    });
+  });
+
   group('structure', () {
     test('the first stage mixes the basic obstacles, without boosts', () {
       const basics = {
@@ -70,6 +170,9 @@ void main() {
         SectionKind.gap,
         SectionKind.drop,
         SectionKind.stepUp,
+        SectionKind.staircase,
+        SectionKind.cascade,
+        SectionKind.valley,
       };
       final seen = <SectionKind>{};
       for (final seed in seeds) {
@@ -172,4 +275,4 @@ void main() {
   });
 }
 
-const goldenDigests = [4205256131, 4081506409, 1832030488];
+const goldenDigests = [4263875808, 1417179950, 1049659038];

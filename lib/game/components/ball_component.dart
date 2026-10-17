@@ -46,7 +46,8 @@ class BallComponent extends BodyComponent with ContactCallbacks {
   final VoidCallback onGoalReached;
   final Image? textureImage;
 
-  int _groundContacts = 0;
+  /// The floors and ramps the ball rests on.
+  final Set<Object> _ground = {};
   double _sinceGround = double.infinity;
   late final Timer _boostTimer = Timer(
     boostDuration,
@@ -55,7 +56,13 @@ class BallComponent extends BodyComponent with ContactCallbacks {
   );
   bool _reachedGoal = false;
 
-  bool get isOnGround => _groundContacts > 0;
+  /// Whether the ball rests on the top of a floor or a ramp; touching the
+  /// side of a ledge does not count (player-controls spec).
+  bool get isOnGround => _ground.isNotEmpty;
+
+  /// How upright a surface must be to stand on: up to 60° from flat, well
+  /// beyond the steepest ramp.
+  static const _minGroundNormalY = 0.5;
 
   /// Whether a boost is running.
   bool get isBoosted => _boostTimer.isRunning();
@@ -126,19 +133,25 @@ class BallComponent extends BodyComponent with ContactCallbacks {
   @override
   void beginContact(Object other, Contact contact) {
     if (other is FloorComponent || other is RampComponent) {
-      _groundContacts++;
+      if (_isBelow(contact)) _ground.add(other);
     } else if (other is GoalComponent && !_reachedGoal) {
       _reachedGoal = true;
       onGoalReached();
     }
   }
 
+  /// Whether the other shape of [contact] is under the ball: the normal,
+  /// oriented from the ball, points down.
+  bool _isBelow(Contact contact) {
+    final normal = contact.normal;
+    if (normal == null) return false;
+    final down = contact.shapeA.userData == this ? normal.y : -normal.y;
+    return down >= _minGroundNormalY;
+  }
+
   @override
   void endContact(Object other, Contact contact) {
-    if ((other is FloorComponent || other is RampComponent) &&
-        _groundContacts > 0) {
-      _groundContacts--;
-    }
+    _ground.remove(other);
   }
 
   /// Puts the ball at rest at [position], cancelling any boost: a respawn at

@@ -21,9 +21,14 @@ game screen. Restarting a level and advancing to the next level SHALL NOT recrea
 ## ADDED Requirements
 
 ### Requirement: Checkpoints
-Passing a checkpoint SHALL activate it, with visible feedback. When the ball falls after a checkpoint has been
+Passing a checkpoint SHALL activate it, with visible feedback. Its activation area SHALL cover the whole flag, from
+the ground to the top of the post, so touching any part of it counts. When the ball falls after a checkpoint has been
 activated, the ball SHALL respawn at rest above the last activated checkpoint, with any running boost cancelled, and
 the level SHALL NOT be rebuilt.
+
+#### Scenario: Touching the top of the flag
+- **WHEN** the ball jumps over a checkpoint and touches only the top of its post
+- **THEN** the checkpoint activates
 
 #### Scenario: Respawn at the last checkpoint
 - **WHEN** the ball passes two checkpoints and then falls

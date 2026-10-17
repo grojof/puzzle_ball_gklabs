@@ -30,7 +30,7 @@ class LevelGenerator {
       Mulberry32(levelSeed(seed, level)),
     )..start();
     while (builder.duration < parameters.targetDuration) {
-      builder.section();
+      builder.phrase();
     }
     return (builder..finish()).build(seed, level);
   }
@@ -47,6 +47,24 @@ const _obstacleOverhead = 0.8;
 
 /// tan(35°): ramps are at most this steep.
 const _maxRampSlope = 0.7002075382097097;
+
+/// How often an obstacle is one of the level's featured kinds.
+const _featuredShare = 0.65;
+
+/// Sections that end higher than they start.
+const Set<SectionKind> _climbs = {
+  SectionKind.rampUp,
+  SectionKind.stepUp,
+  SectionKind.jumpBoost,
+  SectionKind.staircase,
+};
+
+/// Sections that end lower than they start.
+const Set<SectionKind> _descents = {
+  SectionKind.rampDown,
+  SectionKind.drop,
+  SectionKind.cascade,
+};
 
 class _Builder {
   new(this.envelope, this.parameters, this.random);
@@ -82,11 +100,16 @@ class _Builder {
   late Vec2 ballStart;
   late Vec2 goal;
 
+  /// The kinds this level features (design D10).
+  late final List<SectionKind> featured;
+
   double get intensity => parameters.intensity;
   double get margin => parameters.margin;
   double get runLength => x - runStart;
 
   void start() {
+    final pool = Map.of(parameters.weights);
+    featured = [for (var i = random.intIn(2, 3); i > 0; i--) _take(pool)];
     _flat(3);
     ballStart = Vec2(tileSize / 2, y - 1);
   }
@@ -108,30 +131,45 @@ class _Builder {
     checkpoints: List.unmodifiable(checkpoints),
     sections: List.unmodifiable(sections),
     estimatedDuration: duration,
+    featured: List.unmodifiable(featured),
   );
 
-  /// Appends one section and, after an obstacle, its landing.
-  void section() {
-    final kind = _chooseKind();
+  /// Draws a key of [pool] by weight and removes it.
+  SectionKind _take(Map<SectionKind, double> pool) {
+    final kind = random.weighted(pool);
+    pool.remove(kind);
+    return kind;
+  }
+
+  /// Appends a rest stretch, or an action phrase of back-to-back obstacles
+  /// (design D10).
+  void phrase() {
+    if (!random.chance(parameters.obstacleShare)) {
+      _section(SectionKind.flat);
+      return;
+    }
+    final count = random.intIn(2, 2 + (3 * intensity).floor());
+    for (var i = 0; i < count && duration < parameters.targetDuration; i++) {
+      _section(_chooseKind());
+    }
+  }
+
+  /// Appends a section of [kind]: a rest stretch of flat ground, or an
+  /// obstacle and its landing.
+  void _section(SectionKind kind) {
     switch (kind) {
       case SectionKind.flat:
-        _flat(random.intIn(2, parameters.isBreather ? 6 : 4));
+        _flat(random.intIn(3, parameters.isBreather ? 7 : 5));
       case SectionKind.rampUp:
-        _rampUp();
+        _rampUp(_rampHeight());
       case SectionKind.rampDown:
-        _rampDown();
+        _rampDown(_rampHeight());
       case SectionKind.gap:
         _gap(_gapRise());
       case SectionKind.drop:
-        _drop();
+        _drop(random.range(1.5, 1.5 + 3 * intensity));
       case SectionKind.stepUp:
-        _stepUp(
-          math.max(
-            0.6,
-            envelope.maxClimb(margin) *
-                random.range(0.4, 0.4 + 0.6 * intensity),
-          ),
-        );
+        _stepUp(_stepHeight());
       case SectionKind.speedBoost:
         _speedBoost();
       case SectionKind.chainedGaps:
@@ -140,6 +178,12 @@ class _Builder {
         _jumpBoost();
       case SectionKind.gravityBoost:
         _gravityBoost();
+      case SectionKind.staircase:
+        _staircase();
+      case SectionKind.cascade:
+        _cascade();
+      case SectionKind.valley:
+        _valley();
     }
     sections.add(kind);
     if (kind == SectionKind.flat) {
@@ -162,23 +206,23 @@ class _Builder {
     speed = math.min(speed, (covered + landing) / time);
   }
 
+  /// An obstacle kind: usually one of the featured kinds, otherwise any
+  /// other available one.
   SectionKind _chooseKind() {
-    if (!random.chance(parameters.obstacleShare)) return SectionKind.flat;
     final weights = Map.of(parameters.weights);
     // Keep the course within a vertical band, so it reads as a journey
     // rather than a tower or a pit.
     if (y < _startHeight - 15) {
-      weights
-        ..remove(SectionKind.rampUp)
-        ..remove(SectionKind.stepUp)
-        ..remove(SectionKind.jumpBoost);
+      weights.removeWhere((kind, _) => _climbs.contains(kind));
     }
     if (y > _startHeight + 6) {
-      weights
-        ..remove(SectionKind.rampDown)
-        ..remove(SectionKind.drop);
+      weights.removeWhere((kind, _) => _descents.contains(kind));
     }
-    return random.weighted(weights);
+    final mine = Map.of(weights)
+      ..removeWhere((kind, _) => !featured.contains(kind));
+    final others = weights..removeWhere((kind, _) => featured.contains(kind));
+    final useFeatured = mine.isNotEmpty && random.chance(_featuredShare);
+    return random.weighted(useFeatured ? mine : others);
   }
 
   void _time(double distance, {bool obstacle = false}) {
@@ -211,8 +255,7 @@ class _Builder {
 
   double _rampHeight() => random.range(0.75, 0.75 + 2.25 * intensity);
 
-  void _rampUp() {
-    final height = _rampHeight();
+  void _rampUp(double height) {
     final width = math.max(height / _maxRampSlope, tileSize);
     _closeRun();
     ramps.add(
@@ -229,8 +272,7 @@ class _Builder {
     _time(width, obstacle: true);
   }
 
-  void _rampDown() {
-    final height = _rampHeight();
+  void _rampDown(double height) {
     final width = math.max(
       height / _maxRampSlope * random.range(1, 1.4),
       tileSize,
@@ -281,14 +323,20 @@ class _Builder {
     );
   }
 
-  void _drop() {
-    final height = random.range(1.5, 1.5 + 3 * intensity);
+  /// A ledge to fall [height] meters from; [land] caps the speed for the
+  /// landing that follows.
+  void _drop(double height, {bool land = true}) {
     _closeRun();
     y += height;
     _openRun();
     _time(tileSize / 2, obstacle: true);
-    _land(envelope.fallTime(height));
+    if (land) _land(envelope.fallTime(height));
   }
+
+  double _stepHeight() => math.max(
+    0.6,
+    envelope.maxClimb(margin) * random.range(0.4, 0.4 + 0.6 * intensity),
+  );
 
   void _stepUp(double height) {
     _closeRun();
@@ -303,9 +351,42 @@ class _Builder {
     for (var i = 0; i < count; i++) {
       final last = i == count - 1;
       final between = last ? _landingTiles : random.intIn(1, 2);
-      _gap(0, landingTiles: between);
+      _gap(_gapRise(), landingTiles: between);
       if (!last) _flat(between);
     }
+  }
+
+  void _staircase() {
+    final steps = random.intIn(2, 3);
+    for (var i = 0; i < steps; i++) {
+      if (i > 0) _flat(random.intIn(1, 2));
+      _stepUp(_stepHeight());
+    }
+  }
+
+  /// Drops with treads between them. Overshooting a tread only lands on a
+  /// lower one, so only the final landing caps the speed: as if the whole
+  /// cascade were flown over in one fall.
+  void _cascade() {
+    final drops = random.intIn(2, 3);
+    final start = x;
+    var fallen = 0.0;
+    for (var i = 0; i < drops; i++) {
+      if (i > 0) _flat(random.intIn(1, 2));
+      final height = random.range(1, 1 + 1.5 * intensity);
+      _drop(height, land: false);
+      fallen += height;
+    }
+    _land(envelope.fallTime(fallen), covered: x - start);
+  }
+
+  void _valley() {
+    final height = _rampHeight();
+    _rampDown(height);
+    _flat(2);
+    _gap(0, landingTiles: 2);
+    _flat(2);
+    _rampUp(height);
   }
 
   /// A boost on the approach, [inset] meters before the end of the run.
@@ -356,7 +437,7 @@ class _Builder {
   void _maybeCheckpoint({required double threshold}) {
     if (sinceRespawn < parameters.checkpointSpacing * threshold) return;
     if (runLength < 2 * tileSize) return;
-    checkpoints.add(Checkpoint(Vec2(runStart + tileSize / 2, y - 0.25)));
+    checkpoints.add(Checkpoint(Vec2(runStart + tileSize / 2, y)));
     sinceRespawn = 0;
   }
 }

@@ -13,11 +13,14 @@ audience: maintainer
 | **Level** | One generated course from the ball start to the goal. |
 | **Seed** | The value that makes level generation deterministic: same seed and level number, same level. |
 | **Difficulty curve** | The function from level number to generation parameters: intensity, safety margin, obstacle share, target duration, checkpoint spacing and which sections may appear. |
-| **Stage** | Five consecutive levels. The first stage has ramps, gaps, drops and steps; the next three each add a boost (speed, then jump with chained gaps, then gravity); later stages only raise intensity. |
+| **Stage** | Five consecutive levels. The first stage has ramps, gaps, drops, steps, staircases, cascades and valleys; the next three each add a boost (speed, then jump with island hops, then gravity); later stages only raise intensity. |
 | **Breather** | The gentler fourth level of each stage, so difficulty rises in a sawtooth rather than a straight line. |
 | **Movement envelope** | What the ball can do, as numbers measured with the real physics: jump height, flight time, top speed and the reach of each boost. The generator keeps every obstacle within it. |
 | **Safety margin** | The fraction of the envelope a level may use: about 0.63 on the first level, rising towards 0.85. |
-| **Section** | One piece of a generated level: a flat, a ramp, a gap, a drop, a step up, chained gaps or a boost setup, followed by a landing. |
+| **Section** | One piece of a generated level: a flat, a ramp, a gap, a drop, a step up, a set piece or a boost setup, followed by a landing. |
+| **Set piece** | A section composed of several elements: a staircase (steps up), a cascade (drops), a valley (ramp down, gap, ramp up) or island hops (gaps between platforms at changing heights). |
+| **Featured sections** | The two or three sections and set pieces a level uses most, which give it its own character. |
+| **Phrase** | A group of back-to-back obstacles, or a rest stretch of flat ground; levels alternate them for rhythm. |
 | **Run** | A playthrough of consecutive levels from one seed. |
 | **Floor run** | A stretch of ground at one height, built as a single physics body and drawn with repeated tiles. |
 | **Savegame** | Stored progress: seed, current level and timestamps. |

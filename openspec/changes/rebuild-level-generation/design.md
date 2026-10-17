@@ -197,6 +197,22 @@ No level rebuild is needed for a respawn.
 `GamePage` passes the savegame's seed and level number to `LevelGenerator.generate`. Savegames keep `totalLevels` for
 now. The next change replaces the progression model, and it will introduce the original world's fixed seed.
 
+### D10. Set pieces, level character and rhythm (after the first play-test)
+
+The author found the first draft monotonous: sections were drawn one at a time from the same weights, so every level
+had the same mix. Three additions, all built from the existing elements and checked by the same validator:
+
+- **Set pieces** are new section kinds composed of primitives: `staircase` (2–3 steps up with 1–2 tile treads),
+  `cascade` (2–3 drops with 1–2 tile treads), `valley` (ramp down, landing, gap, landing, ramp up) and island hops
+  (`chainedGaps`, whose gaps now rise and fall). Each part keeps its own envelope limits, and the speed model applies
+  to each part.
+- **Character:** each level draws two or three featured kinds from those available (weighted by their base weight)
+  and triples their weights. `LevelData.featured` records them, for tests and a future level label.
+- **Rhythm:** sections come in phrases. An action phrase is 2 to `2 + ⌊3·intensity⌋` obstacles with short landings;
+  a rest phrase is a flat of 3–6 tiles. Whether the next phrase is action or rest follows the obstacle share.
+
+The camera rewrite and the jump button are a separate change right after this one.
+
 ## Risks / Trade-offs
 
 - **[The envelope model is too optimistic in some arcs]** → Margins at most 0.85, the bot playthrough on every stage,

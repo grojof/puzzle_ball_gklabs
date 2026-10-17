@@ -48,7 +48,18 @@
 - [ ] 10.1 Play early, mid and deep levels on the Android emulator and in Chrome with the author, and record feedback for curve tuning in the PR; verify no runtime errors in the logs
 - [ ] 10.2 Run the local CI checks for the app and every package (format, analyze, bloc lint, tests in random order, coverage, licenses, spell check), open the PR as a draft and mark it ready once green locally; verify the CI passes on the first full run
 
+## 11. First play-test feedback
+
+- [x] 11.1 Allow jumps only from the top of floors and ramps (contact normal pointing up), not from walls or the sides of ledges; verify a `flame_test` test of the no-wall-jump scenario and that the envelope and bot tests still pass
+- [x] 11.2 Make the checkpoint activation area cover the whole flag, from the ground to the top of the post; verify a test where the ball touches only the top of the post
+- [x] 11.3 Draw the earth under ledges with the texture of the floor tile's earth part instead of a flat color; verify the rendering test
+- [x] 11.4 Add the `staircase`, `cascade` and `valley` set pieces and height changes in chained gaps (island hops); verify geometry tests for each piece and the property tests
+- [x] 11.5 Give each level two or three featured kinds and generate in action and rest phrases; record `LevelData.featured`; verify that ten consecutive levels do not share the same featured kinds and that featured kinds make up most obstacles
+- [ ] 11.6 Rerun the bot and a local stress pass over many seeds, update docs (glossary, product, ADR-0009), and install on the author's phone for a second play-test
+
 ## Workflow follow-up
 
 - After merge, archive the change with `/opsx:archive` so `level-generation` and the updated `game-session` land in `openspec/specs/`.
+- Right after this change, a small change rewrites the camera (framing from velocity and the terrain ahead, anticipated
+  zoom, landscape framing) and makes the jump button bigger with an arrow icon.
 - The next change (play modes, original world, daily challenge, shareable seeds, savegame and menu model) builds on `generatorVersion` and the seeded generator.

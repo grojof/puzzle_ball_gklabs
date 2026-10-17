@@ -65,6 +65,9 @@ void main() {
           SectionKind.gap,
           SectionKind.drop,
           SectionKind.stepUp,
+          SectionKind.staircase,
+          SectionKind.cascade,
+          SectionKind.valley,
         ]),
       );
       expect(

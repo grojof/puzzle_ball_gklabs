@@ -146,13 +146,13 @@ class Boost {
   String toString() => 'Boost.${type.name}$position';
 }
 
-/// A checkpoint sensor centred at [position].
+/// A checkpoint whose post stands at [position].
 @immutable
 class Checkpoint {
-  /// A checkpoint centred at [position].
+  /// A checkpoint standing at [position].
   const new(this.position);
 
-  /// Centre of the sensor.
+  /// The foot of the post, on the ground.
   final Vec2 position;
 
   @override
@@ -190,7 +190,7 @@ enum SectionKind {
   /// A speed boost before a long gap.
   speedBoost,
 
-  /// Gaps separated by short platforms.
+  /// Island hops: gaps separated by short platforms at changing heights.
   chainedGaps,
 
   /// A jump boost before a high ledge.
@@ -198,6 +198,15 @@ enum SectionKind {
 
   /// A gravity boost before a long floaty gap.
   gravityBoost,
+
+  /// Two or three steps up with short treads between them.
+  staircase,
+
+  /// Two or three drops with short treads between them.
+  cascade,
+
+  /// A ramp down, a gap and a ramp up back to the same height.
+  valley,
 }
 
 /// One generated level.
@@ -215,6 +224,7 @@ class LevelData {
     required this.checkpoints,
     required this.sections,
     required this.estimatedDuration,
+    this.featured = const [],
   });
 
   /// The seed the level was generated from.
@@ -243,6 +253,10 @@ class LevelData {
 
   /// The sections the level was built from, in order.
   final List<SectionKind> sections;
+
+  /// The sections this level features, which make up most of its obstacles
+  /// and give it its character.
+  final List<SectionKind> featured;
 
   /// Estimated time to play the level, in seconds.
   final double estimatedDuration;

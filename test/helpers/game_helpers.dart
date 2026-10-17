@@ -52,7 +52,7 @@ LevelData flatLevel({
     ],
     ramps: const [],
     boosts: boosts,
-    checkpoints: [for (final x in checkpoints) Checkpoint(Vec2(x, top - 0.25))],
+    checkpoints: [for (final x in checkpoints) Checkpoint(Vec2(x, top))],
     sections: const [],
     estimatedDuration: 10,
   );

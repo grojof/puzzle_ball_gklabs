@@ -87,8 +87,7 @@ class LevelComponent extends Component with HasGameReference<Forge2DGame> {
         ),
       for (final checkpoint in data.checkpoints)
         CheckPointComponent(
-          position: _vector(checkpoint.position),
-          size: Vector2.all(0.5),
+          ground: _vector(checkpoint.position),
           onActivated: (component) => _activeCheckpoint = component,
         ),
       for (final boost in data.boosts) _boost(boost, sprite),

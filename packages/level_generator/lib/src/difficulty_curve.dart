@@ -96,6 +96,9 @@ class DifficultyCurve {
     SectionKind.chainedGaps: 2,
     SectionKind.jumpBoost: 2,
     SectionKind.gravityBoost: 3,
+    SectionKind.staircase: 0,
+    SectionKind.cascade: 0,
+    SectionKind.valley: 0,
   };
 
   static const Map<SectionKind, double> _baseWeights = {
@@ -108,6 +111,9 @@ class DifficultyCurve {
     SectionKind.chainedGaps: 0.8,
     SectionKind.jumpBoost: 0.5,
     SectionKind.gravityBoost: 0.4,
+    SectionKind.staircase: 0.8,
+    SectionKind.cascade: 0.7,
+    SectionKind.valley: 0.8,
   };
 
   /// The parameters of [level] (from 1).

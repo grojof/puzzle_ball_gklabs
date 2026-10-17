@@ -5,6 +5,7 @@ import 'package:flame/cache.dart';
 import 'package:flame_forge2d/flame_forge2d.dart';
 import 'package:flame_test/flame_test.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:level_generator/level_generator.dart';
 import 'package:puzzle_ball_gklabs/audio/audio_service.dart';
 import 'package:puzzle_ball_gklabs/game/ball_envelope.dart';
 import 'package:puzzle_ball_gklabs/game/components/components.dart';
@@ -137,7 +138,7 @@ void main() {
           game.update(1 / 60);
         }
         final last = level.activeCheckpoint!;
-        expect(last.position.x, 9);
+        expect(last.ground.x, 9);
         expect(last.isActivated, isTrue);
 
         ball.body
@@ -149,6 +150,33 @@ void main() {
         expect(ball.body.position.x, closeTo(9, 1e-6));
         expect(ball.body.position.y, closeTo(last.respawnPoint.y, 0.2));
         expect(ball.body.linearVelocity.length, lessThan(1));
+      },
+    );
+
+    testWithGame(
+      'touching only the top of the post activates the checkpoint',
+      () => testGame(
+        images: images,
+        levelFor: (_) => flatLevel(checkpoints: [4.5]),
+      ),
+      (game) async {
+        final level = game.level!;
+        final ball = level.ball;
+        // Skims just over the top of the post, at 4 m above the ground.
+        const y =
+            4 -
+            CheckPointComponent.postHeight -
+            LevelComponent.ballRadius -
+            0.05;
+        ball.body
+          ..gravityScale = 0
+          ..setTransform(Vector2(3, y), const Rot.identity())
+          ..linearVelocity = Vector2(6, 0);
+        for (var i = 0; i < 30; i++) {
+          game.update(1 / 60);
+        }
+        expect(ball.body.position.x, greaterThan(5));
+        expect(level.activeCheckpoint, isNotNull);
       },
     );
 
@@ -244,6 +272,48 @@ void main() {
         game.intent.requestJump();
         game.update(1 / 60);
         expect(audio.played, [GameSound.jump]);
+      },
+    );
+
+    final wallAudio = RecordingAudioSink();
+    testWithGame(
+      'does not jump off the side of a ledge',
+      () => testGame(
+        images: images,
+        audio: wallAudio,
+        // A wall too high to jump, with the ball falling against it.
+        levelFor: (_) => const LevelData(
+          seed: 'test',
+          level: 1,
+          ballStart: Vec2(8.75, 0.5),
+          goal: Vec2(9.75, -1.75),
+          floors: [
+            FloorRun(position: Vec2(0, 4), size: Vec2(9, 1.5)),
+            FloorRun(position: Vec2(9, 0), size: Vec2(1.5, 5.5)),
+          ],
+          ramps: [],
+          boosts: [],
+          checkpoints: [],
+          sections: [],
+          estimatedDuration: 10,
+        ),
+      ),
+      (game) async {
+        game.input!.removeFromParent();
+        await game.ready();
+        final ball = game.level!.ball;
+        game.intent.horizontal = 1;
+        var touchedWall = false;
+        for (var i = 0; i < 60 && !ball.isOnGround; i++) {
+          game.update(1 / 60);
+          final p = ball.body.position;
+          if (p.x > 9 - LevelComponent.ballRadius - 0.02) {
+            touchedWall = true;
+            game.intent.requestJump();
+          }
+        }
+        expect(touchedWall, isTrue);
+        expect(wallAudio.played, isNot(contains(GameSound.jump)));
       },
     );
 
