@@ -9,6 +9,7 @@ on:
   pull_request:
     branches:
       - main
+    types: [opened, synchronize, reopened, ready_for_review]
     # Docs-only changes skip the Flutter build; pr_checks.yaml still spell-checks them.
     paths-ignore:
       - "**.md"
@@ -21,6 +22,7 @@ on:
 
 jobs:
   build:
+    if: ${{ !github.event.pull_request.draft }}
     uses: VeryGoodOpenSource/very_good_workflows/.github/workflows/flutter_package.yml@v1
     with:
       flutter_version: "3.47.x"

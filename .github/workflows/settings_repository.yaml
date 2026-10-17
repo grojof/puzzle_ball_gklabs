@@ -9,12 +9,14 @@ on:
   pull_request:
     branches:
       - main
+    types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - "packages/settings_repository/**"
       - ".github/workflows/settings_repository.yaml"
 
 jobs:
   build:
+    if: ${{ !github.event.pull_request.draft }}
     uses: VeryGoodOpenSource/very_good_workflows/.github/workflows/dart_package.yml@v1
     with:
       dart_sdk: "3.13.5"

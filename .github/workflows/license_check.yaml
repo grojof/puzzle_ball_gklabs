@@ -8,6 +8,7 @@ on:
   pull_request:
     branches:
       - main
+    types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - "pubspec.yaml"
       - "packages/*/pubspec.yaml"
@@ -15,6 +16,7 @@ on:
 
 jobs:
   license_check:
+    if: ${{ !github.event.pull_request.draft }}
     uses: VeryGoodOpenSource/very_good_workflows/.github/workflows/license_check.yml@v1
     with:
       flutter_version: "3.47.x"

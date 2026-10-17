@@ -19,6 +19,11 @@ class _FakeBundle extends CachingAssetBundle {
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
+  // Each test registers a collector; start from an empty registry so the
+  // tests pass in any order (CI randomizes it).
+  setUp(LicenseRegistry.reset);
+  tearDown(LicenseRegistry.reset);
+
   test('registerAppUiLicenses adds the Poppins license', () async {
     final bundle = _FakeBundle();
 
@@ -45,8 +50,6 @@ void main() {
       () => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMessageHandler('flutter/assets', null),
     );
-    LicenseRegistry.reset();
-
     registerAppUiLicenses();
     final entries = await LicenseRegistry.licenses.toList();
 

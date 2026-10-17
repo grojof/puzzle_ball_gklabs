@@ -9,12 +9,14 @@ on:
   pull_request:
     branches:
       - main
+    types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - "packages/key_value_store/**"
       - ".github/workflows/key_value_store.yaml"
 
 jobs:
   build:
+    if: ${{ !github.event.pull_request.draft }}
     uses: VeryGoodOpenSource/very_good_workflows/.github/workflows/dart_package.yml@v1
     with:
       dart_sdk: "3.13.5"

@@ -4,23 +4,23 @@
 
 - [x] 1.1 Take a DevTools heap snapshot after 1 and after 10 level loads on the current build and record which objects retain old games (expected: `PuzzleBallGklabs`, `Forge2DWorld`, closures from timers and subscriptions) in a short note in `design.md` under D1; verify the note names the retainers found
 - [x] 1.2 Add `tool/soak/level_loads.sh` (adb) that loads a level N times and prints total PSS and native heap per batch, document it in `docs/development.md`, and verify it reproduces the leak on the current build (+~5 MB per load)
-- [ ] 1.3 Add a `flame_test` spike test that creates a `Forge2DGame`, steps the world once and destroys it; verify it passes with `flutter test` locally and in the CI `build` job
+- [x] 1.3 Add a `flame_test` spike test that creates a `Forge2DGame`, steps the world once and destroys it; verify it passes with `flutter test` locally and in the CI `build` job
 
 ## 2. key_value_store package
 
 - [x] 2.1 Create `packages/key_value_store` (pure Dart, very_good_analysis) with `KeyValueStore` and `InMemoryKeyValueStore`; verify `dart analyze` reports no issues and `dart test --coverage` reaches 100 %
-- [ ] 2.2 Add `.github/workflows/key_value_store.yaml` (Very Good `dart_package`, `paths: packages/key_value_store/**`) and verify the workflow file lints with `actionlint` or a dry run in the PR
+- [x] 2.2 Add `.github/workflows/key_value_store.yaml` (Very Good `dart_package`, `paths: packages/key_value_store/**`) and verify the workflow file lints with `actionlint` or a dry run in the PR
 
 ## 3. settings_repository package
 
 - [x] 3.1 Create `packages/settings_repository` with `PlayerSettings`, `ControlMode`, defaults and per-field validation (player-settings: defaults, invalid values); verify tests for every field's fallback pass at 100 % coverage
 - [x] 3.2 Implement the legacy mapping (`soundEnabled` → `muted`, keep `languageCode` and `useSensorControl`, drop `currentLevel`, keep `soundEnabled` in sync for rollback); verify the upgrade scenarios from the player-settings spec as tests
-- [ ] 3.3 Add the package workflow with a path filter and verify it appears in the PR checks only when the package changes
+- [x] 3.3 Add the package workflow with a path filter and verify it appears in the PR checks only when the package changes
 
 ## 4. savegame_repository package
 
 - [x] 4.1 Create `packages/savegame_repository` with `SavedGame` (same JSON fields) and list, add, update (current level never decreases) and delete; verify tests including malformed stored entries being skipped, at 100 % coverage
-- [ ] 4.2 Add the package workflow with a path filter and verify as in 3.3
+- [x] 4.2 Add the package workflow with a path filter and verify as in 3.3
 
 ## 5. App persistence wiring
 
@@ -44,7 +44,7 @@
 - [x] 8.1 Add `tool/audio/process.sh` (ffmpeg loudnorm, mono 44.1 kHz effects, 128 kbps background) and re-encode `assets/audio/*`; verify the background track is ≤ 5 MB and every effect measures within ±2 LU of the target, and record the commands in `docs/development.md`
 - [x] 8.2 Implement `AudioService` (one `AudioPool` per effect, looping music player, global `AudioCache` preload, music × effects × mute volumes) behind a player factory for tests; verify unit tests that 100 rapid effect plays create no more than 3 players per effect and that volumes and mute apply immediately
 - [x] 8.3 Start music after settings load, unlock on the first interaction on the web, pause and resume with the app lifecycle, and replace `AudioCubit`, `SoundToggleFab` wiring and the preload's private cache; verify widget tests for start, muted start, and lifecycle pause/resume
-- [ ] 8.4 Listen on the Android emulator and in Chrome, and ask the author to confirm on a real phone that music starts on launch, is audible, has no distortion, and that effects sound even; record the result in the PR
+- [x] 8.4 Listen on the Android emulator and in Chrome, and ask the author to confirm on a real phone that music starts on launch, is audible, has no distortion, and that effects sound even; record the result in the PR
 
 ## 9. Game runtime
 
@@ -61,6 +61,15 @@
 - [x] 10.2 Play a 10-minute session on the emulator with DevTools attached and verify no sustained memory growth and no frame-time degradation; attach the numbers to the PR
 - [x] 10.3 Raise `min_coverage` in `.github/workflows/main.yaml` to the coverage reached, update `docs/architecture.md` (target layering now partly real) and `docs/product.md` (gameplay today, known gaps), and verify `docs-check` and the spell check pass
 - [x] 10.4 Run every local CI check from `docs/development.md#before-pushing` for the app and each package, and verify all pass before pushing
+
+## Verification notes
+
+- 1.3: the CI `build` job ran real Box2D physics on Linux (game tests). The spike test was then removed, because the
+  game tests cover it.
+- 2.2, 3.3, 4.2: the package workflows ran in PR #2 because their paths changed. Their `paths` filters keep them off
+  pull requests that do not touch the package.
+- 8.4: the author approved the mix after hearing it in Chrome and on the emulator. The emulator's media volume was at
+  5/15, which explained the near silence. A real-phone check was not done; the author chose to proceed.
 
 ## Workflow follow-up
 

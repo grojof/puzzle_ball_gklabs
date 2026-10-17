@@ -132,6 +132,10 @@ CI minutes are limited, so every workflow is scoped tightly:
 Stale runs of the same branch are cancelled. Dependabot (`.github/dependabot.yaml`) proposes one grouped pub
 update and one grouped GitHub Actions update per month.
 
+The heavy jobs (app build, packages, license check) skip draft pull requests. Open a pull request as a **draft** while
+iterating, run the local checks below, then mark it **ready for review**: the full suite runs once, and again only
+for later pushes. Each package's workflow runs only when that package changes.
+
 ### Before pushing
 
 Run the same checks locally, so CI is not used to iterate:
