@@ -55,7 +55,7 @@
 - [x] 11.3 Draw the earth under ledges with the texture of the floor tile's earth part instead of a flat color; verify the rendering test
 - [x] 11.4 Add the `staircase`, `cascade` and `valley` set pieces and height changes in chained gaps (island hops); verify geometry tests for each piece and the property tests
 - [x] 11.5 Give each level two or three featured kinds and generate in action and rest phrases; record `LevelData.featured`; verify that ten consecutive levels do not share the same featured kinds and that featured kinds make up most obstacles
-- [ ] 11.6 Rerun the bot and a local stress pass over many seeds, update docs (glossary, product, ADR-0009), and install on the author's phone for a second play-test
+- [x] 11.6 Rerun the bot and a local stress pass over many seeds, update docs (glossary, product, ADR-0009), and install on the author's phone for a second play-test
 
 ## Workflow follow-up
 
