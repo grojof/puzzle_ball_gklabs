@@ -3,7 +3,7 @@ import 'package:flame_forge2d/flame_forge2d.dart';
 import 'package:flutter/painting.dart';
 
 class GoalComponent extends BodyComponent with ContactCallbacks {
-  GoalComponent({
+  new({
     required this.position,
     required this.size,
     this.color = const Color(0xFF43A047),
@@ -31,23 +31,10 @@ class GoalComponent extends BodyComponent with ContactCallbacks {
 
   @override
   Body createBody() {
-    final shape = PolygonShape()
-      ..setAsBox(
-        size.x / 2,
-        size.y / 2,
-        Vector2.zero(),
-        0,
-      );
-
-    final fixtureDef = FixtureDef(shape)
-      ..isSensor = true
-      ..userData = this;
-
-    final bodyDef = BodyDef()
-      ..type = BodyType.static
-      ..position = position;
-
-    return world.createBody(bodyDef)..createFixture(fixtureDef);
+    return world.createBody(BodyDef(position: position))..createShape(
+      Polygon.box(size.x / 2, size.y / 2),
+      ShapeDef(isSensor: true, enableSensorEvents: true, userData: this),
+    );
   }
 
   @override

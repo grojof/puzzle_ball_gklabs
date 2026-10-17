@@ -5,7 +5,7 @@ import 'package:puzzle_ball_gklabs/game/components/ball_component.dart';
 
 /// Componente que da un salto extra al tocarlo
 class JumpBoostComponent extends BodyComponent with ContactCallbacks {
-  JumpBoostComponent({
+  new({
     required this.position,
     required this.size,
     this.force = 120,
@@ -35,20 +35,10 @@ class JumpBoostComponent extends BodyComponent with ContactCallbacks {
 
   @override
   Body createBody() {
-    final shape = PolygonShape()
-      ..setAsBox(
-        size.x / 2,
-        size.y / 2,
-        Vector2.zero(),
-        0,
-      );
-    final fixtureDef = FixtureDef(shape)
-      ..isSensor = true
-      ..userData = this;
-    final bodyDef = BodyDef()
-      ..type = BodyType.static
-      ..position = position;
-    return world.createBody(bodyDef)..createFixture(fixtureDef);
+    return world.createBody(BodyDef(position: position))..createShape(
+      Polygon.box(size.x / 2, size.y / 2),
+      ShapeDef(isSensor: true, enableSensorEvents: true, userData: this),
+    );
   }
 
   @override
@@ -72,7 +62,7 @@ class JumpBoostComponent extends BodyComponent with ContactCallbacks {
 
 /// Componente que da un empujón de velocidad horizontal
 class SpeedBoostComponent extends BodyComponent with ContactCallbacks {
-  SpeedBoostComponent({
+  new({
     required this.position,
     required this.size,
     this.force = 100,
@@ -104,20 +94,10 @@ class SpeedBoostComponent extends BodyComponent with ContactCallbacks {
 
   @override
   Body createBody() {
-    final shape = PolygonShape()
-      ..setAsBox(
-        size.x / 2,
-        size.y / 2,
-        Vector2.zero(),
-        0,
-      );
-    final fixtureDef = FixtureDef(shape)
-      ..isSensor = true
-      ..userData = this;
-    final bodyDef = BodyDef()
-      ..type = BodyType.static
-      ..position = position;
-    return world.createBody(bodyDef)..createFixture(fixtureDef);
+    return world.createBody(BodyDef(position: position))..createShape(
+      Polygon.box(size.x / 2, size.y / 2),
+      ShapeDef(isSensor: true, enableSensorEvents: true, userData: this),
+    );
   }
 
   @override
@@ -141,7 +121,7 @@ class SpeedBoostComponent extends BodyComponent with ContactCallbacks {
 
 /// Componente que reduce la gravedad de la bola temporalmente
 class GravityBoostComponent extends BodyComponent with ContactCallbacks {
-  GravityBoostComponent({
+  new({
     required this.position,
     required this.size,
     this.duration = 2.0,
@@ -173,29 +153,16 @@ class GravityBoostComponent extends BodyComponent with ContactCallbacks {
 
   @override
   Body createBody() {
-    final shape = PolygonShape()
-      ..setAsBox(
-        size.x / 2,
-        size.y / 2,
-        Vector2.zero(),
-        0,
-      );
-    final fixtureDef = FixtureDef(shape)
-      ..isSensor = true
-      ..userData = this;
-    final bodyDef = BodyDef()
-      ..type = BodyType.static
-      ..position = position;
-    return world.createBody(bodyDef)..createFixture(fixtureDef);
+    return world.createBody(BodyDef(position: position))..createShape(
+      Polygon.box(size.x / 2, size.y / 2),
+      ShapeDef(isSensor: true, enableSensorEvents: true, userData: this),
+    );
   }
 
   @override
   void beginContact(Object other, Contact contact) {
     if (other is BallComponent) {
-      other.applyGravityBoost(
-        gravityScale: gravityScale,
-        duration: duration,
-      );
+      other.applyGravityBoost(gravityScale: gravityScale, duration: duration);
     }
   }
 

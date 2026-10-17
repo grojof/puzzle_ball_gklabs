@@ -1,29 +1,30 @@
-name: puzzle_ball_gklabs
+name: ball_odyssey
 
 concurrency:
-  group: $-$
+  group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# Every change reaches main through a pull request, so there is no push trigger.
 on:
-  push:
-    branches:
-      - main
   pull_request:
     branches:
       - main
+    # Docs-only changes skip the Flutter build; pr_checks.yaml still spell-checks them.
+    paths-ignore:
+      - "**.md"
+      - "docs/**"
+      - "openspec/**"
+      - ".claude/**"
+      - "LICENSE"
+      - ".github/cspell.json"
+  workflow_dispatch:
 
 jobs:
-  semantic-pull-request:
-    uses: VeryGoodOpenSource/very_good_workflows/.github/workflows/semantic_pull_request.yml@v1
-
   build:
     uses: VeryGoodOpenSource/very_good_workflows/.github/workflows/flutter_package.yml@v1
     with:
-      flutter_channel: stable
-
-  spell-check:
-    uses: VeryGoodOpenSource/very_good_workflows/.github/workflows/spell_check.yml@v1
-    with:
-      includes: |
-        **/*.md
-      modified_files_only: false
+      flutter_version: "3.47.x"
+      run_bloc_lint: true
+      # The app is being rebuilt; the threshold rises as each part lands with its tests
+      # (ADR-0005). Packages under packages/ get their own jobs at 100 %.
+      min_coverage: 0

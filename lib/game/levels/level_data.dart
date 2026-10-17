@@ -1,7 +1,7 @@
 import 'package:flame_forge2d/flame_forge2d.dart';
 
 class LevelData {
-  LevelData({
+  new({
     required this.ballStart,
     required this.goalPosition,
     required this.floorData,
@@ -20,24 +20,20 @@ class LevelData {
 }
 
 class FloorData {
-  FloorData({required this.position, required this.size});
+  new({required this.position, required this.size});
   final Vector2 position;
   final Vector2 size;
 }
 
 class RampData {
-  RampData({
-    required this.position,
-    required this.size,
-    required this.inverted,
-  });
+  new({required this.position, required this.size, required this.inverted});
   final Vector2 position;
   final Vector2 size;
   final bool inverted;
 }
 
 class BoostData {
-  BoostData({required this.position, required this.type, this.extra});
+  new({required this.position, required this.type, this.extra});
   final Vector2 position;
   final BoostType type;
   final Map<String, dynamic>? extra; // parámetros extra para el boost
@@ -46,6 +42,6 @@ class BoostData {
 enum BoostType { jump, speed, gravity }
 
 class CheckPointData {
-  CheckPointData({required this.position});
+  new({required this.position});
   final Vector2 position;
 }

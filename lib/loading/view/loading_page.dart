@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:puzzle_ball_gklabs/l10n/l10n.dart';
@@ -6,16 +6,14 @@ import 'package:puzzle_ball_gklabs/loading/loading.dart';
 import 'package:puzzle_ball_gklabs/shared/widgets/puzzle_ball_loader.dart';
 
 class LoadingPage extends StatelessWidget {
-  const LoadingPage({
-    this.redirectTo,
-    super.key,
-  });
+  const new({this.redirectTo, super.key});
 
   final String? redirectTo;
 
   @override
   Widget build(BuildContext context) {
-    final loaderTotalDelay = PuzzleBallLoader.intrinsicAnimationDuration +
+    final loaderTotalDelay =
+        PuzzleBallLoader.intrinsicAnimationDuration +
         const Duration(milliseconds: 2000);
 
     final preload = context.watch<PreloadCubit>();
@@ -37,15 +35,13 @@ class LoadingPage extends StatelessWidget {
           if (context.mounted) context.go(redirectTo ?? '/menu');
         });
       },
-      child: const Scaffold(
-        body: Center(child: _LoadingInternal()),
-      ),
+      child: const Scaffold(body: Center(child: _LoadingInternal())),
     );
   }
 }
 
 class _LoadingInternal extends StatelessWidget {
-  const _LoadingInternal();
+  const new();
 
   @override
   Widget build(BuildContext context) {

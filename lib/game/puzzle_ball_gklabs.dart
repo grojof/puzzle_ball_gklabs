@@ -3,7 +3,7 @@ import 'package:flame/components.dart';
 import 'package:flame/input.dart';
 import 'package:flame/parallax.dart';
 import 'package:flame_forge2d/flame_forge2d.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:puzzle_ball_gklabs/game/components/components.dart';
 import 'package:puzzle_ball_gklabs/game/cubit/cubit.dart';
 import 'package:puzzle_ball_gklabs/game/levels/levels.dart';
@@ -12,7 +12,7 @@ import 'package:puzzle_ball_gklabs/gen/assets.gen.dart';
 import 'package:puzzle_ball_gklabs/l10n/l10n.dart';
 
 class PuzzleBallGklabs extends Forge2DGame with HasKeyboardHandlerComponents {
-  PuzzleBallGklabs({
+  new({
     required this.audioCubit,
     required this.l10n,
     required this.textStyle,
@@ -21,7 +21,7 @@ class PuzzleBallGklabs extends Forge2DGame with HasKeyboardHandlerComponents {
     required this.levelsList,
     this.onLevelCompleted,
     this.onResetRequested,
-  }) : super(gravity: Vector2(0, 10), zoom: 40) {
+  }) : super(gravity: Vector2(0, 10), metersToPixels: _metersToPixels) {
     this.images = images;
   }
 
@@ -33,32 +33,37 @@ class PuzzleBallGklabs extends Forge2DGame with HasKeyboardHandlerComponents {
   final VoidCallback? onResetRequested;
   final List<LevelData> levelsList;
 
+  /// Pixels per meter of the physics world; camera zoom is relative to it.
+  static const double _metersToPixels = 40;
+
   static const double joystickRadius = 40;
   static const double knobRadius = 12;
   static const double jumpButtonSize = 48;
   static const Color joystickColor = Color(0xFF2196F3);
   static const Color joystickBackground = Color(0x552196F3);
   static const Color jumpButtonColor = Color(0xFF42A5F5);
-  static const EdgeInsets joystickMargin =
-      EdgeInsets.only(left: 20, bottom: 20);
-  static const EdgeInsets jumpButtonMargin =
-      EdgeInsets.only(right: 20, bottom: 20);
+  static const EdgeInsets joystickMargin = EdgeInsets.only(
+    left: 20,
+    bottom: 20,
+  );
+  static const EdgeInsets jumpButtonMargin = EdgeInsets.only(
+    right: 20,
+    bottom: 20,
+  );
 
   late JoystickComponent joystick;
   late CameraComponent thirdPersonCamera;
-  late Forge2DWorld gameWorld;
   late BallComponent ball;
   late ParallaxComponent parallax;
   late ParallaxLayer layer2;
   late ParallaxLayer layer3;
 
   late double _defaultCameraZoom;
-  late Anchor _defaultCameraAnchor;
   bool _isCameraBoosted = false;
 
-  double _targetCameraZoom = 40;
+  double _targetCameraZoom = 1;
   Anchor _targetCameraAnchor = const Anchor(0.5, 0.85);
-  double _cameraLerp = 0.08; // Suavidad de movimiento
+  final double _cameraLerp = 0.08; // Suavidad de movimiento
   double? _boostZoomEndTime;
 
   final Vector2 parallaxVelocity = Vector2.zero();
@@ -69,7 +74,10 @@ class PuzzleBallGklabs extends Forge2DGame with HasKeyboardHandlerComponents {
       color: Colors.white,
       shadows: [
         const Shadow(
-            blurRadius: 4, offset: Offset(2, 2), color: Colors.black54),
+          blurRadius: 4,
+          offset: Offset(2, 2),
+          color: Colors.black54,
+        ),
       ],
     );
 
@@ -82,13 +90,13 @@ class PuzzleBallGklabs extends Forge2DGame with HasKeyboardHandlerComponents {
       priority: 1000,
     );
 
-    double time = 0;
-
     final effect = _TextFadeController(
       duration: 2.3,
       onOpacityChange: (opacity) {
         textComponent.textRenderer = TextPaint(
-          style: baseStyle.copyWith(color: Colors.white.withOpacity(opacity)),
+          style: baseStyle.copyWith(
+            color: Colors.white.withValues(alpha: opacity),
+          ),
         );
       },
       onComplete: textComponent.removeFromParent,
@@ -118,7 +126,6 @@ class PuzzleBallGklabs extends Forge2DGame with HasKeyboardHandlerComponents {
       lookBehind: 8,
       lookUp: 3,
       lookDown: 3,
-      anchorNormal: const Anchor(0.5, 0.85),
       // cámara baja, muestra más terreno por debajo
       anchorLower: const Anchor(0.5, 0.75),
       // cámara alta, muestra más terreno por arriba
@@ -148,46 +155,40 @@ class PuzzleBallGklabs extends Forge2DGame with HasKeyboardHandlerComponents {
     _targetCameraZoom = _defaultCameraZoom;
   }
 
-  void adjustCameraAnchorForTerrain(Vector2 ballPos) {
-    // Método obsoleto, no hacer nada
-  }
-
   @override
   Color backgroundColor() => const Color(0xFFEFEFEF);
 
   @override
   Future<void> onLoad() async {
+    await super.onLoad();
     await _loadLevel();
   }
 
   Future<void> _loadLevel() async {
-    final ballTextureImage =
-        images.fromCache(Assets.images.components.ball.path);
-    final floorSprite =
-        Sprite(images.fromCache(Assets.images.components.floor.path));
-    final goalSprite =
-        Sprite(images.fromCache(Assets.images.components.goal.path));
+    final ballTextureImage = images.fromCache(
+      Assets.images.components.ball.path,
+    );
+    final floorSprite = Sprite(
+      images.fromCache(Assets.images.components.floor.path),
+    );
+    final goalSprite = Sprite(
+      images.fromCache(Assets.images.components.goal.path),
+    );
     final gravityBoostSprite = Sprite(
       images.fromCache(Assets.images.components.gravityBoost.path),
     );
-    final jumpBoostSprite =
-        Sprite(images.fromCache(Assets.images.components.jumpBoost.path));
-    final speedBoostSprite =
-        Sprite(images.fromCache(Assets.images.components.speedBoost.path));
-
-    // 🌍 Crear mundo nuevo
-    gameWorld = Forge2DWorld();
+    final jumpBoostSprite = Sprite(
+      images.fromCache(Assets.images.components.jumpBoost.path),
+    );
+    final speedBoostSprite = Sprite(
+      images.fromCache(Assets.images.components.speedBoost.path),
+    );
 
     // 📷 Cámara
-    thirdPersonCamera = CameraComponent(world: gameWorld)
-      ..viewfinder.zoom = 40
-      ..viewfinder.anchor = const Anchor(0.5, 0.85);
+    thirdPersonCamera = camera..viewfinder.anchor = const Anchor(0.5, 0.85);
     _defaultCameraZoom = thirdPersonCamera.viewfinder.zoom;
-    _defaultCameraAnchor = thirdPersonCamera.viewfinder.anchor;
-    await add(thirdPersonCamera);
-    camera = thirdPersonCamera;
 
-    // 1. Crea el parallax y añádelo al gameWorld
+    // 1. Parallax de fondo en el backdrop de la cámara
     final layer1 = await ParallaxLayer.load(
       ParallaxImageData('parallax/layer1.png'),
       velocityMultiplier: Vector2(0.1, 1),
@@ -203,15 +204,13 @@ class PuzzleBallGklabs extends Forge2DGame with HasKeyboardHandlerComponents {
       velocityMultiplier: Vector2(1, 1),
     );
 
-    final parallaxObject = Parallax(
-      [layer1, layer2, layer3],
-      baseVelocity: parallaxVelocity,
-    );
+    final parallaxObject = Parallax([
+      layer1,
+      layer2,
+      layer3,
+    ], baseVelocity: parallaxVelocity);
     parallax = ParallaxComponent(parallax: parallaxObject, priority: -10);
     await camera.backdrop.add(parallax);
-
-    await camera.backdrop.add(parallax);
-    await add(gameWorld);
 
     // 🎯 Cargar nivel
     final level = levelsList[levelIndex.clamp(0, levelsList.length - 1)];
@@ -236,15 +235,13 @@ class PuzzleBallGklabs extends Forge2DGame with HasKeyboardHandlerComponents {
     // 🔘 Botón de salto (referencia diferida)
     final jumpButton = JumpButtonComponent(
       size: Vector2.all(jumpButtonSize),
-      color: jumpButtonColor,
       onPressed: () => ball.jump(),
-      margin: jumpButtonMargin,
     );
     await camera.viewport.add(jumpButton);
 
     // 🧱 Elementos del nivel: crea instancias nuevas
     for (final data in level.floorData) {
-      await gameWorld.add(
+      await world.add(
         FloorComponent(
           position: data.position,
           size: data.size,
@@ -253,7 +250,7 @@ class PuzzleBallGklabs extends Forge2DGame with HasKeyboardHandlerComponents {
       );
     }
     for (final data in level.rampData) {
-      await gameWorld.add(
+      await world.add(
         RampComponent(
           position: data.position,
           size: data.size,
@@ -265,7 +262,7 @@ class PuzzleBallGklabs extends Forge2DGame with HasKeyboardHandlerComponents {
 
     // 🚩 Checkpoints
     for (final data in level.checkpointData) {
-      await gameWorld.add(
+      await world.add(
         CheckPointComponent(position: data.position, size: Vector2.all(0.5)),
       );
     }
@@ -274,7 +271,7 @@ class PuzzleBallGklabs extends Forge2DGame with HasKeyboardHandlerComponents {
     for (final data in level.boostData) {
       switch (data.type) {
         case BoostType.jump:
-          await gameWorld.add(
+          await world.add(
             JumpBoostComponent(
               position: data.position,
               size: Vector2.all(1),
@@ -282,7 +279,7 @@ class PuzzleBallGklabs extends Forge2DGame with HasKeyboardHandlerComponents {
             ),
           );
         case BoostType.speed:
-          await gameWorld.add(
+          await world.add(
             SpeedBoostComponent(
               position: data.position,
               size: Vector2.all(1),
@@ -290,7 +287,7 @@ class PuzzleBallGklabs extends Forge2DGame with HasKeyboardHandlerComponents {
             ),
           );
         case BoostType.gravity:
-          await gameWorld.add(
+          await world.add(
             GravityBoostComponent(
               position: data.position,
               size: Vector2.all(1),
@@ -308,14 +305,14 @@ class PuzzleBallGklabs extends Forge2DGame with HasKeyboardHandlerComponents {
       onFall: resetLevel,
       textureImage: ballTextureImage,
     )..joystick = joystick;
-    await gameWorld.add(ball);
+    await world.add(ball);
 
     final controller = KeyboardJoystickController(ball);
     ball.keyboardController = controller;
-    await gameWorld.add(controller);
+    await world.add(controller);
 
     // 🎯 Meta
-    await gameWorld.add(
+    await world.add(
       GoalComponent(
         position: level.goalPosition,
         size: Vector2(1, 3.5),
@@ -370,7 +367,7 @@ class PuzzleBallGklabs extends Forge2DGame with HasKeyboardHandlerComponents {
         thirdPersonCamera,
         _levelBoosts,
         ball.body.position,
-        40, // Zoom alejado
+        1, // Zoom alejado
         thirdPersonCamera.viewfinder.zoom,
         (newZoom) => _targetCameraZoom = newZoom,
       );
@@ -389,7 +386,7 @@ class PuzzleBallGklabs extends Forge2DGame with HasKeyboardHandlerComponents {
 }
 
 class _TextFadeController extends Component {
-  _TextFadeController({
+  new({
     required this.duration,
     required this.onOpacityChange,
     required this.onComplete,

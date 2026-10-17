@@ -1,9 +1,9 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:puzzle_ball_gklabs/shared/cubit/settings/settings_cubit.dart';
 
 class LanguageSelector extends StatelessWidget {
-  const LanguageSelector({super.key});
+  const new({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -22,16 +22,8 @@ class LanguageSelector extends StatelessWidget {
               label: 'Català',
               flag: 'asset:assets/images/catalonia_flag.png',
             ),
-            _LanguageOption(
-              code: 'es',
-              label: 'Español',
-              flag: '🇪🇸',
-            ),
-            _LanguageOption(
-              code: 'en',
-              label: 'English',
-              flag: '🇬🇧',
-            ),
+            _LanguageOption(code: 'es', label: 'Español', flag: '🇪🇸'),
+            _LanguageOption(code: 'en', label: 'English', flag: '🇬🇧'),
           ],
         ),
       ],
@@ -40,11 +32,7 @@ class LanguageSelector extends StatelessWidget {
 }
 
 class _LanguageOption extends StatelessWidget {
-  const _LanguageOption({
-    required this.code,
-    required this.label,
-    required this.flag,
-  });
+  const new({required this.code, required this.label, required this.flag});
 
   final String code;
   final String label;
@@ -73,18 +61,16 @@ class _LanguageOption extends StatelessWidget {
         decoration: BoxDecoration(
           color: isSelected ? Colors.blueAccent : Colors.grey[800],
           borderRadius: BorderRadius.circular(12),
-          border:
-              isSelected ? Border.all(color: Colors.white70, width: 2) : null,
+          border: isSelected
+              ? Border.all(color: Colors.white70, width: 2)
+              : null,
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             flagWidget,
             const SizedBox(width: 8),
-            Text(
-              label,
-              style: const TextStyle(color: Colors.white),
-            ),
+            Text(label, style: const TextStyle(color: Colors.white)),
           ],
         ),
       ),

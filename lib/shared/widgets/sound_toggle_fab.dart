@@ -1,10 +1,10 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:puzzle_ball_gklabs/game/cubit/cubit.dart';
 import 'package:puzzle_ball_gklabs/shared/cubit/settings/settings_cubit.dart';
 
 class SoundToggleFab extends StatelessWidget {
-  const SoundToggleFab({super.key});
+  const new({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -21,9 +21,9 @@ class SoundToggleFab extends StatelessWidget {
         backgroundColor: Theme.of(context).colorScheme.primary,
         onPressed: () async {
           await context.read<SettingsCubit>().toggleSound(
-                enabled: !isEnabled,
-                audioCubit: context.read<AudioCubit>(),
-              );
+            enabled: !isEnabled,
+            audioCubit: context.read<AudioCubit>(),
+          );
         },
         child: AnimatedSwitcher(
           duration: const Duration(milliseconds: 250),

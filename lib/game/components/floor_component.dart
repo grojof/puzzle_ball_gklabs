@@ -3,7 +3,7 @@ import 'package:flame_forge2d/flame_forge2d.dart';
 import 'package:flutter/painting.dart';
 
 class FloorComponent extends BodyComponent with ContactCallbacks {
-  FloorComponent({
+  new({
     required this.position,
     required this.size,
     Paint? paint,
@@ -35,24 +35,16 @@ class FloorComponent extends BodyComponent with ContactCallbacks {
 
   @override
   Body createBody() {
-    final shape = PolygonShape()
-      ..setAsBox(
-        size.x / 2,
-        size.y / 2,
-        Vector2.zero(),
-        0,
-      );
-
-    final fixtureDef = FixtureDef(shape)
-      ..friction = friction
-      ..restitution = restitution
-      ..userData = this;
-
-    final bodyDef = BodyDef()
-      ..type = BodyType.static
-      ..position = position + size / 2;
-
-    return world.createBody(bodyDef)..createFixture(fixtureDef);
+    return world.createBody(
+      BodyDef(position: position + size / 2),
+    )..createShape(
+      Polygon.box(size.x / 2, size.y / 2),
+      ShapeDef(
+        material: SurfaceMaterial(friction: friction, restitution: restitution),
+        enableContactEvents: true,
+        userData: this,
+      ),
+    );
   }
 
   @override

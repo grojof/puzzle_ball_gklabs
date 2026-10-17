@@ -11,7 +11,7 @@ class CameraBehaviorConfig {
   static double boostRange = 2.5;
 
   /// Zoom de la cámara cuando hay boost cerca
-  static double boostZoom = 22;
+  static double boostZoom = 22 / 40;
 }
 
 /// Utilidad para animar suavemente el zoom de la cámara
@@ -46,11 +46,13 @@ void adjustCameraForBoosts(
     (b) => (b.position.x - ballPos.x).abs() < CameraBehaviorConfig.boostRange,
   );
   if (boostNear) {
-    camera.viewfinder.zoom = camera.viewfinder.zoom +
+    camera.viewfinder.zoom =
+        camera.viewfinder.zoom +
         (CameraBehaviorConfig.boostZoom - camera.viewfinder.zoom) *
             CameraBehaviorConfig.lerp;
   } else {
-    camera.viewfinder.zoom = camera.viewfinder.zoom +
+    camera.viewfinder.zoom =
+        camera.viewfinder.zoom +
         (defaultZoom - camera.viewfinder.zoom) * CameraBehaviorConfig.lerp;
   }
 }
@@ -66,10 +68,14 @@ void adjustCameraHeightForTerrain(
   double lookUp = 0.1,
   double lookDown = 4.0,
   Anchor anchorNormal = const Anchor(0.5, 0.85),
-  Anchor anchorLower =
-      const Anchor(0.5, 0.95), // cámara baja, muestra más abajo
-  Anchor anchorHigher =
-      const Anchor(0.5, 0.7), // cámara alta, muestra más arriba
+  Anchor anchorLower = const Anchor(
+    0.5,
+    0.95,
+  ), // cámara baja, muestra más abajo
+  Anchor anchorHigher = const Anchor(
+    0.5,
+    0.7,
+  ), // cámara alta, muestra más arriba
   void Function(Anchor anchor)? setTargetAnchor,
   double? ballVelocityX,
 }) {
@@ -84,7 +90,7 @@ void adjustCameraHeightForTerrain(
     final right = f.position.x + f.size.x / 2;
     final overlapsX = ballPos.x >= left && ballPos.x <= right;
     final inPath = dx >= dxMin && dx <= dxMax;
-    return (overlapsX || inPath);
+    return overlapsX || inPath;
   }).toList();
 
   if (tilesInPath.isEmpty) {
@@ -141,7 +147,8 @@ void adjustCameraHeightForTerrain(
 
   if (farBlocks.isNotEmpty) {
     // Distancia media vertical de los bloques lejanos
-    final avgFarVert = farBlocks
+    final avgFarVert =
+        farBlocks
             .map((f) => (f.position.y - f.size.y / 2) - ballPos.y)
             .reduce((a, b) => a + b) /
         farBlocks.length;
@@ -165,16 +172,24 @@ void adjustCameraHeightForTerrain(
 
   // --- Anticipación dinámica: multiplicador según distancia vertical al bloque más cercano ---
   // Encuentra el bloque más cercano en vertical (abajo o arriba según corresponda)
-  double extra = 0.0;
+  var extra = 0.0;
   if (tilesInPath.isNotEmpty) {
     // Distancia vertical al bloque más cercano (por debajo o por encima)
     final verticalDistances = tilesInPath
         .map((f) => (f.position.y - f.size.y / 2) - ballPos.y)
         .toList();
-    final minDistBelow = verticalDistances.where((d) => d > 0).fold<double?>(
-        null, (prev, d) => prev == null ? d : (d < prev ? d : prev));
-    final minDistAbove = verticalDistances.where((d) => d < 0).fold<double?>(
-        null, (prev, d) => prev == null ? d : (d > prev ? d : prev));
+    final minDistBelow = verticalDistances
+        .where((d) => d > 0)
+        .fold<double?>(
+          null,
+          (prev, d) => prev == null ? d : (d < prev ? d : prev),
+        );
+    final minDistAbove = verticalDistances
+        .where((d) => d < 0)
+        .fold<double?>(
+          null,
+          (prev, d) => prev == null ? d : (d > prev ? d : prev),
+        );
     const maxExtra = 0.25; // Máximo extra a sumar/restar al anchor
     const maxDist = 8.0; // Distancia máxima para normalizar el extra
     if (minDistBelow != null && minDistBelow > 0) {

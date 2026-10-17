@@ -1,11 +1,11 @@
 import 'package:flame/components.dart';
 import 'package:flame/events.dart';
 import 'package:flame_forge2d/flame_forge2d.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 class JumpButtonComponent extends PositionComponent
     with HasGameReference<Forge2DGame>, TapCallbacks {
-  JumpButtonComponent({
+  new({
     required this.onPressed,
     required Vector2 size,
     this.color = const Color(0xFF42A5F5),
@@ -55,8 +55,9 @@ class JumpButtonComponent extends PositionComponent
 
     // Actualiza el color dinámicamente según estado
     final targetColor = isPressed ? pressedColor : color;
-    _paint.color =
-        isEnabled ? targetColor.withOpacity(1.0) : targetColor.withOpacity(0.3);
+    _paint.color = isEnabled
+        ? targetColor.withValues(alpha: 1)
+        : targetColor.withValues(alpha: 0.3);
   }
 
   @override

@@ -1,15 +1,13 @@
 import 'package:audioplayers/audioplayers.dart';
 import 'package:equatable/equatable.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:puzzle_ball_gklabs/gen/assets.gen.dart';
 
 part 'audio_state.dart';
 
 class AudioCubit extends Cubit<AudioState> {
-  AudioCubit({required AudioCache audioCache})
-      : _audioCache = audioCache,
-        super(const AudioState()) {
+  new({required this._audioCache}) : super(const AudioState()) {
     _configureGlobalAudioContext();
     _initMusicPlayer();
   }
@@ -21,10 +19,9 @@ class AudioCubit extends Cubit<AudioState> {
   void _configureGlobalAudioContext() {
     AudioPlayer.global.setAudioContext(
       AudioContext(
+        // Media volume and routing: speakerphone mode would switch Android to
+        // the (much quieter) call volume.
         android: const AudioContextAndroid(
-          isSpeakerphoneOn: true,
-          stayAwake: false,
-          contentType: AndroidContentType.music,
           usageType: AndroidUsageType.game,
           audioFocus: AndroidAudioFocus.none, // ✅ No interrumpe música
         ),

@@ -4,7 +4,7 @@ import 'package:puzzle_ball_gklabs/shared/cubit/settings/settings_state.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class SettingsCubit extends Cubit<SettingsState> {
-  SettingsCubit() : super(SettingsState.initial()) {
+  new() : super(SettingsState.initial()) {
     _loadSettings();
   }
 

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class AppColors {
@@ -34,7 +34,7 @@ class AppTheme {
       primaryColor: AppColors.primary,
       scaffoldBackgroundColor: AppColors.background,
       appBarTheme: const AppBarTheme(
-        color: AppColors.primary,
+        backgroundColor: AppColors.primary,
         foregroundColor: AppColors.background,
         elevation: 0,
       ),
@@ -68,7 +68,7 @@ class AppTheme {
         backgroundColor: AppColors.secondary,
         contentTextStyle: TextStyle(color: AppColors.text),
       ),
-      dialogTheme: const DialogTheme(
+      dialogTheme: const DialogThemeData(
         backgroundColor: AppColors.secondary,
         titleTextStyle: TextStyle(
           color: AppColors.text,
@@ -83,8 +83,9 @@ class AppTheme {
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide.none,
         ),
-        hintStyle:
-            TextStyle(color: AppColors.text.withAlpha((0.6 * 255).toInt())),
+        hintStyle: TextStyle(
+          color: AppColors.text.withAlpha((0.6 * 255).toInt()),
+        ),
         labelStyle: const TextStyle(color: AppColors.text),
       ),
       dividerTheme: const DividerThemeData(

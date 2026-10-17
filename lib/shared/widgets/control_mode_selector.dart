@@ -1,13 +1,10 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:puzzle_ball_gklabs/l10n/l10n.dart';
 import 'package:puzzle_ball_gklabs/shared/cubit/settings/settings_cubit.dart';
 
 class ControlModeSelector extends StatelessWidget {
-  const ControlModeSelector({
-    required this.l10n,
-    super.key,
-  });
+  const new({required this.l10n, super.key});
 
   final AppLocalizations l10n;
 
