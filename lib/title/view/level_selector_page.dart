@@ -1,6 +1,8 @@
-import 'package:material_ui/material_ui.dart';
+import 'dart:async';
+
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:puzzle_ball_gklabs/l10n/l10n.dart';
 import 'package:puzzle_ball_gklabs/shared/cubit/cubit.dart';
 import 'package:puzzle_ball_gklabs/shared/cubit/savegame/savegame_cubit.dart';
@@ -119,7 +121,7 @@ class _LevelButton extends StatelessWidget {
                 createdAt: partida.createdAt,
                 lastPlayed: DateTime.now(),
               );
-              context.read<SavegameCubit>().updateGame(updated);
+              unawaited(context.read<SavegameCubit>().updateGame(updated));
               context.go('/game?level=$levelNumber&savegame=${partida.id}');
             }
           : null,

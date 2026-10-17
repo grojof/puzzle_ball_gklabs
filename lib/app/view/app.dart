@@ -1,8 +1,10 @@
+import 'dart:async';
+
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flame/cache.dart';
-import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:puzzle_ball_gklabs/game/cubit/cubit.dart';
 import 'package:puzzle_ball_gklabs/game/view/game_page.dart';
 import 'package:puzzle_ball_gklabs/l10n/l10n.dart';
@@ -17,32 +19,42 @@ class App extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MultiBlocProvider(
-      providers: [
-        BlocProvider(
-          create: (_) =>
-              PreloadCubit(Images(prefix: ''), AudioCache(prefix: ''))
-                ..loadSequentially(),
-        ),
-        BlocProvider(create: (_) => SettingsCubit()),
-        BlocProvider(
-          create: (context) {
-            final preload = context.read<PreloadCubit>();
-            final cubit = AudioCubit(audioCache: preload.audio);
+    // The image cache is shared by the preloader and the game.
+    return RepositoryProvider(
+      create: (_) => Images(prefix: ''),
+      child: MultiBlocProvider(
+        providers: [
+          BlocProvider(
+            create: (context) {
+              final cubit = PreloadCubit(
+                context.read<Images>(),
+                AudioCache(prefix: ''),
+              );
+              unawaited(cubit.loadSequentially());
+              return cubit;
+            },
+          ),
+          BlocProvider(create: (_) => SettingsCubit()),
+          BlocProvider(
+            create: (context) {
+              final cubit = AudioCubit();
 
-            final settings = context.read<SettingsCubit>().state;
-            cubit.setVolume(settings.soundEnabled ? 1.0 : 0.0);
-            // Start the music once the stored settings are loaded.
-            context.read<SettingsCubit>().stream.first.then((loaded) {
-              if (loaded.soundEnabled) cubit.enableAndPlay();
-            });
+              final settings = context.read<SettingsCubit>().state;
+              unawaited(cubit.setVolume(settings.soundEnabled ? 1.0 : 0.0));
+              // Start the music once the stored settings are loaded.
+              unawaited(
+                context.read<SettingsCubit>().stream.first.then((loaded) async {
+                  if (loaded.soundEnabled) await cubit.enableAndPlay();
+                }),
+              );
 
-            return cubit;
-          },
-        ),
-        BlocProvider(create: (_) => SavegameCubit()),
-      ],
-      child: const AppView(),
+              return cubit;
+            },
+          ),
+          BlocProvider(create: (_) => SavegameCubit()),
+        ],
+        child: const AppView(),
+      ),
     );
   }
 }

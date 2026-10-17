@@ -31,7 +31,7 @@ class CheckPointComponent extends BodyComponent with ContactCallbacks {
   void beginContact(Object other, Contact contact) {
     if (other is BallComponent && !activated) {
       activated = true;
-      // TODO: notificar al juego para actualizar el respawn
+      // TODO(grojof): notificar al juego para actualizar el respawn
     }
   }
 
@@ -42,6 +42,6 @@ class CheckPointComponent extends BodyComponent with ContactCallbacks {
       Rect.fromCenter(center: Offset.zero, width: size.x, height: size.y),
       paint,
     );
-    // TODO: dibujar sprite si se define
+    // TODO(grojof): dibujar sprite si se define
   }
 }

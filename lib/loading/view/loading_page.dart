@@ -1,6 +1,8 @@
-import 'package:material_ui/material_ui.dart';
+import 'dart:async';
+
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:puzzle_ball_gklabs/l10n/l10n.dart';
 import 'package:puzzle_ball_gklabs/loading/loading.dart';
 import 'package:puzzle_ball_gklabs/shared/widgets/puzzle_ball_loader.dart';
@@ -20,12 +22,14 @@ class LoadingPage extends StatelessWidget {
 
     // ✅ Si ya está precargado desde el principio (cambio idioma u otro rebuild)
     if (preload.state.isComplete) {
-      Future.microtask(() async {
-        await Future<void>.delayed(loaderTotalDelay); // ⏳ Espera mínima visible
-        if (context.mounted) {
-          context.go(redirectTo ?? '/menu');
-        }
-      });
+      unawaited(
+        Future.microtask(() async {
+          await Future<void>.delayed(loaderTotalDelay); // Minimum visible time.
+          if (context.mounted) {
+            context.go(redirectTo ?? '/menu');
+          }
+        }),
+      );
     }
 
     return BlocListener<PreloadCubit, PreloadState>(

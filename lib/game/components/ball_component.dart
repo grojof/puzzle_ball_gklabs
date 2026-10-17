@@ -109,11 +109,11 @@ class BallComponent extends BodyComponent with ContactCallbacks {
     if (_boostActive) return;
     switch (type) {
       case BoostType.jump:
-        audioCubit.playEffect(Assets.audio.boostJump);
+        unawaited(audioCubit.playEffect(Assets.audio.boostJump));
       case BoostType.speed:
-        audioCubit.playEffect(Assets.audio.boostSpeed);
+        unawaited(audioCubit.playEffect(Assets.audio.boostSpeed));
       case BoostType.gravity:
-        audioCubit.playEffect(Assets.audio.boostGravity);
+        unawaited(audioCubit.playEffect(Assets.audio.boostGravity));
     }
 
     _boostActive = true;
@@ -226,7 +226,7 @@ class BallComponent extends BodyComponent with ContactCallbacks {
       canJump = false;
 
       // 🔊 Reproducir sonido de salto
-      audioCubit.playEffect(Assets.audio.jump);
+      unawaited(audioCubit.playEffect(Assets.audio.jump));
     }
   }
 
@@ -235,68 +235,58 @@ class BallComponent extends BodyComponent with ContactCallbacks {
     if (other is GoalComponent && !_portalActivated) {
       _portalActivated = true;
 
-      final gameRef = game as PuzzleBallGklabs;
-      final screenSize = gameRef.size;
-
-      // 🚫 Detener física de la bola
-      Future.microtask(() {
-        body
-          ..linearVelocity = Vector2.zero()
-          ..isEnabled = false;
-      });
-
-      // 🔵 Azul parpadeante
-      final portalFlashOverlay = RectangleComponent(
-        size: screenSize,
-        position: Vector2.zero(),
-        paint: Paint()..color = const Color(0xFF42A5F5).withValues(alpha: 0),
+      // Stop the ball after the physics step that reported the contact.
+      unawaited(
+        Future.microtask(() {
+          body
+            ..linearVelocity = Vector2.zero()
+            ..isEnabled = false;
+        }),
       );
-
-      gameRef.camera.viewport.add(portalFlashOverlay);
-
-      portalFlashOverlay.add(
-        SequenceEffect(
-          [
-            OpacityEffect.to(
-              0.6,
-              EffectController(duration: 0.4, curve: Curves.easeOut),
-            ),
-            OpacityEffect.to(
-              0,
-              EffectController(duration: 0.4, curve: Curves.easeIn),
-            ),
-          ],
-          onComplete: () {
-            portalFlashOverlay.removeFromParent();
-
-            // ⚫ Luego fundido a negro
-            final blackoutOverlay = RectangleComponent(
-              size: screenSize,
-              position: Vector2.zero(),
-              paint: Paint()
-                ..color = const Color(0xFF000000).withValues(alpha: 0),
-            );
-
-            gameRef.camera.viewport.add(blackoutOverlay);
-
-            blackoutOverlay.add(
-              OpacityEffect.to(
-                1,
-                EffectController(duration: 0.4, curve: Curves.easeIn),
-                onComplete: () {
-                  gameRef.onLevelCompleted?.call();
-                },
-              ),
-            );
-          },
-        ),
-      );
+      unawaited(_playGoalSequence(game as PuzzleBallGklabs));
     } else {
       canJump = true;
       _canJumpUntil = DateTime.now().millisecondsSinceEpoch + 150;
       _onGround = true;
       _lastGroundTime = DateTime.now().millisecondsSinceEpoch;
     }
+  }
+
+  /// Flashes blue, fades to black and then completes the level.
+  Future<void> _playGoalSequence(PuzzleBallGklabs gameRef) async {
+    final screenSize = gameRef.size;
+
+    final flash = SequenceEffect([
+      OpacityEffect.to(
+        0.6,
+        EffectController(duration: 0.4, curve: Curves.easeOut),
+      ),
+      OpacityEffect.to(
+        0,
+        EffectController(duration: 0.4, curve: Curves.easeIn),
+      ),
+    ]);
+    final flashOverlay = RectangleComponent(
+      size: screenSize,
+      paint: Paint()..color = const Color(0xFF42A5F5).withValues(alpha: 0),
+      children: [flash],
+    );
+    await gameRef.camera.viewport.add(flashOverlay);
+    await flash.completed;
+    flashOverlay.removeFromParent();
+
+    final fade = OpacityEffect.to(
+      1,
+      EffectController(duration: 0.4, curve: Curves.easeIn),
+    );
+    final blackoutOverlay = RectangleComponent(
+      size: screenSize,
+      paint: Paint()..color = const Color(0xFF000000).withValues(alpha: 0),
+      children: [fade],
+    );
+    await gameRef.camera.viewport.add(blackoutOverlay);
+    await fade.completed;
+    gameRef.onLevelCompleted?.call();
   }
 
   @override
@@ -311,7 +301,7 @@ class BallComponent extends BodyComponent with ContactCallbacks {
 
   @override
   void onRemove() {
-    _accelSub?.cancel();
+    unawaited(_accelSub?.cancel());
     super.onRemove();
   }
 

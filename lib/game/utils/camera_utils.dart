@@ -2,7 +2,7 @@ import 'package:flame/components.dart';
 import 'package:puzzle_ball_gklabs/game/levels/level_data.dart';
 
 /// --- AJUSTES DE CÁMARA ---
-/// Puedes modificar estos valores para controlar la suavidad y el zoom de la cámara.
+/// Tune these values to control camera smoothing and zoom.
 class CameraBehaviorConfig {
   /// Suavidad de animación (0.0-1.0, más alto = más rápido)
   static double lerp = 0.01;
@@ -57,8 +57,8 @@ void adjustCameraForBoosts(
   }
 }
 
-/// Ajusta el anchor de la cámara según la mayoría de superficie de bloques en la dirección de movimiento,
-/// considerando la parte superior de los bloques como superficie útil para anticipar saltos y caídas.
+/// Moves the camera anchor towards the terrain ahead of the ball, using the
+/// top of the blocks in the direction of travel to anticipate jumps and drops.
 void adjustCameraHeightForTerrain(
   CameraComponent camera,
   List<FloorData> floors,
@@ -133,7 +133,6 @@ void adjustCameraHeightForTerrain(
   final avgYNear = avgY(nearBlocks);
   final avgYFar = avgY(farBlocks);
   final diffNear = avgYNear - ballPos.y;
-  final diffFar = avgYFar - ballPos.y;
 
   // Umbrales para decidir si subir, bajar o mantener
   const thresholdUp = -0.5;
@@ -141,9 +140,9 @@ void adjustCameraHeightForTerrain(
   // diferencia significativa para anticipar
   const anticipationThreshold = 1.0;
 
-  // --- Anticipación dinámica: multiplicador según distancia media de bloques lejanos ---
+  // Dynamic anticipation from the mean distance of far blocks.
   var anchorY = anchorNormal.y;
-  var debugMsg = '';
+  var anticipated = false;
 
   if (farBlocks.isNotEmpty) {
     // Distancia media vertical de los bloques lejanos
@@ -158,20 +157,18 @@ void adjustCameraHeightForTerrain(
     final multV = (avgFarVert.abs() / maxVert).clamp(0.0, 1.0);
     final verticalDiff = avgYFar - ballPos.y;
     if (verticalDiff > anticipationThreshold) {
-      // Descenso próximo, anticipar más cuanto más lejos y más bajo esté el suelo
+      // Drop ahead: anticipate more the further and lower the ground is.
       anchorY = anchorNormal.y + (anchorLower.y - anchorNormal.y) * multV;
-      debugMsg =
-          'Anticipación dinámica: descenso, multV=${multV.toStringAsFixed(2)}, anchorY=$anchorY, avgFarVert=$avgFarVert';
+      anticipated = true;
     } else if (verticalDiff < -anticipationThreshold) {
-      // Ascenso próximo, anticipar más cuanto más lejos y más alto esté el suelo
+      // Climb ahead: anticipate more the further and higher the ground is.
       anchorY = anchorNormal.y + (anchorHigher.y - anchorNormal.y) * multV;
-      debugMsg =
-          'Anticipación dinámica: ascenso, multV=${multV.toStringAsFixed(2)}, anchorY=$anchorY, avgFarVert=$avgFarVert';
+      anticipated = true;
     }
   }
 
-  // --- Anticipación dinámica: multiplicador según distancia vertical al bloque más cercano ---
-  // Encuentra el bloque más cercano en vertical (abajo o arriba según corresponda)
+  // Dynamic anticipation from the vertical distance to the nearest block.
+  // Find the vertically nearest block, below or above.
   var extra = 0.0;
   if (tilesInPath.isNotEmpty) {
     // Distancia vertical al bloque más cercano (por debajo o por encima)
@@ -196,30 +193,25 @@ void adjustCameraHeightForTerrain(
       // Si el suelo está por debajo, cuanto más lejos, más baja la cámara
       extra = ((minDistBelow / maxDist).clamp(0.0, 1.0)) * maxExtra;
       anchorY -= extra; // CORREGIDO: restar para bajar la cámara (Y menor)
-      debugMsg += ' | Extra abajo: -$extra';
+      anticipated = true;
     } else if (minDistAbove != null && minDistAbove < 0) {
       // Si el suelo está por encima, cuanto más lejos, más sube la cámara
       extra = ((-minDistAbove / maxDist).clamp(0.0, 1.0)) * maxExtra;
       anchorY += extra; // CORREGIDO: sumar para subir la cámara (Y mayor)
-      debugMsg += ' | Extra arriba: +$extra';
+      anticipated = true;
     }
   }
 
   // Si no hay anticipación dinámica, usar lógica de bloques cercanos
-  if (debugMsg.isEmpty) {
+  if (!anticipated) {
     if (diffNear > thresholdDown) {
       anchorY = anchorLower.y;
-      debugMsg = 'Bloques cercanos abajo: camara baja (ver abajo)';
     } else if (diffNear < thresholdUp) {
       anchorY = anchorHigher.y;
-      debugMsg = 'Bloques cercanos arriba: camara alta (ver arriba)';
     } else {
       anchorY = anchorNormal.y;
-      debugMsg = 'Camara normal';
     }
   }
-
-  // print(debugMsg);
 
   final targetAnchor = Anchor(anchorNormal.x, anchorY);
   if (setTargetAnchor != null) {

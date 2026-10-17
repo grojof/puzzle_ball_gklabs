@@ -1,5 +1,7 @@
-import 'package:material_ui/material_ui.dart';
+import 'dart:async';
+
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:puzzle_ball_gklabs/l10n/l10n.dart';
 import 'package:puzzle_ball_gklabs/shared/cubit/settings/settings_cubit.dart';
 
@@ -32,7 +34,9 @@ class ControlModeSelector extends StatelessWidget {
       trailing: Switch.adaptive(
         value: settings.useSensorControl,
         onChanged: (value) {
-          context.read<SettingsCubit>().toggleControlMode(useSensor: value);
+          unawaited(
+            context.read<SettingsCubit>().toggleControlMode(useSensor: value),
+          );
         },
       ),
     );

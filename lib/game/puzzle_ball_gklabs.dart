@@ -68,7 +68,7 @@ class PuzzleBallGklabs extends Forge2DGame with HasKeyboardHandlerComponents {
 
   final Vector2 parallaxVelocity = Vector2.zero();
 
-  void _showLevelIndicator(int levelNumber) {
+  Future<void> _showLevelIndicator(int levelNumber) async {
     final baseStyle = textStyle.copyWith(
       fontSize: 40,
       color: Colors.white,
@@ -102,7 +102,7 @@ class PuzzleBallGklabs extends Forge2DGame with HasKeyboardHandlerComponents {
       onComplete: textComponent.removeFromParent,
     );
 
-    camera.viewport.addAll([textComponent, effect]);
+    await camera.viewport.addAll([textComponent, effect]);
   }
 
   void _updateCameraSmooth() {
@@ -327,7 +327,7 @@ class PuzzleBallGklabs extends Forge2DGame with HasKeyboardHandlerComponents {
     ball.onBoostActivated = handleBoostActivated;
     ball.onBoostDeactivated = handleBoostDeactivated;
 
-    _showLevelIndicator(levelIndex + 1);
+    await _showLevelIndicator(levelIndex + 1);
   }
 
   Future<void> resetLevel() async {

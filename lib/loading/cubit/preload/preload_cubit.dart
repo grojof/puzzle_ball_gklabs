@@ -2,23 +2,22 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flame/cache.dart';
-import 'package:flutter/widgets.dart';
 import 'package:puzzle_ball_gklabs/gen/assets.gen.dart';
 
 part 'preload_state.dart';
 
 class PreloadCubit extends Cubit<PreloadState> {
-  new(this.images, this.audio) : super(const PreloadState.initial());
+  new(this._images, this._audio) : super(const PreloadState.initial());
 
-  final Images images;
-  final AudioCache audio;
+  final Images _images;
+  final AudioCache _audio;
 
   /// Load items sequentially allows display of what is being loaded
   Future<void> loadSequentially() async {
     final phases = [
       PreloadPhase(
         'audio',
-        () => audio.loadAll([
+        () => _audio.loadAll([
           Assets.audio.background,
           Assets.audio.boostGravity,
           Assets.audio.boostJump,
@@ -28,7 +27,7 @@ class PreloadCubit extends Cubit<PreloadState> {
       ),
       PreloadPhase(
         'images',
-        () => images.loadAll([
+        () => _images.loadAll([
           Assets.images.loadingBall.path,
           Assets.images.parallax.layer1.path,
           Assets.images.parallax.layer2.path,
@@ -56,10 +55,9 @@ class PreloadCubit extends Cubit<PreloadState> {
   }
 }
 
-@immutable
 class PreloadPhase {
   const new(this.label, this.start);
 
   final String label;
-  final ValueGetter<Future<void>> start;
+  final Future<void> Function() start;
 }

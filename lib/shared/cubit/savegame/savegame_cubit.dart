@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'dart:convert';
 
 import 'package:bloc/bloc.dart';
@@ -8,7 +10,7 @@ part 'savegame_state.dart';
 
 class SavegameCubit extends Cubit<SavegameState> {
   new() : super(const SavegameState.initial()) {
-    loadGames();
+    unawaited(loadGames());
   }
 
   static const _key = 'savedGames';

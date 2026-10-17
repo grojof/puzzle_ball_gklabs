@@ -1,7 +1,7 @@
-import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:puzzle_ball_gklabs/l10n/l10n.dart';
 import 'package:puzzle_ball_gklabs/shared/cubit/savegame/savegame_cubit.dart';
 
@@ -105,7 +105,7 @@ class _SavegameTileState extends State<_SavegameTile> {
                     ],
                   ),
                 );
-                if (confirm ?? false) {
+                if ((confirm ?? false) && context.mounted) {
                   await context.read<SavegameCubit>().deleteGame(
                     widget.game.id,
                   );
@@ -128,10 +128,12 @@ class _SavegameTileState extends State<_SavegameTile> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '${l10n.titleCreated}: ${dateFormat.format(widget.game.createdAt)}',
+                  '${l10n.titleCreated}: '
+                  '${dateFormat.format(widget.game.createdAt)}',
                 ),
                 Text(
-                  '${l10n.titleLastPlayed}: ${dateFormat.format(widget.game.lastPlayed)}',
+                  '${l10n.titleLastPlayed}: '
+                  '${dateFormat.format(widget.game.lastPlayed)}',
                 ),
               ],
             ),
@@ -222,6 +224,7 @@ class _NewSavegameDialogState extends State<_NewSavegameDialog> {
                 lastPlayed: now,
               );
               await context.read<SavegameCubit>().addGame(newGame);
+              if (!context.mounted) return;
               Navigator.pop(context);
             }
           },

@@ -1,7 +1,10 @@
+import 'dart:async';
+
+import 'package:flame/cache.dart';
 import 'package:flame/game.dart' hide Route;
-import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:puzzle_ball_gklabs/game/game.dart';
 import 'package:puzzle_ball_gklabs/game/levels/levels.dart';
 import 'package:puzzle_ball_gklabs/game/levels/predefined_levels.dart';
@@ -32,7 +35,8 @@ class GamePage extends StatelessWidget {
     // 🔁 Si aún no ha terminado de cargar, redirige a la página de carga
     if (!preload.state.isComplete) {
       // ⚠️ Evita loops infinitos: solo redirige si no estás ya en /loading
-      Future.microtask(() {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!context.mounted) return;
         final current = GoRouter.of(context).state.path;
         if (current != '/loading') {
           context.go(
@@ -63,7 +67,7 @@ class GamePage extends StatelessWidget {
       l10n: context.l10n,
       audioCubit: context.read<AudioCubit>(),
       textStyle: textStyle,
-      images: preload.images,
+      images: context.read<Images>(),
       levelIndex: level - 1,
       levelsList: levelsList,
       onLevelCompleted: () {
@@ -77,7 +81,7 @@ class GamePage extends StatelessWidget {
             createdAt: savegame.createdAt,
             lastPlayed: DateTime.now(),
           );
-          context.read<SavegameCubit>().updateGame(updated);
+          unawaited(context.read<SavegameCubit>().updateGame(updated));
         }
         if (nextLevel <= totalLevels) {
           GoRouter.of(context)

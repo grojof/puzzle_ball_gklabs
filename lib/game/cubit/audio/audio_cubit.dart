@@ -1,23 +1,28 @@
+import 'dart:async';
+
 import 'package:audioplayers/audioplayers.dart';
 import 'package:equatable/equatable.dart';
-import 'package:material_ui/material_ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:puzzle_ball_gklabs/gen/assets.gen.dart';
 
 part 'audio_state.dart';
 
 class AudioCubit extends Cubit<AudioState> {
-  new({required this._audioCache}) : super(const AudioState()) {
-    _configureGlobalAudioContext();
-    _initMusicPlayer();
+  new() : super(const AudioState()) {
+    unawaited(_init());
   }
 
-  final AudioCache _audioCache;
-  final AudioPlayer musicPlayer = AudioPlayer();
+  final AudioPlayer _musicPlayer = AudioPlayer();
   final List<AudioPlayer> _activeEffects = [];
 
-  void _configureGlobalAudioContext() {
-    AudioPlayer.global.setAudioContext(
+  Future<void> _init() async {
+    await _configureGlobalAudioContext();
+    await _initMusicPlayer();
+  }
+
+  Future<void> _configureGlobalAudioContext() async {
+    await AudioPlayer.global.setAudioContext(
       AudioContext(
         // Media volume and routing: speakerphone mode would switch Android to
         // the (much quieter) call volume.
@@ -30,11 +35,11 @@ class AudioCubit extends Cubit<AudioState> {
   }
 
   Future<void> _initMusicPlayer() async {
-    await musicPlayer.setPlayerMode(PlayerMode.mediaPlayer);
+    await _musicPlayer.setPlayerMode(PlayerMode.mediaPlayer);
   }
 
   Future<void> _changeVolume(double volume) async {
-    await musicPlayer.setVolume(volume);
+    await _musicPlayer.setVolume(volume);
     for (final p in _activeEffects) {
       await p.setVolume(volume);
     }
@@ -52,11 +57,11 @@ class AudioCubit extends Cubit<AudioState> {
 
       effectPlayer.onPlayerComplete.listen((_) {
         _activeEffects.remove(effectPlayer);
-        effectPlayer.dispose();
+        unawaited(effectPlayer.dispose());
       });
 
       _activeEffects.add(effectPlayer);
-    } catch (e) {
+    } on Exception catch (e) {
       debugPrint('[AudioCubit] Error al reproducir efecto: $e');
     }
   }
@@ -64,19 +69,19 @@ class AudioCubit extends Cubit<AudioState> {
   Future<void> enableAndPlay() async {
     try {
       await _changeVolume(1);
-      await musicPlayer.stop();
-      await musicPlayer.setReleaseMode(ReleaseMode.loop);
+      await _musicPlayer.stop();
+      await _musicPlayer.setReleaseMode(ReleaseMode.loop);
       final bgmPath = Assets.audio.background.replaceFirst('assets/', '');
-      await musicPlayer.setSourceAsset(bgmPath);
-      await musicPlayer.resume();
-    } catch (e, stack) {
+      await _musicPlayer.setSourceAsset(bgmPath);
+      await _musicPlayer.resume();
+    } on Exception catch (e, stack) {
       debugPrint('[AudioCubit] Error en enableAndPlay: $e\n$stack');
     }
   }
 
   Future<void> disable() async {
     await _changeVolume(0);
-    await musicPlayer.pause();
+    await _musicPlayer.pause();
   }
 
   Future<void> toggleVolume() async {
@@ -89,14 +94,14 @@ class AudioCubit extends Cubit<AudioState> {
     }
   }
 
-  Future<void> setVolume(double volume) async => _changeVolume(volume);
+  Future<void> setVolume(double volume) => _changeVolume(volume);
 
   @override
   Future<void> close() async {
     for (final p in _activeEffects) {
       await p.dispose();
     }
-    await musicPlayer.dispose();
-    return super.close();
+    await _musicPlayer.dispose();
+    await super.close();
   }
 }
