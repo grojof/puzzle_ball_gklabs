@@ -1,0 +1,21 @@
+name: app_ui
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Runs only when the package changes, to keep CI minutes low.
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "packages/app_ui/**"
+      - ".github/workflows/app_ui.yaml"
+
+jobs:
+  build:
+    uses: VeryGoodOpenSource/very_good_workflows/.github/workflows/flutter_package.yml@v1
+    with:
+      flutter_version: "3.47.x"
+      working_directory: packages/app_ui

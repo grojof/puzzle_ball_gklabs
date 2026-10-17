@@ -1,0 +1,16 @@
+name: settings_repository
+description: The player's persisted preferences for Ball Odyssey.
+version: 0.1.0+1
+publish_to: none
+
+environment:
+  sdk: ^3.13.0
+
+dependencies:
+  key_value_store:
+    path: ../key_value_store
+  meta: ^1.16.0
+
+dev_dependencies:
+  test: ^1.26.3
+  very_good_analysis: ^11.0.0

@@ -1,11 +1,9 @@
 import 'dart:async';
 import 'dart:developer';
 
+import 'package:app_ui/app_ui.dart';
 import 'package:bloc/bloc.dart';
-import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
-import 'package:puzzle_ball_gklabs/gen/assets.gen.dart';
 
 class AppBlocObserver extends BlocObserver {
   @override
@@ -23,15 +21,13 @@ class AppBlocObserver extends BlocObserver {
 
 Future<void> bootstrap(FutureOr<Widget> Function() builder) async {
   FlutterError.onError = (details) {
+    FlutterError.presentError(details);
     log(details.exceptionAsString(), stackTrace: details.stack);
   };
 
   Bloc.observer = AppBlocObserver();
 
-  LicenseRegistry.addLicense(() async* {
-    final poppins = await rootBundle.loadString(Assets.licenses.poppins.ofl);
-    yield LicenseEntryWithLineBreaks(['poppins'], poppins);
-  });
+  registerAppUiLicenses();
 
   // Add cross-flavor configuration here
 

@@ -141,5 +141,53 @@
   "controlJoystickDesc": "Use the touch joystick or keys to move the ball.",
   "@controlJoystickDesc": {
     "description": "Description for joystick/touch control mode"
+  },
+  "settingsTitle": "Settings",
+  "@settingsTitle": {
+    "description": "Title of the settings screen and the buttons that open it"
+  },
+  "settingsMusicVolume": "Music",
+  "@settingsMusicVolume": {
+    "description": "Label of the music volume slider"
+  },
+  "settingsEffectsVolume": "Sound effects",
+  "@settingsEffectsVolume": {
+    "description": "Label of the sound effects volume slider"
+  },
+  "settingsControls": "Controls",
+  "@settingsControls": {
+    "description": "Section title for the control mode"
+  },
+  "settingsLanguageDevice": "Device language",
+  "@settingsLanguageDevice": {
+    "description": "Language option that follows the device language"
+  },
+  "soundMute": "Mute sound",
+  "@soundMute": {
+    "description": "Tooltip of the quick sound toggle when sound is on"
+  },
+  "soundUnmute": "Unmute sound",
+  "@soundUnmute": {
+    "description": "Tooltip of the quick sound toggle when sound is muted"
+  },
+  "pauseButton": "Pause",
+  "@pauseButton": {
+    "description": "Tooltip of the in-game pause button"
+  },
+  "pauseTitle": "Paused",
+  "@pauseTitle": {
+    "description": "Title of the pause menu"
+  },
+  "pauseResume": "Resume",
+  "@pauseResume": {
+    "description": "Pause menu action that resumes the level"
+  },
+  "pauseRestart": "Restart level",
+  "@pauseRestart": {
+    "description": "Pause menu action that restarts the level"
+  },
+  "noSavegameSelected": "No savegame selected.",
+  "@noSavegameSelected": {
+    "description": "Shown when a screen needs a savegame and none is selected"
   }
 }

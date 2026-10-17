@@ -145,5 +145,17 @@
   "controlJoystickDesc": "Utilitza el joystick tàctil o les tecles per moure la bola.",
   "@controlJoystickDesc": {
     "description": "Descripció per al mode de control per joystick/tàctil"
-  }
+  },
+  "settingsTitle": "Configuració",
+  "settingsMusicVolume": "Música",
+  "settingsEffectsVolume": "Efectes de so",
+  "settingsControls": "Controls",
+  "settingsLanguageDevice": "Idioma del dispositiu",
+  "soundMute": "Silencia el so",
+  "soundUnmute": "Activa el so",
+  "pauseButton": "Pausa",
+  "pauseTitle": "En pausa",
+  "pauseResume": "Continua",
+  "pauseRestart": "Reinicia el nivell",
+  "noSavegameSelected": "No hi ha cap partida seleccionada."
 }

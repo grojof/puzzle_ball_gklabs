@@ -1,0 +1,35 @@
+name: app_ui
+description: Ball Odyssey theme, colors and bundled fonts.
+version: 0.1.0+1
+publish_to: none
+
+environment:
+  sdk: ^3.13.0
+  flutter: ^3.47.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  material_ui: ^1.7.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  very_good_analysis: ^11.0.0
+
+flutter:
+  assets:
+    - assets/fonts/poppins/OFL.txt
+  fonts:
+    # Fonts from https://github.com/google/fonts at commit
+    # 47d54ca1ebb14fd864695f1d39dc734f39017c33 (SIL Open Font License 1.1).
+    - family: Poppins
+      fonts:
+        - asset: assets/fonts/poppins/Poppins-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/poppins/Poppins-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/poppins/Poppins-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/poppins/Poppins-Bold.ttf
+          weight: 700

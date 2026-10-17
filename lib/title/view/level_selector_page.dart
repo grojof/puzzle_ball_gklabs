@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:puzzle_ball_gklabs/app/router.dart';
 import 'package:puzzle_ball_gklabs/l10n/l10n.dart';
 import 'package:puzzle_ball_gklabs/shared/cubit/cubit.dart';
 import 'package:puzzle_ball_gklabs/shared/cubit/savegame/savegame_cubit.dart';
@@ -17,26 +18,13 @@ class LevelSelectorPage extends StatelessWidget {
     final savegameId = GoRouterState.of(context)
         .uri
         .queryParameters['savegame'];
-    final games = context.watch<SavegameCubit>().state.games;
-    final partida = games.firstWhere(
-      (g) => g.id == savegameId,
-      orElse: () => games.isNotEmpty
-          ? games.first
-          : SavedGame(
-              id: '',
-              seed: '',
-              totalLevels: 0,
-              currentLevel: 0,
-              createdAt: DateTime.now(),
-              lastPlayed: DateTime.now(),
-            ),
-    );
-    final isValid = partida.id.isNotEmpty;
+    final savegames = context.watch<SavegameCubit>().state;
+    final partida = savegameId == null ? null : savegames.byId(savegameId);
 
-    if (!isValid) {
+    if (partida == null) {
       return Scaffold(
         appBar: AppBar(title: Text(l10n.titleSelectLevel)),
-        body: const Center(child: Text('No savegame selected.')),
+        body: Center(child: Text(l10n.noSavegameSelected)),
       );
     }
 
@@ -47,7 +35,7 @@ class LevelSelectorPage extends StatelessWidget {
           IconButton(
             icon: const Icon(Icons.home),
             tooltip: l10n.titleButtonMenu,
-            onPressed: () => context.go('/menu'),
+            onPressed: () => context.go(AppRoutes.menu),
           ),
         ],
       ),
@@ -112,17 +100,14 @@ class _LevelButton extends StatelessWidget {
     return GestureDetector(
       onTap: isUnlocked
           ? () {
-              // Actualiza el currentLevel de la partida si es necesario
-              final updated = SavedGame(
-                id: partida.id,
-                seed: partida.seed,
-                totalLevels: partida.totalLevels,
-                currentLevel: levelNumber,
-                createdAt: partida.createdAt,
-                lastPlayed: DateTime.now(),
+              // Marks the savegame as played now; progress never goes back.
+              unawaited(
+                context.read<SavegameCubit>().recordProgress(
+                  partida.id,
+                  levelNumber,
+                ),
               );
-              unawaited(context.read<SavegameCubit>().updateGame(updated));
-              context.go('/game?level=$levelNumber&savegame=${partida.id}');
+              context.go(AppRoutes.gameAt(partida.id, levelNumber));
             }
           : null,
       child: Container(

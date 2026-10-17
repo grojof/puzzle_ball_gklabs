@@ -53,10 +53,14 @@ flutter analyze
 dart run bloc_tools:bloc lint .
 ```
 
-- Packages under `packages/` keep **100 %** coverage; the app's threshold (`min_coverage` in
-  `.github/workflows/main.yaml`) rises as the rebuild lands ([ADR-0005](decisions/0005-layered-architecture.md)).
+- Packages under `packages/` keep **100 %** coverage and have their own CI workflows, which run only when the package
+  changes. The app's threshold (`min_coverage` in `.github/workflows/main.yaml`, now 70 %) rises as the rebuild lands
+  ([ADR-0005](decisions/0005-layered-architecture.md)).
 - Analysis uses `very_good_analysis` plus `bloc_lint` and must report no issues.
-- Tests mirror `lib/`. Game components are tested with `flame_test`.
+- Tests mirror `lib/`. `test/helpers/pump_app.dart` pumps widgets with in-memory storage and fake audio;
+  `test/helpers/game_helpers.dart` builds games on flat levels with 1×1 images.
+- Game tests run real Box2D physics, compiled for the host: Visual Studio Build Tools on Windows, the default
+  toolchain on Linux CI.
 
 ## Localization
 
@@ -80,6 +84,38 @@ app passes `localizationsDelegates` and `supportedLocales` from `lib/l10n/l10n.d
 | Native splash (Android, web) | `flutter_native_splash` | `dart run flutter_native_splash:create` |
 
 The icon and splash generators read their settings from `pubspec.yaml`. Generated files are committed.
+
+## Audio assets
+
+The shipped files in `assets/audio/` are made from the original masters (kept in git history) with
+`tool/audio/process.sh`, which uses ffmpeg's two-pass EBU R128 `loudnorm`:
+
+```sh
+mkdir -p /tmp/audio-src && git archive efd3d1f assets/audio | tar -x -C /tmp/audio-src
+tool/audio/process.sh /tmp/audio-src/assets/audio
+```
+
+- Effects: mono, 44.1 kHz, normalized to −16 LUFS (true peak −1.5 dBTP), MP3 128 kbps.
+- Background music: stereo, normalized to −20 LUFS so effects sit on top, MP3 128 kbps (about 4.7 MB; the
+  web download must stay under 5 MB).
+
+Override the targets with `EFFECTS_LUFS`, `MUSIC_LUFS` and `TRUE_PEAK`. Judge loudness on a real phone or in a
+browser: the Android emulator's audio output crackles on Windows hosts.
+
+## Memory soak test
+
+`tool/soak/level_loads.sh` loads a level repeatedly on a device or emulator through `adb` taps and prints the app's
+memory after every batch, to catch leaks between level loads (the `game-session` spec allows at most 10 % growth over
+30 loads):
+
+```sh
+flutter run --flavor development --target lib/main_development.dart   # then open any level
+tool/soak/level_loads.sh 30 10
+```
+
+The default taps fit a 1080×2400 screen; set `TAPS` (space-separated `x,y` pairs), `SERIAL`, `APP_ID` or
+`TAP_DELAY` for other devices or flows. For retainers, connect to the VM service and compare live instance counts
+before and after a batch (DevTools *Memory* view, or `getAllocationProfile` with `vm_service`).
 
 ## Continuous integration
 
@@ -105,6 +141,8 @@ dart format --set-exit-if-changed lib test
 flutter analyze
 dart run bloc_tools:bloc lint .
 flutter test --coverage --test-randomize-ordering-seed random
+# each package (pure Dart ones with dart, app_ui with flutter)
+for p in packages/*/; do (cd "$p" && dart pub global run very_good_cli:very_good test --coverage --min-coverage 100); done
 npx --yes cspell@9 --config .github/cspell.json --no-progress "**/*.md"
 # only when a pubspec.yaml changed:
 very_good packages check licenses --dependency-type=direct-main --dependency-type=transitive --allowed="MIT,BSD-3-Clause,BSD-2-Clause,Apache-2.0" --skip-packages="pubspec_lock_parse"

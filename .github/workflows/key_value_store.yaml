@@ -1,0 +1,21 @@
+name: key_value_store
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Runs only when the package changes, to keep CI minutes low.
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "packages/key_value_store/**"
+      - ".github/workflows/key_value_store.yaml"
+
+jobs:
+  build:
+    uses: VeryGoodOpenSource/very_good_workflows/.github/workflows/dart_package.yml@v1
+    with:
+      dart_sdk: "3.13.5"
+      working_directory: packages/key_value_store

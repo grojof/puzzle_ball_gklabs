@@ -26,5 +26,6 @@ jobs:
       flutter_version: "3.47.x"
       run_bloc_lint: true
       # The app is being rebuilt; the threshold rises as each part lands with its tests
-      # (ADR-0005). Packages under packages/ get their own jobs at 100 %.
-      min_coverage: 0
+      # (ADR-0005): 71.8 % after rebuild-runtime-audio-settings, whose untested remainder is
+      # the menus the next change replaces. Packages get their own jobs at 100 %.
+      min_coverage: 70
