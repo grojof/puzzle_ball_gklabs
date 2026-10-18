@@ -98,6 +98,9 @@ Both use a seeded `Mulberry32`. They are cached by (biome, variant), keeping the
   side by side and offset by `cameraX × factor` (0.1, 0.25 and 0.45).
 - **Particles:** up to 48, with positions seeded, drifting with time, wrapped to the screen and drawn as small
   circles or flakes.
+- **Calm by default:** after the play-test, where particles were too visible and busy and could tire the eyes,
+  a biome shows 20 particles (the forest 12 fireflies), dim (about half brightness at most), drifting and twinkling
+  slowly. All particles are drawn from one sprite in a single `drawAtlas` call.
 
 The night forest keeps the painted `ParallaxComponent`. A variant only applies a light color filter (the time of
 day) and adds the firefly particles.
