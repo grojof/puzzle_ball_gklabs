@@ -8,6 +8,7 @@ import 'package:puzzle_ball_gklabs/game/components/floor_component.dart';
 import 'package:puzzle_ball_gklabs/game/components/goal_component.dart';
 import 'package:puzzle_ball_gklabs/game/components/ramp_component.dart';
 import 'package:puzzle_ball_gklabs/game/input/movement_intent.dart';
+import 'package:puzzle_ball_gklabs/haptics/haptics.dart';
 
 /// The player's ball: moves and jumps from the [MovementIntent], takes
 /// boosts, and reports reaching the goal.
@@ -18,6 +19,7 @@ class BallComponent extends BodyComponent with ContactCallbacks {
   new({
     required this.intent,
     required this.audio,
+    required this.haptics,
     required this.initialPosition,
     required this.radius,
     required this.onGoalReached,
@@ -41,6 +43,7 @@ class BallComponent extends BodyComponent with ContactCallbacks {
 
   final MovementIntent intent;
   final AudioSink audio;
+  final HapticsSink haptics;
   final Vector2 initialPosition;
   final double radius;
   final VoidCallback onGoalReached;
@@ -100,6 +103,7 @@ class BallComponent extends BodyComponent with ContactCallbacks {
       body.applyLinearImpulse(Vector2(0, -jumpImpulse));
       _sinceGround = double.infinity;
       audio.play(GameSound.jump);
+      haptics.play(Haptic.jump);
     }
   }
 
@@ -122,6 +126,7 @@ class BallComponent extends BodyComponent with ContactCallbacks {
   bool _startBoost(GameSound sound) {
     if (isBoosted) return false;
     audio.play(sound);
+    haptics.play(Haptic.boost);
     _boostTimer.start();
     return true;
   }

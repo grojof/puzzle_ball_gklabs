@@ -37,6 +37,10 @@ class SettingsCubit extends Cubit<SettingsState> {
   Future<void> setControlMode(ControlMode mode) =>
       _update(state.settings.copyWith(controlMode: mode));
 
+  /// Turns the vibration on jumps, boosts and checkpoints on or off.
+  Future<void> setVibration({required bool enabled}) =>
+      _update(state.settings.copyWith(vibration: enabled));
+
   /// Sets the interface language, or follows the device when [code] is null.
   Future<void> setLanguage(String? code) => _update(
     code == null

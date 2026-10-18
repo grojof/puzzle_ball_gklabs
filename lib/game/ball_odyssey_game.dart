@@ -8,14 +8,16 @@ import 'package:flame_forge2d/flame_forge2d.dart';
 import 'package:flutter/painting.dart';
 import 'package:level_generator/level_generator.dart';
 import 'package:puzzle_ball_gklabs/audio/audio_service.dart';
+import 'package:puzzle_ball_gklabs/game/camera/camera_controller.dart';
+import 'package:puzzle_ball_gklabs/game/components/hud_layout.dart';
 import 'package:puzzle_ball_gklabs/game/components/jump_button_component.dart';
 import 'package:puzzle_ball_gklabs/game/components/level_component.dart';
 import 'package:puzzle_ball_gklabs/game/game_config.dart';
 import 'package:puzzle_ball_gklabs/game/input/manual_input.dart';
 import 'package:puzzle_ball_gklabs/game/input/movement_intent.dart';
 import 'package:puzzle_ball_gklabs/game/input/tilt_input.dart';
-import 'package:puzzle_ball_gklabs/game/utils/camera_utils.dart';
 import 'package:puzzle_ball_gklabs/gen/assets.gen.dart';
+import 'package:puzzle_ball_gklabs/haptics/haptics.dart';
 import 'package:sensors_plus/sensors_plus.dart';
 
 /// One play session: a single game that swaps levels in place
@@ -30,6 +32,7 @@ class BallOdysseyGame extends Forge2DGame with HasKeyboardHandlerComponents {
     required int startLevel,
     required this.totalLevels,
     required this.audio,
+    required this.haptics,
     required this._config,
     required Images images,
     required this.levelLabel,
@@ -48,16 +51,16 @@ class BallOdysseyGame extends Forge2DGame with HasKeyboardHandlerComponents {
   /// Pixels per meter of the physics world; camera zoom is relative to it.
   static const metersToPixelsScale = 40.0;
 
-  static const _joystickRadius = 40.0;
-  static const _knobRadius = 12.0;
-  static const _jumpButtonSize = 48.0;
-  static const _defaultAnchor = Anchor(0.5, 0.85);
-  static const _cameraLerp = 0.08;
+  /// The joystick's radius before it is scaled to the screen (design D7).
+  static const _joystickRadius = 50.0;
 
   /// Builds level number `n` (1-based).
   final LevelData Function(int levelNumber) levelFor;
   final int totalLevels;
   final AudioSink audio;
+
+  /// Where vibration events go (player-controls spec).
+  final HapticsSink haptics;
 
   /// The "Level n" text shown when a level starts.
   final String Function(int levelNumber) levelLabel;
@@ -78,13 +81,25 @@ class BallOdysseyGame extends Forge2DGame with HasKeyboardHandlerComponents {
   int _levelNumber;
   LevelComponent? _level;
   Component? _input;
-  late final JoystickComponent _joystick;
+  final JoystickComponent _joystick = JoystickComponent(
+    anchor: Anchor.bottomLeft,
+    knob: CircleComponent(
+      radius: _joystickRadius * 0.4,
+      paint: Paint()..color = const Color(0xFF2196F3),
+    ),
+    background: CircleComponent(
+      radius: _joystickRadius,
+      paint: Paint()..color = const Color(0x552196F3),
+    ),
+    margin: const EdgeInsets.only(left: 16, bottom: 16),
+  );
   late final ParallaxComponent _parallax;
   late final ParallaxLayer _layer2;
   late final ParallaxLayer _layer3;
   final Vector2 _parallaxVelocity = Vector2.zero();
-  double _targetZoom = 1;
-  Anchor _targetAnchor = _defaultAnchor;
+  final CameraController _camera = CameraController(
+    metersToPixels: metersToPixelsScale,
+  );
   bool _loading = false;
 
   /// The level being played (1-based).
@@ -105,7 +120,8 @@ class BallOdysseyGame extends Forge2DGame with HasKeyboardHandlerComponents {
   Future<void> onLoad() async {
     // Initializes Forge2D (on the web, loads Box2D) before any body exists.
     await super.onLoad();
-    camera.viewfinder.anchor = _defaultAnchor;
+    camera.viewfinder.anchor = Anchor.center;
+    _camera.viewport = size;
     await _addBackdrop();
     await _addHud();
     await _applyInput();
@@ -135,25 +151,13 @@ class BallOdysseyGame extends Forge2DGame with HasKeyboardHandlerComponents {
   }
 
   Future<void> _addHud() async {
-    _joystick = JoystickComponent(
-      anchor: Anchor.bottomLeft,
-      knob: CircleComponent(
-        radius: _knobRadius,
-        paint: Paint()..color = const Color(0xFF2196F3),
-      ),
-      background: CircleComponent(
-        radius: _joystickRadius,
-        paint: Paint()..color = const Color(0x552196F3),
-      ),
-      margin: const EdgeInsets.only(left: 20, bottom: 20),
-    );
     await camera.viewport.add(
-      JumpButtonComponent(
-        size: Vector2.all(_jumpButtonSize),
-        onPressed: intent.requestJump,
-      ),
+      JumpButtonComponent(onPressed: intent.requestJump),
     );
   }
+
+  /// The on-screen joystick, in joystick mode.
+  JoystickComponent get joystick => _joystick;
 
   /// Applies new settings during the session, swapping the input component.
   void applyConfig(GameConfig config) {
@@ -199,15 +203,18 @@ class BallOdysseyGame extends Forge2DGame with HasKeyboardHandlerComponents {
       data: levelFor(levelNumber),
       intent: intent,
       audio: audio,
+      haptics: haptics,
       onFell: () => unawaited(restartLevel()),
       onCompleted: () => unawaited(_completeLevel()),
+      onRespawned: _frameBall,
     );
     _level = level;
     await world.add(level);
-    camera
-      ..follow(level.ball, maxSpeed: 400, snap: true)
-      ..viewfinder.zoom = 1;
-    _targetZoom = 1;
+    final start = level.data.ballStart;
+    _camera
+      ..setLevel(level.data)
+      ..reset(Vector2(start.x, start.y));
+    _applyCamera();
     _loading = false;
     await _showLevelIndicator(levelNumber);
   }
@@ -248,38 +255,32 @@ class BallOdysseyGame extends Forge2DGame with HasKeyboardHandlerComponents {
     _layer2.update(Vector2(10 * dt, 0), dt);
     _layer3.update(Vector2(20 * dt, 0), dt);
 
-    adjustCameraHeightForTerrain(
-      camera,
-      level.data.floors,
-      ball.position,
-      lookAhead: 8,
-      lookBehind: 8,
-      lookUp: 3,
-      lookDown: 3,
-      anchorLower: const Anchor(0.5, 0.75),
-      anchorHigher: const Anchor(0.5, 0.95),
-      setTargetAnchor: (anchor) => _targetAnchor = anchor,
-      ballVelocityX: ball.linearVelocity.x,
-    );
-    adjustCameraForBoostsSmooth(
-      camera,
-      level.data.boosts,
-      ball.position,
-      1,
-      camera.viewfinder.zoom,
-      (zoom) => _targetZoom = zoom,
-    );
-    _smoothCamera();
+    _camera.update(dt, ball.position, ball.linearVelocity);
+    _applyCamera();
   }
 
-  void _smoothCamera() {
-    final viewfinder = camera.viewfinder;
-    viewfinder.zoom += (_targetZoom - viewfinder.zoom) * _cameraLerp;
-    final anchor = viewfinder.anchor;
-    viewfinder.anchor = Anchor(
-      anchor.x + (_targetAnchor.x - anchor.x) * _cameraLerp,
-      anchor.y + (_targetAnchor.y - anchor.y) * _cameraLerp,
-    );
+  @override
+  void onGameResize(Vector2 size) {
+    // The joystick mirrors the jump button; its margin is set before the
+    // HUD repositions on resize.
+    final margin = HudLayout.margin(size);
+    _joystick
+      ..scale = Vector2.all(HudLayout.controlSize(size) / (2 * _joystickRadius))
+      ..margin = EdgeInsets.only(left: margin, bottom: margin);
+    super.onGameResize(size);
+    _camera.viewport = size;
+  }
+
+  /// Frames the ball at once after a respawn.
+  void _frameBall() {
+    _camera.reset(_level!.ball.body.position);
+    _applyCamera();
+  }
+
+  void _applyCamera() {
+    camera.viewfinder
+      ..position = _camera.centre
+      ..zoom = _camera.zoom;
   }
 
   /// Releases everything the session holds. Called when the game screen is

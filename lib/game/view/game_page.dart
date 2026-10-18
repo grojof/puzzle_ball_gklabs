@@ -12,6 +12,7 @@ import 'package:puzzle_ball_gklabs/game/ball_envelope.dart';
 import 'package:puzzle_ball_gklabs/game/ball_odyssey_game.dart';
 import 'package:puzzle_ball_gklabs/game/game_config.dart';
 import 'package:puzzle_ball_gklabs/game/view/pause_menu.dart';
+import 'package:puzzle_ball_gklabs/haptics/haptics.dart';
 import 'package:puzzle_ball_gklabs/l10n/l10n.dart';
 import 'package:puzzle_ball_gklabs/loading/loading.dart';
 import 'package:puzzle_ball_gklabs/settings/settings.dart';
@@ -81,6 +82,7 @@ class GamePageState extends State<GamePage> {
       startLevel: widget.level.clamp(1, savegame.totalLevels),
       totalLevels: savegame.totalLevels,
       audio: context.read<AudioService>(),
+      haptics: _haptics(context.read<SettingsCubit>()),
       config: _configOf(context.read<SettingsCubit>().state),
       images: context.read<Images>(),
       levelLabel: (n) => '${context.l10n.labelLevel} $n',
@@ -94,6 +96,11 @@ class GamePageState extends State<GamePage> {
       },
     );
   }
+
+  /// Vibration that follows the current setting; none on the web.
+  HapticsSink _haptics(SettingsCubit settings) => widget.isWeb
+      ? const NoHaptics()
+      : DeviceHaptics(enabled: () => settings.state.settings.vibration);
 
   GameConfig _configOf(SettingsState state) => GameConfig(
     controlMode: state.settings.controlMode,

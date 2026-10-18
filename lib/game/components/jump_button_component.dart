@@ -1,74 +1,69 @@
 import 'package:flame/components.dart';
 import 'package:flame/events.dart';
-import 'package:flame_forge2d/flame_forge2d.dart';
-import 'package:material_ui/material_ui.dart';
+import 'package:flutter/painting.dart';
+import 'package:puzzle_ball_gklabs/game/components/hud_layout.dart';
 
-class JumpButtonComponent extends PositionComponent
-    with HasGameReference<Forge2DGame>, TapCallbacks {
-  new({
-    required this.onPressed,
-    required Vector2 size,
-    this.color = const Color(0xFF42A5F5),
-    this.pressedColor = const Color(0xFF90CAF9),
-    this.margin = const EdgeInsets.only(right: 20, bottom: 20),
-    this.isEnabled = true,
-  }) : _paint = Paint()..color = color {
-    this.size = size;
-    anchor = Anchor.bottomRight;
-  }
+/// The on-screen jump button: in the bottom-right corner, sized for the
+/// thumb, with an up arrow and a pressed state (player-controls spec).
+class JumpButtonComponent extends PositionComponent with TapCallbacks {
+  new({required this.onPressed}) : super(anchor: Anchor.bottomRight);
 
   final VoidCallback onPressed;
-  final Color color;
-  final Color pressedColor;
-  final EdgeInsets margin;
 
-  bool isPressed = false;
-  bool isEnabled;
+  static final _fill = Paint()..color = const Color(0xCC1E88E5);
+  static final _pressedFill = Paint()..color = const Color(0xFF90CAF9);
+  static final _arrow = Paint()..color = const Color(0xFFFFFFFF);
 
-  late final Paint _paint;
+  bool _pressed = false;
+
+  /// Whether the button is held down.
+  bool get isPressed => _pressed;
+
+  @override
+  void onGameResize(Vector2 size) {
+    super.onGameResize(size);
+    this.size = Vector2.all(HudLayout.controlSize(size));
+    final margin = HudLayout.margin(size);
+    position = Vector2(size.x - margin, size.y - margin);
+  }
 
   @override
   void onTapDown(TapDownEvent event) {
-    isPressed = true;
+    _pressed = true;
     onPressed();
   }
 
   @override
-  void onTapUp(TapUpEvent event) {
-    isPressed = false;
-  }
+  void onTapUp(TapUpEvent event) => _pressed = false;
 
   @override
-  void onTapCancel(TapCancelEvent event) {
-    isPressed = false;
-  }
-
-  @override
-  void update(double dt) {
-    super.update(dt);
-
-    final viewportSize = game.size;
-    position = Vector2(
-      viewportSize.x - margin.right,
-      viewportSize.y - margin.bottom,
-    );
-
-    // Actualiza el color dinámicamente según estado
-    final targetColor = isPressed ? pressedColor : color;
-    _paint.color = isEnabled
-        ? targetColor.withValues(alpha: 1)
-        : targetColor.withValues(alpha: 0.3);
-  }
+  void onTapCancel(TapCancelEvent event) => _pressed = false;
 
   @override
   void render(Canvas canvas) {
-    super.render(canvas);
-    canvas.drawCircle(size.toOffset() / 2, size.x / 2, _paint);
+    final radius = size.x / 2;
+    canvas
+      ..drawCircle(
+        Offset(radius, radius),
+        radius,
+        _pressed ? _pressedFill : _fill,
+      )
+      ..drawPath(arrowPath(size.x), _arrow);
   }
 
-  /// Puedes usar este setter desde el game para actualizar si puede saltar
-  bool get enabled => isEnabled;
-  set enabled(bool value) {
-    isEnabled = value;
+  /// An up arrow centred in a button [diameter] across: a head over a
+  /// shaft.
+  static Path arrowPath(double diameter) {
+    final c = diameter / 2;
+    final unit = diameter / 10;
+    return Path()
+      ..moveTo(c, c - 3 * unit)
+      ..lineTo(c + 2.5 * unit, c)
+      ..lineTo(c + unit, c)
+      ..lineTo(c + unit, c + 3 * unit)
+      ..lineTo(c - unit, c + 3 * unit)
+      ..lineTo(c - unit, c)
+      ..lineTo(c - 2.5 * unit, c)
+      ..close();
   }
 }

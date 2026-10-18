@@ -18,6 +18,7 @@ class PlayerSettings {
     this.effectsVolume = defaultVolume,
     this.muted = false,
     this.controlMode = ControlMode.joystick,
+    this.vibration = true,
     this.languageCode,
   });
 
@@ -39,6 +40,9 @@ class PlayerSettings {
   /// How the player moves the ball.
   final ControlMode controlMode;
 
+  /// Whether the device vibrates on jumps, boosts and checkpoints.
+  final bool vibration;
+
   /// The chosen language, or `null` to follow the device.
   final String? languageCode;
 
@@ -50,6 +54,7 @@ class PlayerSettings {
     double? effectsVolume,
     bool? muted,
     ControlMode? controlMode,
+    bool? vibration,
     String? languageCode,
     bool followDeviceLanguage = false,
   }) {
@@ -58,6 +63,7 @@ class PlayerSettings {
       effectsVolume: effectsVolume ?? this.effectsVolume,
       muted: muted ?? this.muted,
       controlMode: controlMode ?? this.controlMode,
+      vibration: vibration ?? this.vibration,
       languageCode: followDeviceLanguage
           ? null
           : languageCode ?? this.languageCode,
@@ -71,15 +77,23 @@ class PlayerSettings {
       other.effectsVolume == effectsVolume &&
       other.muted == muted &&
       other.controlMode == controlMode &&
+      other.vibration == vibration &&
       other.languageCode == languageCode;
 
   @override
-  int get hashCode =>
-      Object.hash(musicVolume, effectsVolume, muted, controlMode, languageCode);
+  int get hashCode => Object.hash(
+    musicVolume,
+    effectsVolume,
+    muted,
+    controlMode,
+    vibration,
+    languageCode,
+  );
 
   @override
   String toString() =>
       'PlayerSettings(musicVolume: $musicVolume, '
       'effectsVolume: $effectsVolume, muted: $muted, '
-      'controlMode: $controlMode, languageCode: $languageCode)';
+      'controlMode: $controlMode, vibration: $vibration, '
+      'languageCode: $languageCode)';
 }

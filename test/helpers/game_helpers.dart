@@ -8,6 +8,7 @@ import 'package:puzzle_ball_gklabs/audio/audio_service.dart';
 import 'package:puzzle_ball_gklabs/game/ball_odyssey_game.dart';
 import 'package:puzzle_ball_gklabs/game/game_config.dart';
 import 'package:puzzle_ball_gklabs/gen/assets.gen.dart';
+import 'package:puzzle_ball_gklabs/haptics/haptics.dart';
 import 'package:sensors_plus/sensors_plus.dart';
 
 /// An image cache holding a 1×1 image for every asset the game draws.
@@ -31,6 +32,14 @@ class RecordingAudioSink implements AudioSink {
 
   @override
   void play(GameSound sound) => played.add(sound);
+}
+
+/// Records the vibration events the game sends.
+class RecordingHaptics implements HapticsSink {
+  final List<Haptic> played = [];
+
+  @override
+  void play(Haptic haptic) => played.add(haptic);
 }
 
 /// A flat level: one run of [tiles] tiles at y = 4, the ball above its first
@@ -66,6 +75,7 @@ BallOdysseyGame testGame({
   int startLevel = 1,
   GameConfig config = const GameConfig(),
   RecordingAudioSink? audio,
+  RecordingHaptics? haptics,
   StreamController<AccelerometerEvent>? sensor,
   void Function(int)? onLevelCompleted,
   void Function()? onSessionCompleted,
@@ -75,6 +85,7 @@ BallOdysseyGame testGame({
     startLevel: startLevel,
     totalLevels: totalLevels,
     audio: audio ?? RecordingAudioSink(),
+    haptics: haptics ?? RecordingHaptics(),
     config: config,
     images: images,
     levelLabel: (n) => 'Level $n',

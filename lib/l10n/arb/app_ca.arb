@@ -157,5 +157,7 @@
   "pauseTitle": "En pausa",
   "pauseResume": "Continua",
   "pauseRestart": "Reinicia el nivell",
-  "noSavegameSelected": "No hi ha cap partida seleccionada."
+  "noSavegameSelected": "No hi ha cap partida seleccionada.",
+  "settingsVibration": "Vibració",
+  "settingsVibrationDesc": "Vibra en saltar, amb els impulsos i als punts de control."
 }

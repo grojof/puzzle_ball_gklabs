@@ -28,15 +28,34 @@ void main() {
         expect(find.text(l10n.settingsEffectsVolume), findsOneWidget);
         expect(find.text(l10n.controlJoystick), findsOneWidget);
         expect(find.text(l10n.controlTilt), findsOneWidget);
+        expect(find.text(l10n.settingsVibration), findsOneWidget);
         expect(find.text(l10n.settingsLanguageDevice), findsOneWidget);
         expect(find.text('100 %'), findsNWidgets(2));
       });
     }
 
-    testWidgets('does not offer tilt on the web', (tester) async {
+    testWidgets('does not offer tilt or vibration on the web', (tester) async {
       await tester.pumpApp(const SettingsPage(isWeb: true));
 
       expect(find.byKey(const Key('settings_control_tilt')), findsNothing);
+      expect(find.byKey(const Key('settings_vibration')), findsNothing);
+    });
+
+    testWidgets('the vibration switch updates and stores the setting', (
+      tester,
+    ) async {
+      final deps = await tester.pumpApp(const SettingsPage(isWeb: false));
+      expect(deps.settings.state.settings.vibration, isTrue);
+
+      await tester.scrollUntilVisible(
+        find.byKey(const Key('settings_vibration')),
+        100,
+      );
+      await tester.tap(find.byKey(const Key('settings_vibration')));
+      await tester.pumpAndSettle();
+
+      expect(deps.settings.state.settings.vibration, isFalse);
+      expect(await deps.store.getBool('vibration'), isFalse);
     });
 
     testWidgets('dragging the music slider applies and stores the volume', (

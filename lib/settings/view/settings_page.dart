@@ -73,6 +73,15 @@ class SettingsPage extends StatelessWidget {
                 title: l10n.controlTilt,
                 subtitle: l10n.controlTiltDesc,
               ),
+              SwitchListTile(
+                key: const Key('settings_vibration'),
+                secondary: const Icon(Icons.vibration),
+                title: Text(l10n.settingsVibration),
+                subtitle: Text(l10n.settingsVibrationDesc),
+                value: settings.vibration,
+                onChanged: (enabled) =>
+                    unawaited(cubit.setVibration(enabled: enabled)),
+              ),
             ],
             const SizedBox(height: 24),
             Text(l10n.settingsLanguage, style: theme.textTheme.titleMedium),

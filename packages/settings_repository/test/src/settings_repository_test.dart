@@ -17,6 +17,7 @@ void main() {
         effectsVolume: 0.7,
         muted: true,
         controlMode: ControlMode.tilt,
+        vibration: false,
         languageCode: 'ca',
       );
 
@@ -117,6 +118,7 @@ void main() {
             'effectsVolume': 1,
             'muted': 'yes',
             'useSensorControl': 1,
+            'vibration': 'on',
             'languageCode': 3,
           }),
         );

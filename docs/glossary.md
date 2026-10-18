@@ -31,3 +31,4 @@ audience: maintainer
 | **Checkpoint** | A sensor that the ball activates by passing; after a fall the ball respawns above the last active one. |
 | **Goal** | The sensor at the end of a level that completes it. |
 | **Meter** | The physics unit; `metersToPixels` converts it to screen pixels. |
+| **Look-ahead** | How much more of the course the camera shows ahead of the ball, growing with its speed. |
