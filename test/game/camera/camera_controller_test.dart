@@ -203,6 +203,32 @@ void main() {
       expect(camera.zoom, closeTo(rest, 0.01));
     });
 
+    test('zooms out to keep the ground in view high above it', () {
+      final camera = _camera(landscape)..reset(restOnGround);
+      final rest = camera.zoom;
+      // A jump boost: 7 m above the ground, held at the top for a moment.
+      for (var t = 0.0; t < 1.5; t += _dt) {
+        final y = 3.8 - 7 * (t < 1 ? t : 1);
+        camera.update(_dt, Vector2(5, y), Vector2.zero());
+      }
+      expect(camera.zoom, lessThan(rest));
+      expect(_screenFraction(camera, 4), lessThanOrEqualTo(0.7));
+      expect(_screenFraction(camera, -3.2), greaterThanOrEqualTo(0.15));
+
+      for (var t = 0.0; t < 2; t += _dt) {
+        camera.update(_dt, Vector2(5, -60), Vector2.zero());
+      }
+      expect(
+        camera.zoom / rest,
+        closeTo(CameraController.minAltitudeZoom, 1e-4),
+      );
+
+      for (var t = 0.0; t < 3; t += _dt) {
+        camera.update(_dt, restOnGround, Vector2.zero());
+      }
+      expect(camera.zoom, closeTo(rest, 1e-3));
+    });
+
     test('zooms out at high speed', () {
       final camera = _camera(landscape)..reset(restOnGround);
       final rest = camera.zoom;

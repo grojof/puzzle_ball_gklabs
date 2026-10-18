@@ -55,6 +55,19 @@ there at its current speed, and SHALL zoom out at high speed. It SHALL zoom back
 - **WHEN** the ball has passed a boost and slowed down
 - **THEN** the camera returns to its normal zoom without jumping
 
+### Requirement: Ground stays in view
+When the ball rises far above the ground, as in long jumps or with a jump boost, the camera SHALL zoom out so that
+the ground below stays visible together with the ball, down to a limit, and SHALL zoom back in smoothly once the ball
+is back near the ground.
+
+#### Scenario: Jump boost
+- **WHEN** a jump boost throws the ball high above the ground
+- **THEN** both the ball and the ground below it stay on screen during the climb
+
+#### Scenario: Landing
+- **WHEN** the ball lands after a high jump
+- **THEN** the camera returns to its normal zoom without jumping
+
 ### Requirement: Camera follows respawns and new levels
 On a new level or a respawn at a checkpoint, the camera SHALL frame the ball immediately, without sweeping across the
 level.

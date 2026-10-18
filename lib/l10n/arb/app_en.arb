@@ -189,5 +189,13 @@
   "noSavegameSelected": "No savegame selected.",
   "@noSavegameSelected": {
     "description": "Shown when a screen needs a savegame and none is selected"
+  },
+  "settingsVibration": "Vibration",
+  "@settingsVibration": {
+    "description": "Title of the vibration switch in settings"
+  },
+  "settingsVibrationDesc": "Vibrate on jumps, boosts and checkpoints.",
+  "@settingsVibrationDesc": {
+    "description": "Description of the vibration switch in settings"
   }
 }

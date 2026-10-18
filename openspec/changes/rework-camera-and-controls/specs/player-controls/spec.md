@@ -22,6 +22,28 @@ towards the right of the screen pushes the ball right.
 
 ## ADDED Requirements
 
+### Requirement: Vibration feedback
+On Android, when vibration is enabled in the settings, the device SHALL vibrate when something happens to the ball,
+with a different feel for each event: a short light pulse when the ball actually jumps, a strong pulse when a boost
+starts, and a double pulse when a checkpoint activates. A jump request that does not make the ball jump SHALL NOT
+vibrate.
+
+#### Scenario: Jump with vibration enabled
+- **WHEN** vibration is enabled and the ball jumps from the ground
+- **THEN** the device gives a short light pulse
+
+#### Scenario: Press in mid-air
+- **WHEN** the player presses the jump button while the ball is in mid-air and cannot jump
+- **THEN** the device does not vibrate
+
+#### Scenario: Boost and checkpoint
+- **WHEN** vibration is enabled and the ball takes a boost, then activates a checkpoint
+- **THEN** the device gives a strong pulse for the boost and a double pulse for the checkpoint
+
+#### Scenario: Vibration disabled
+- **WHEN** vibration is disabled and the ball jumps, takes a boost or activates a checkpoint
+- **THEN** the device does not vibrate
+
 ### Requirement: On-screen controls fit the thumb
 In joystick mode, the joystick SHALL sit in the bottom-left corner and the jump button in the bottom-right corner,
 mirroring each other. Each SHALL be at least 72 logical pixels across, growing with the screen's shorter side, with a

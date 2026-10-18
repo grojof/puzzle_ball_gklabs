@@ -15,6 +15,7 @@ import 'package:puzzle_ball_gklabs/game/components/level_component.dart';
 import 'package:puzzle_ball_gklabs/game/game_config.dart';
 import 'package:puzzle_ball_gklabs/game/input/manual_input.dart';
 import 'package:puzzle_ball_gklabs/game/input/tilt_input.dart';
+import 'package:puzzle_ball_gklabs/haptics/haptics.dart';
 import 'package:sensors_plus/sensors_plus.dart';
 
 import '../helpers/game_helpers.dart';
@@ -382,6 +383,38 @@ void main() {
         isTrue,
       );
     });
+
+    final haptics = RecordingHaptics();
+    testWithGame(
+      'reports a vibration for jumps, boosts and checkpoints only',
+      () => testGame(
+        images: images,
+        haptics: haptics,
+        levelFor: (_) => flatLevel(checkpoints: [4.5]),
+      ),
+      (game) async {
+        final ball = game.level!.ball;
+        for (var i = 0; i < 120 && !ball.isOnGround; i++) {
+          game.update(1 / 60);
+        }
+        game.intent.requestJump();
+        game.update(1 / 60);
+        expect(haptics.played, [Haptic.jump]);
+
+        // In mid-air, a press does not jump and does not vibrate.
+        for (var i = 0; i < 20; i++) {
+          game.update(1 / 60);
+        }
+        game.intent.requestJump();
+        game.update(1 / 60);
+        expect(haptics.played, [Haptic.jump]);
+
+        ball.applySpeedBoost(10, Vector2(1, 0));
+        ball.body.setTransform(Vector2(4.5, 3.75), const Rot.identity());
+        game.update(1 / 60);
+        expect(haptics.played, [Haptic.jump, Haptic.boost, Haptic.checkpoint]);
+      },
+    );
 
     testWithGame(
       'joystick mode holds no sensor subscription',

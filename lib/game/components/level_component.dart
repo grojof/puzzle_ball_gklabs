@@ -10,6 +10,7 @@ import 'package:puzzle_ball_gklabs/audio/audio_service.dart';
 import 'package:puzzle_ball_gklabs/game/components/components.dart';
 import 'package:puzzle_ball_gklabs/game/input/movement_intent.dart';
 import 'package:puzzle_ball_gklabs/gen/assets.gen.dart';
+import 'package:puzzle_ball_gklabs/haptics/haptics.dart';
 
 /// Everything one level is made of, under a single root, so unloading the
 /// level is removing this component (design D1).
@@ -22,6 +23,7 @@ class LevelComponent extends Component with HasGameReference<Forge2DGame> {
     required this.data,
     required this.intent,
     required this.audio,
+    required this.haptics,
     required this.onFell,
     required this.onCompleted,
     this.onRespawned,
@@ -35,6 +37,7 @@ class LevelComponent extends Component with HasGameReference<Forge2DGame> {
   final LevelData data;
   final MovementIntent intent;
   final AudioSink audio;
+  final HapticsSink haptics;
 
   /// The ball fell below [fallLine] with no active checkpoint.
   final VoidCallback onFell;
@@ -68,6 +71,7 @@ class LevelComponent extends Component with HasGameReference<Forge2DGame> {
     ball = BallComponent(
       intent: intent,
       audio: audio,
+      haptics: haptics,
       initialPosition: _vector(data.ballStart),
       radius: ballRadius,
       onGoalReached: _onGoalReached,
@@ -92,7 +96,10 @@ class LevelComponent extends Component with HasGameReference<Forge2DGame> {
       for (final checkpoint in data.checkpoints)
         CheckPointComponent(
           ground: _vector(checkpoint.position),
-          onActivated: (component) => _activeCheckpoint = component,
+          onActivated: (component) {
+            _activeCheckpoint = component;
+            haptics.play(Haptic.checkpoint);
+          },
         ),
       for (final boost in data.boosts) _boost(boost, sprite),
       GoalComponent(

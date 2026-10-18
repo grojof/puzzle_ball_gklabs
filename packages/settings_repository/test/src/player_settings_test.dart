@@ -10,6 +10,7 @@ void main() {
       expect(settings.effectsVolume, 1);
       expect(settings.muted, isFalse);
       expect(settings.controlMode, ControlMode.joystick);
+      expect(settings.vibration, isTrue);
       expect(settings.languageCode, isNull);
     });
 
@@ -22,12 +23,14 @@ void main() {
           effectsVolume: 0.3,
           muted: true,
           controlMode: ControlMode.tilt,
+          vibration: false,
         ),
         const PlayerSettings(
           musicVolume: 0.2,
           effectsVolume: 0.3,
           muted: true,
           controlMode: ControlMode.tilt,
+          vibration: false,
           languageCode: 'es',
         ),
       );
@@ -54,13 +57,18 @@ void main() {
         const PlayerSettings(musicVolume: 0.5).hashCode,
       );
       expect(const PlayerSettings(muted: true), isNot(const PlayerSettings()));
+      expect(
+        const PlayerSettings(vibration: false),
+        isNot(const PlayerSettings()),
+      );
     });
 
     test('describes itself', () {
       expect(
         const PlayerSettings().toString(),
         'PlayerSettings(musicVolume: 1.0, effectsVolume: 1.0, muted: false, '
-        'controlMode: ControlMode.joystick, languageCode: null)',
+        'controlMode: ControlMode.joystick, vibration: true, '
+        'languageCode: null)',
       );
     });
   });

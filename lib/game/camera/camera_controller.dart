@@ -49,6 +49,12 @@ class CameraController {
   static const speedZoomRate = 0.03;
   static const minSpeedZoom = 0.6;
 
+  /// How high above the ground the ball may go, as a fraction of the
+  /// visible height at rest, before the camera zooms out to keep the ground
+  /// in view; and the furthest it zooms out for that (design D10).
+  static const altitudeRoom = 0.45;
+  static const minAltitudeZoom = 0.5;
+
   /// Smoothing times, in seconds.
   static const groundSmoothing = 0.35;
   static const lookSmoothing = 0.5;
@@ -121,7 +127,11 @@ class CameraController {
     );
     _zoom.target =
         restZoom *
-        math.min(_boostFactor(dt, ball, velocity), _speedFactor(velocity));
+        [
+          _boostFactor(dt, ball, velocity),
+          _speedFactor(velocity),
+          _altitudeFactor(ball),
+        ].reduce(math.min);
     _ground.step(dt);
     _look.step(dt);
     _zoom.step(dt);
@@ -208,6 +218,14 @@ class CameraController {
       if (ahead / math.max(velocity.x, 2) < boostLead) _sinceBoost = 0;
     }
     return _sinceBoost < boostHold ? boostZoom : 1;
+  }
+
+  /// Below 1 while the ball is more than [altitudeRoom] of the resting
+  /// visible height above the ground (design D10).
+  double _altitudeFactor(Vector2 ball) {
+    final room = altitudeRoom * _viewport.y / (restZoom * metersToPixels);
+    final above = _ground.target - ball.y;
+    return above <= room ? 1 : math.max(minAltitudeZoom, room / above);
   }
 
   static double _speedFactor(Vector2 velocity) => math.max(

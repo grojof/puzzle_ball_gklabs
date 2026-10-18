@@ -119,6 +119,34 @@ The sign convention is fixed by unit tests with synthetic events and checked on 
 - *Alternative: a plugin for the native display rotation.* Rejected for now: a new dependency for one sign that
   gravity already gives.
 
+### D9. Vibration feedback through a haptics sink (after the play-test)
+
+- **Setting:** `PlayerSettings.vibration`, stored under `vibration`, default true; a missing or non-boolean value
+  falls back to the default. The settings screen shows a switch on Android only.
+- **Game side:** like audio, the game reports events to a sink it receives and knows nothing else about haptics:
+  `HapticsSink.play(Haptic)`, with `Haptic.jump`, `Haptic.boost` and `Haptic.checkpoint`.
+  - The ball plays `jump` where it plays the jump sound, so only effective jumps vibrate.
+  - It plays `boost` when a boost starts.
+  - The level plays `checkpoint` when a checkpoint activates.
+- **App side:** `DeviceHaptics` (`lib/haptics/`) implements the sink. It reads the current setting on every event, so
+  a change applies at once, and maps the events with Flutter's `HapticFeedback`, with no new dependency:
+
+  | Event | Feedback |
+  |---|---|
+  | `jump` | `lightImpact` |
+  | `boost` | `heavyImpact` |
+  | `checkpoint` | two `mediumImpact`s 120 ms apart |
+
+  On Android, `HapticFeedback` uses the view's haptic feedback, which also follows the system's touch-feedback
+  setting. `GamePage` passes a sink that does nothing on the web.
+
+### D10. Zoom out to keep the ground in view (after the play-test)
+
+A third zoom factor joins D6. Let `h` be the height of the ball above the target ground height (D5), and `H` the
+visible height at the resting zoom. While `h > 0.45 · H`, the factor is `0.45 · H / h`, floored at 0.5. The ground
+stays at 65 % of the screen height, and the ball stays at or below 20 % from the top. The factor uses the target
+ground, not the smoothed one, so it reacts as the ball rises, and the zoom's smoothing (D2) keeps it continuous.
+
 ## Risks / Trade-offs
 
 - **[Smoothing feels slow or floaty]** → The numbers are named constants. They are tuned in the play-test on the

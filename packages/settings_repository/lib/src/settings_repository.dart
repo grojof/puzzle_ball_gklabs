@@ -28,6 +28,9 @@ class SettingsRepository {
   /// See [musicVolumeKey].
   static const languageCodeKey = 'languageCode';
 
+  /// Key of [PlayerSettings.vibration].
+  static const vibrationKey = 'vibration';
+
   /// Legacy sound switch, kept in sync with [mutedKey] for rollback.
   static const soundEnabledKey = 'soundEnabled';
 
@@ -52,6 +55,9 @@ class SettingsRepository {
       effectsVolume: _volume(await _store.getDouble(effectsVolumeKey)),
       muted: muted,
       controlMode: useSensor ? ControlMode.tilt : ControlMode.joystick,
+      vibration:
+          await _store.getBool(vibrationKey) ??
+          const PlayerSettings().vibration,
       languageCode: PlayerSettings.supportedLanguageCodes.contains(languageCode)
           ? languageCode
           : null,
@@ -68,6 +74,7 @@ class SettingsRepository {
       useSensorControlKey,
       value: settings.controlMode == ControlMode.tilt,
     );
+    await _store.setBool(vibrationKey, value: settings.vibration);
     final languageCode = settings.languageCode;
     if (languageCode == null) {
       await _store.remove(languageCodeKey);

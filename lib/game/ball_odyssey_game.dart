@@ -17,6 +17,7 @@ import 'package:puzzle_ball_gklabs/game/input/manual_input.dart';
 import 'package:puzzle_ball_gklabs/game/input/movement_intent.dart';
 import 'package:puzzle_ball_gklabs/game/input/tilt_input.dart';
 import 'package:puzzle_ball_gklabs/gen/assets.gen.dart';
+import 'package:puzzle_ball_gklabs/haptics/haptics.dart';
 import 'package:sensors_plus/sensors_plus.dart';
 
 /// One play session: a single game that swaps levels in place
@@ -31,6 +32,7 @@ class BallOdysseyGame extends Forge2DGame with HasKeyboardHandlerComponents {
     required int startLevel,
     required this.totalLevels,
     required this.audio,
+    required this.haptics,
     required this._config,
     required Images images,
     required this.levelLabel,
@@ -56,6 +58,9 @@ class BallOdysseyGame extends Forge2DGame with HasKeyboardHandlerComponents {
   final LevelData Function(int levelNumber) levelFor;
   final int totalLevels;
   final AudioSink audio;
+
+  /// Where vibration events go (player-controls spec).
+  final HapticsSink haptics;
 
   /// The "Level n" text shown when a level starts.
   final String Function(int levelNumber) levelLabel;
@@ -198,6 +203,7 @@ class BallOdysseyGame extends Forge2DGame with HasKeyboardHandlerComponents {
       data: levelFor(levelNumber),
       intent: intent,
       audio: audio,
+      haptics: haptics,
       onFell: () => unawaited(restartLevel()),
       onCompleted: () => unawaited(_completeLevel()),
       onRespawned: _frameBall,

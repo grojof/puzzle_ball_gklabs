@@ -28,6 +28,10 @@ matter more than before.
   orientations; the joystick gets the same treatment so the two controls mirror each other.
 - Tilt mode follows the screen orientation: in landscape, tilting the phone like a steering wheel moves the ball the
   way the screen is turned.
+- After the author's play-test of the above:
+  - the camera also zooms out when the ball rises far above the ground, so the ground stays in view;
+  - a vibration setting (on by default, Android only) gives a distinct vibration for each event: an effective jump, a
+    boost and a checkpoint.
 
 ## Capabilities
 
@@ -38,8 +42,9 @@ matter more than before.
 
 ### Modified Capabilities
 
-- `player-controls`: the on-screen controls get a minimum size, an icon and thumb placement in both orientations, and
-  tilt follows the screen orientation.
+- `player-controls`: the on-screen controls get a minimum size, an icon and thumb placement in both orientations; tilt
+  follows the screen orientation; and the device vibrates on jumps, boosts and checkpoints.
+- `player-settings`: a vibration setting, on by default and offered on Android only.
 
 ## Impact
 
