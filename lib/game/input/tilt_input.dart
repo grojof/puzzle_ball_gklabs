@@ -16,7 +16,12 @@ import 'package:sensors_plus/sensors_plus.dart';
 /// and the subscription is cancelled on removal or [stop].
 class TiltInput extends Component {
   new({required this.intent, Stream<AccelerometerEvent> Function()? events})
-    : _events = events ?? accelerometerEventStream;
+    : _events = events ?? _gameRateEvents;
+
+  /// Readings at the game interval (about 20 ms), so a short flick is not
+  /// missed between readings (design D11).
+  static Stream<AccelerometerEvent> _gameRateEvents() =>
+      accelerometerEventStream(samplingPeriod: SensorInterval.gameInterval);
 
   /// Tilt, in m/s² along the screen's horizontal axis, that gives a full
   /// push: about 30° from flat.
@@ -25,8 +30,15 @@ class TiltInput extends Component {
   /// Pushes smaller than this fraction of a full push are ignored.
   static const deadZone = 0.08;
 
-  /// A change in z acceleration above this, in m/s², is a shake: a jump.
-  static const shakeThreshold = 15.0;
+  /// A z acceleration this far from its resting baseline, in m/s², is a
+  /// flick: a jump (design D11).
+  static const flickThreshold = 6.0;
+
+  /// How fast the resting baseline follows z, per reading.
+  static const baselineFollow = 0.1;
+
+  /// After a flick, how long before another one counts.
+  static const flickCooldown = Duration(milliseconds: 350);
 
   /// Gravity along x, in m/s², beyond which the landscape side is known.
   static const sideThreshold = 3.0;
@@ -34,7 +46,8 @@ class TiltInput extends Component {
   final MovementIntent intent;
   final Stream<AccelerometerEvent> Function() _events;
   StreamSubscription<AccelerometerEvent>? _subscription;
-  double? _lastZ;
+  double? _baselineZ;
+  DateTime? _lastFlick;
   bool _landscape = false;
 
   /// Gravity along the device's x axis, low-pass filtered.
@@ -65,11 +78,22 @@ class TiltInput extends Component {
     final tilt = _landscape ? _side * event.y : -event.x;
     final push = (tilt / fullPush).clamp(-1.0, 1.0);
     intent.horizontal = push.abs() < deadZone ? 0 : push;
-    final lastZ = _lastZ;
-    if (lastZ != null && (event.z - lastZ).abs() > shakeThreshold) {
+    _detectFlick(event);
+  }
+
+  /// Requests a jump when z leaves its slowly following baseline, once per
+  /// flick.
+  void _detectFlick(AccelerometerEvent event) {
+    final baseline = _baselineZ ?? event.z;
+    final lastFlick = _lastFlick;
+    final cooling =
+        lastFlick != null &&
+        event.timestamp.difference(lastFlick) < flickCooldown;
+    if (!cooling && (event.z - baseline).abs() > flickThreshold) {
+      _lastFlick = event.timestamp;
       intent.requestJump();
     }
-    _lastZ = event.z;
+    _baselineZ = baseline + (event.z - baseline) * baselineFollow;
   }
 
   /// Cancels the subscription; also called when the game is torn down, where

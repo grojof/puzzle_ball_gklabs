@@ -27,7 +27,7 @@ What the current baseline does (the rebuild changes it through OpenSpec changes)
 
 | Element | Behavior |
 |---|---|
-| Ball | Rolls with proportional tilt (Android, portrait or landscape), the on-screen joystick or `A`/`D`; jumps with the arrow button, `Space` or a shake, from the top of the ground only |
+| Ball | Rolls with proportional tilt (Android, portrait or landscape), the on-screen joystick or `A`/`D`; jumps with the arrow button, `Space` or a gentle flick of the phone, from the top of the ground only |
 | Camera | Frames the ball in the lower half with more course ahead the faster it goes, follows the ground smoothly and zooms out before boosts, at high speed and on high jumps, in portrait and landscape |
 | Levels | Generated from the savegame's seed and the level number; about 35 s long at first, growing to two or three minutes deep |
 | Difficulty | Demanding from level 1, with ramps, gaps, drops and steps; stages of five levels add the speed, jump and gravity boosts by level 16; one gentler breather level per stage; it keeps rising with no ceiling |

@@ -85,7 +85,8 @@ Input writes a `MovementIntent` (horizontal push and jump requests) that the bal
 
 - `TiltInput` exists only in tilt mode on Android, and subscribes to the accelerometer only while mounted. It reads
   the tilt relative to the screen: the portrait axis, or in landscape the other axis, signed by the side the phone is
-  turned to.
+  turned to. It samples at the game interval, and a quick flick (z leaving its slowly following baseline) requests a
+  jump, once per flick.
 - `ManualInput` handles the joystick and `A`/`D`/`Space`. The joystick and the jump button are sized and placed for
   the thumb from the screen size (`HudLayout`).
 - `applyConfig` swaps the two when the setting changes.

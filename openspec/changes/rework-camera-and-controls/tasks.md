@@ -27,6 +27,8 @@
 - [x] 6.3 Add `HapticsSink` and report `jump`, `boost` and `checkpoint` from the game (D9); verify `flame_test` tests that an effective jump, a boost and a checkpoint each report their event and that a mid-air press reports nothing
 - [x] 6.4 Add `DeviceHaptics` with the per-event feedback and the setting check, used by `GamePage` (a no-op sink on the web); verify unit tests of the platform haptic calls per event and with vibration off
 
+- [x] 6.5 Make the tilt-mode jump a gentle flick (D11): game-interval sampling, z deviation from a low-pass baseline above 6 m/s², 350 ms cooldown; verify unit tests that a gentle flick jumps once, small wobbles and steering do not, and the existing tilt tests pass
+
 ## 5. Docs and verification
 
 - [x] 5.1 Update `docs/architecture.md` (camera section), `docs/product.md` (gameplay today, known gaps) and `docs/glossary.md` (look-ahead); verify `docs-check` and the Markdown spell check pass

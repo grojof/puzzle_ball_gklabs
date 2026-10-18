@@ -147,6 +147,17 @@ visible height at the resting zoom. While `h > 0.45 · H`, the factor is `0.45 �
 stays at 65 % of the screen height, and the ball stays at or below 20 % from the top. The factor uses the target
 ground, not the smoothed one, so it reacts as the ball rises, and the zoom's smoothing (D2) keeps it continuous.
 
+### D11. A gentler flick to jump in tilt mode (after the play-test)
+
+The author found the shake jump hard and aggressive. It needed a change of 15 m/s² between two consecutive readings,
+and the plugin's default sampling of 200 ms often missed a short flick, so players shook harder. Instead:
+
+- **Sampling:** read the accelerometer at the game interval (about 20 ms), which also smooths the steering.
+- **Detection:** compare z with a low-pass baseline (factor 0.1 per reading, about 0.2 s), not with the previous
+  reading. A deviation above 6 m/s² is a flick. Steering changes z slowly, by about 1.3 m/s² for a quick 30° tilt, so
+  the baseline follows it.
+- **Cooldown:** after a flick, 350 ms by the events' timestamps, so one flick requests one jump.
+
 ## Risks / Trade-offs
 
 - **[Smoothing feels slow or floaty]** → The numbers are named constants. They are tuned in the play-test on the
