@@ -11,7 +11,7 @@
 
 ## 3. Delivery
 
-- [ ] 3.1 Open the PR as ready; verify CI passes
+- [x] 3.1 Open the PR as ready; verify CI passes
 
 ## Workflow follow-up
 
