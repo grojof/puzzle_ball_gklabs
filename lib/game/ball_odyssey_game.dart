@@ -159,7 +159,7 @@ class BallOdysseyGame extends Forge2DGame with HasKeyboardHandlerComponents {
       style: ParticleField.styleOf(look.biome),
       color: look.palette.particle,
       seed: look.variant ^ look.biome.index,
-      count: look.biome == Biome.nightForest ? 24 : ParticleField.maxParticles,
+      count: look.biome == Biome.nightForest ? 12 : ParticleField.calmCount,
     );
     final backdrop = Component(
       priority: -10,

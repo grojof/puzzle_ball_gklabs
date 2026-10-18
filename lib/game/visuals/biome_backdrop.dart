@@ -486,6 +486,9 @@ class ParticleField extends Component {
   /// The most particles a field may have.
   static const maxParticles = 48;
 
+  /// How many particles a biome shows: few, so the backdrop stays calm.
+  static const calmCount = 20;
+
   final ParticleStyle style;
   final Color color;
   final int count;
@@ -589,21 +592,21 @@ class ParticleField extends Component {
     for (final p in particles) {
       final (dx, dy) = switch (style) {
         ParticleStyle.fireflies => (
-          math.cos(_time * 0.7 * p.speed + p.phase) * 0.004,
-          math.sin(_time * 0.9 * p.speed + p.phase) * 0.004,
+          math.cos(_time * 0.35 * p.speed + p.phase) * 0.0015,
+          math.sin(_time * 0.45 * p.speed + p.phase) * 0.0015,
         ),
         ParticleStyle.sand => (
-          -0.25 * p.speed,
-          0.01 * math.sin(_time + p.phase),
+          -0.08 * p.speed,
+          0.004 * math.sin(_time * 0.5 + p.phase),
         ),
         ParticleStyle.snow => (
-          0.02 * math.sin(_time * 1.3 + p.phase),
-          0.06 * p.speed,
+          0.008 * math.sin(_time * 0.6 + p.phase),
+          0.02 * p.speed,
         ),
         ParticleStyle.sparkles => (0.0, 0.0),
         ParticleStyle.embers => (
-          0.015 * math.sin(_time * 2 + p.phase),
-          -0.07 * p.speed,
+          0.006 * math.sin(_time * 0.8 + p.phase),
+          -0.022 * p.speed,
         ),
       };
       p
@@ -618,7 +621,8 @@ class ParticleField extends Component {
     // Every particle in one draw call, tinted and sized per particle.
     for (var i = 0; i < particles.length; i++) {
       final p = particles[i];
-      final twinkle = 0.55 + 0.45 * math.sin(_time * 3 * p.speed + p.phase);
+      // Gentle: dim and slow, so it never draws the eye from the course.
+      final twinkle = 0.3 + 0.2 * math.sin(_time * 1.2 * p.speed + p.phase);
       final diameter = switch (style) {
         ParticleStyle.fireflies => 10.5 * p.size,
         ParticleStyle.sand => 5.4 * p.size,
@@ -636,7 +640,7 @@ class ParticleField extends Component {
         translateX: p.x * _screen.x,
         translateY: p.y * _screen.y,
       );
-      _colors[i] = color.withValues(alpha: steady ? 0.85 : twinkle);
+      _colors[i] = color.withValues(alpha: steady ? 0.45 : twinkle);
     }
     canvas.drawAtlas(
       _sprite,
