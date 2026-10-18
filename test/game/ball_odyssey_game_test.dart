@@ -2,8 +2,10 @@ import 'dart:async';
 import 'dart:ui';
 
 import 'package:flame/cache.dart';
+import 'package:flame/events.dart';
 import 'package:flame_forge2d/flame_forge2d.dart';
 import 'package:flame_test/flame_test.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:level_generator/level_generator.dart';
 import 'package:puzzle_ball_gklabs/audio/audio_service.dart';
@@ -317,6 +319,70 @@ void main() {
       },
     );
 
+    for (final size in [Vector2(800, 360), Vector2(360, 800)]) {
+      testWithGame(
+        'thumb-sized controls in the bottom corners on $size',
+        () => testGame(images: images),
+        (game) async {
+          game
+            ..onGameResize(size)
+            ..update(0);
+          final margin = HudLayout.margin(size);
+          final button = game.camera.viewport.children
+              .whereType<JumpButtonComponent>()
+              .single
+              .toAbsoluteRect();
+          final stick = game.joystick.toAbsoluteRect();
+          for (final control in [button, stick]) {
+            expect(control.width, greaterThanOrEqualTo(72 - 1e-6));
+            expect(control.bottom, closeTo(size.y - margin, 1e-3));
+          }
+          expect(button.right, closeTo(size.x - margin, 1e-3));
+          expect(stick.left, closeTo(margin, 1e-3));
+          expect(stick.width, closeTo(button.width, 1e-3));
+        },
+      );
+    }
+
+    testWithGame(
+      'the jump button requests a jump and shows the press',
+      () => testGame(images: images),
+      (game) async {
+        final button =
+            game.camera.viewport.children
+                .whereType<JumpButtonComponent>()
+                .single
+              ..onTapDown(TapDownEvent(1, game, TapDownDetails()));
+        expect(game.intent.consumeJump(), isTrue);
+        expect(button.isPressed, isTrue);
+        button.onTapUp(
+          TapUpEvent(1, game, TapUpDetails(kind: PointerDeviceKind.touch)),
+        );
+        expect(button.isPressed, isFalse);
+        button
+          ..onTapDown(TapDownEvent(1, game, TapDownDetails()))
+          ..onTapCancel(TapCancelEvent(1));
+        expect(button.isPressed, isFalse);
+      },
+    );
+
+    test('the jump button draws an up arrow inside the button', () {
+      final bounds = JumpButtonComponent.arrowPath(100).getBounds();
+      expect(
+        const Rect.fromLTWH(0, 0, 100, 100).contains(bounds.topLeft),
+        isTrue,
+      );
+      expect(
+        const Rect.fromLTWH(0, 0, 100, 100).contains(bounds.bottomRight),
+        isTrue,
+      );
+      expect(bounds.center.dx, closeTo(50, 1e-9));
+      expect(
+        JumpButtonComponent.arrowPath(100).contains(const Offset(50, 25)),
+        isTrue,
+      );
+    });
+
     testWithGame(
       'joystick mode holds no sensor subscription',
       () => testGame(images: images),
@@ -360,13 +426,14 @@ void main() {
 
     final tiltSensor = StreamController<AccelerometerEvent>.broadcast();
     testWithGame(
-      'tilt pushes proportionally with a dead zone and jumps on a shake',
+      'portrait tilt pushes proportionally and jumps on a shake',
       () => testGame(
         images: images,
         sensor: tiltSensor,
         config: const GameConfig(controlMode: ControlMode.tilt),
       ),
       (game) async {
+        game.onGameResize(Vector2(360, 800));
         Future<void> emit(AccelerometerEvent event) async {
           tiltSensor.add(event);
           await Future<void>.delayed(Duration.zero);
@@ -383,6 +450,63 @@ void main() {
 
         await emit(tilt(0, z: 30));
         expect(game.intent.consumeJump(), isTrue);
+      },
+    );
+  });
+
+  group('camera', () {
+    for (final (name, size, minWidth) in [
+      ('landscape', Vector2(800, 360), 16.0),
+      ('portrait', Vector2(360, 800), 12.0),
+    ]) {
+      testWithGame(
+        'frames the ball in the lower half in $name',
+        () => testGame(images: images),
+        (game) async {
+          game.onGameResize(size);
+          for (var i = 0; i < 60; i++) {
+            game.update(1 / 60);
+          }
+          final view = game.camera.visibleWorldRect;
+          final ball = game.level!.ball.body.position;
+          expect(view.width, greaterThanOrEqualTo(minWidth - 1e-3));
+          if (size.x > size.y) {
+            expect(view.height, greaterThanOrEqualTo(9 - 1e-3));
+          }
+          final fraction = (ball.y - view.top) / view.height;
+          expect(fraction, inInclusiveRange(0.5, 0.85));
+          expect(view.left, lessThan(ball.x));
+          expect(view.right, greaterThan(ball.x));
+        },
+      );
+    }
+
+    testWithGame(
+      'frames the ball right after a respawn',
+      () => testGame(
+        images: images,
+        levelFor: (_) => flatLevel(tiles: 40, checkpoints: [4.5]),
+      ),
+      (game) async {
+        game.onGameResize(Vector2(800, 360));
+        final level = game.level!;
+        final ball = level.ball;
+        ball.body.setTransform(Vector2(4.5, 3.75), const Rot.identity());
+        game.update(1 / 60);
+        expect(level.activeCheckpoint, isNotNull);
+        ball.body.setTransform(Vector2(50, 3.8), const Rot.identity());
+        for (var i = 0; i < 120; i++) {
+          game.update(1 / 60);
+        }
+        ball.body.setTransform(
+          Vector2(55, level.fallLine + 1),
+          const Rot.identity(),
+        );
+        game.update(1 / 60);
+        final view = game.camera.visibleWorldRect;
+        expect(view.center.dx, closeTo(ball.body.position.x, 0.1));
+        final position = ball.body.position;
+        expect(view.contains(Offset(position.x, position.y)), isTrue);
       },
     );
   });

@@ -83,11 +83,29 @@ generator for, with the savegame's seed. It holds terrain, sensors, the goal and
 
 Input writes a `MovementIntent` (horizontal push and jump requests) that the ball reads:
 
-- `TiltInput` exists only in tilt mode on Android, and subscribes to the accelerometer only while mounted.
-- `ManualInput` handles the joystick and `A`/`D`/`Space`.
+- `TiltInput` exists only in tilt mode on Android, and subscribes to the accelerometer only while mounted. It reads
+  the tilt relative to the screen: the portrait axis, or in landscape the other axis, signed by the side the phone is
+  turned to.
+- `ManualInput` handles the joystick and `A`/`D`/`Space`. The joystick and the jump button are sized and placed for
+  the thumb from the screen size (`HudLayout`).
 - `applyConfig` swaps the two when the setting changes.
 
 Boosts end on a game-time `Timer` owned by the ball, so they pause with the game and vanish with the level.
+
+## Camera
+
+`CameraController` (`lib/game/camera/`) is plain math: each frame the game gives it the ball's position and velocity,
+and copies the centre and zoom it returns into the viewfinder.
+
+- **Framing:** it zooms so that at least 16 m × 9 m is visible in landscape and 12 m across in portrait, with the
+  ground at about 65 % of the screen height.
+- **Look-ahead:** it looks further ahead the faster the ball moves.
+- **Ground following:** it follows the highest ground under and just ahead of the ball, found by binary search over
+  the sorted terrain, not the ball's bounces, and keeps the ball between 15 % and 85 % of the screen height.
+- **Anticipated zoom:** it zooms out about 1.2 s before the ball reaches a boost, and at high speed.
+- **Smoothing:** every value moves with a critically damped spring solved exactly, so the view never overshoots and
+  behaves the same at any frame rate.
+- **Snapping:** a new level, a respawn or a screen rotation re-frames at once.
 
 ## Level generation
 
@@ -131,7 +149,7 @@ earlier versions stays readable on Android.
 |---|---|
 | `lib/app/` | `App`, `AppView`, `router.dart` (`AppRoutes`) |
 | `lib/audio/` | `AudioService`, backend, settings listener |
-| `lib/game/` | Game, level and ball components, inputs, camera helpers, `ballEnvelope`, `GamePage`, pause menu |
+| `lib/game/` | Game, level and ball components, inputs, `CameraController`, `ballEnvelope`, `GamePage`, pause menu |
 | `lib/settings/` | `SettingsCubit` and the settings screen |
 | `lib/loading/`, `lib/title/` | Preload screen, menu, savegame and level selectors |
 | `lib/shared/` | `SavegameCubit`, storage adapter, shared widgets |

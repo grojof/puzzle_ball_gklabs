@@ -24,6 +24,7 @@ class LevelComponent extends Component with HasGameReference<Forge2DGame> {
     required this.audio,
     required this.onFell,
     required this.onCompleted,
+    this.onRespawned,
   }) : fallLine = data.lowestPoint + fallMargin;
 
   /// How far below the lowest terrain the ball counts as fallen, in meters.
@@ -40,6 +41,9 @@ class LevelComponent extends Component with HasGameReference<Forge2DGame> {
 
   /// The goal sequence finished.
   final VoidCallback onCompleted;
+
+  /// The ball respawned at a checkpoint.
+  final VoidCallback? onRespawned;
 
   /// World y (downwards) past which the ball has fallen out of the level.
   final double fallLine;
@@ -131,6 +135,7 @@ class LevelComponent extends Component with HasGameReference<Forge2DGame> {
     if (checkpoint != null) {
       ball.respawn(checkpoint.respawnPoint);
       intent.reset();
+      onRespawned?.call();
       return;
     }
     _fell = true;

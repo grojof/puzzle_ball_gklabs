@@ -27,7 +27,8 @@ What the current baseline does (the rebuild changes it through OpenSpec changes)
 
 | Element | Behavior |
 |---|---|
-| Ball | Rolls with proportional tilt (Android), the on-screen joystick or `A`/`D`; jumps with the button, `Space` or a shake, from the ground only |
+| Ball | Rolls with proportional tilt (Android, portrait or landscape), the on-screen joystick or `A`/`D`; jumps with the arrow button, `Space` or a shake, from the top of the ground only |
+| Camera | Frames the ball in the lower half with more course ahead the faster it goes, follows the ground smoothly and zooms out before boosts and at high speed, in portrait and landscape |
 | Levels | Generated from the savegame's seed and the level number; about 35 s long at first, growing to two or three minutes deep |
 | Difficulty | Demanding from level 1, with ramps, gaps, drops and steps; stages of five levels add the speed, jump and gravity boosts by level 16; one gentler breather level per stage; it keeps rising with no ceiling |
 | Terrain | Floor runs, ramps, gaps (level, rising or falling), drops and steps up, plus set pieces (staircases, cascades, valleys, island hops), all sized to what the ball can do |
@@ -49,8 +50,6 @@ What the current baseline does (the rebuild changes it through OpenSpec changes)
   seeds come in the next change.
 - The difficulty curve's numbers are first estimates, to be tuned by playing.
 - Physics feel has not been re-tuned since the move to Box2D v3.
-- The camera can sway and anticipates zoom late, and the view sits too high in landscape; the jump button is small.
-  A camera and controls change follows this one.
 
 ## Open product questions
 
