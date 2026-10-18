@@ -18,6 +18,7 @@ LevelData _level({
   List<FloorRun> floors = const [],
   List<SpikeStrip> hazards = const [],
   List<MovingPlatform> platforms = const [],
+  List<LaserBarrier> lasers = const [],
   List<Boost> boosts = const [],
   List<double> checkpoints = const [],
   double goalLeft = 30,
@@ -38,6 +39,7 @@ LevelData _level({
     checkpoints: [for (final x in checkpoints) Checkpoint(Vec2(x, _top))],
     hazards: hazards,
     platforms: platforms,
+    lasers: lasers,
     sections: const [],
     estimatedDuration: 10,
   );
@@ -222,7 +224,7 @@ void main() {
 
     testWithGame(
       'collapse 0.6 s after the ball stands on them',
-      () => gameOn(_level(floors: [island], goalLeft: 20)),
+      () => gameOn(_level(floors: [island], checkpoints: [3], goalLeft: 20)),
       (game) async {
         game.input!.removeFromParent();
         final platform = game.level!.children
@@ -233,7 +235,9 @@ void main() {
         expect(platform.isCollapsed, isFalse);
 
         final ball = game.level!.ball
-          ..body.setTransform(Vector2(15.5, _top - 0.3), const Rot.identity());
+          ..body.setTransform(Vector2(3, _top - 0.25), const Rot.identity());
+        game.update(_dt);
+        ball.body.setTransform(Vector2(15.5, _top - 0.3), const Rot.identity());
         _settle(game);
         expect(platform.isShaking, isTrue);
         _run(game, CrumblingPlatformComponent.delay - 0.2);
@@ -243,9 +247,10 @@ void main() {
         expect(platform.isCollapsed, isTrue);
         expect(platform.supports(ball.body.position), isFalse);
         platform.render(Canvas(PictureRecorder()));
+        // The ball falls with nothing left to land on, and is sent back
+        // to the checkpoint.
         _run(game, 0.5);
-        expect(ball.body.position.y, greaterThan(_top + 1));
-        expect(ball.isOnGround, isFalse);
+        expect(ball.body.position.x, closeTo(3, 0.2));
         platform.render(Canvas(PictureRecorder()));
       },
     );
@@ -261,15 +266,183 @@ void main() {
         game.update(_dt);
         ball.body.setTransform(Vector2(15.5, _top - 0.3), const Rot.identity());
         _settle(game);
-        _run(game, 1);
         final platform = level.children
             .whereType<CrumblingPlatformComponent>()
             .single;
+        _run(game, CrumblingPlatformComponent.delay + 0.05);
         expect(platform.isCollapsed, isTrue);
         level.sendBack();
         expect(platform.isCollapsed, isFalse);
         expect(platform.isShaking, isFalse);
         expect(platform.body.isEnabled, isTrue);
+      },
+    );
+  });
+
+  group('falls', () {
+    testWithGame(
+      'a long drop onto distant lower ground is not cut short',
+      () => gameOn(
+        _level(
+          floors: const [
+            FloorRun(position: Vec2(24, _top + 15), size: Vec2(16, tileSize)),
+          ],
+          goalLeft: 44,
+        ),
+      ),
+      (game) async {
+        game.input!.removeFromParent();
+        // The input's removal resets the push on the next update.
+        game.update(0);
+        final level = game.level!;
+        final ball = level.ball;
+        ball.body
+          ..setTransform(Vector2(11.5, _top - 0.3), const Rot.identity())
+          ..linearVelocity = Vector2(7, -4);
+        game.intent.horizontal = 1;
+        var landed = false;
+        for (var t = 0.0; t < 4 && !landed; t += _dt) {
+          game.update(_dt);
+          await game.ready();
+          expect(game.level, same(level));
+          landed = ball.isOnGround && ball.body.position.x > 24;
+        }
+        expect(landed, isTrue);
+        expect(ball.body.position.x, inInclusiveRange(24, 40));
+        expect(ball.body.position.y, closeTo(_top + 15 - 0.2, 0.1));
+      },
+    );
+
+    testWithGame(
+      'a hopeless fall from high up is caught within a second',
+      () => gameOn(
+        _level(
+          // Far below and far away: out of reach from the pit.
+          floors: const [
+            FloorRun(position: Vec2(120, _top + 40), size: Vec2(8, tileSize)),
+          ],
+          goalLeft: 200,
+        ),
+      ),
+      (game) async {
+        game.input!.removeFromParent();
+        // The input's removal resets the push on the next update.
+        game.update(0);
+        final level = game.level!;
+        level.ball.body
+          ..setTransform(Vector2(11.9, _top - 0.25), const Rot.identity())
+          ..linearVelocity = Vector2(2, 0);
+        var elapsed = 0.0;
+        while (game.level == level && elapsed < 2) {
+          game.update(_dt);
+          await game.ready();
+          elapsed += _dt;
+        }
+        expect(game.level, isNot(same(level)));
+        expect(elapsed, lessThan(1));
+      },
+    );
+
+    testWithGame(
+      'rolling off a ledge onto the ground below is no fall',
+      () => gameOn(
+        _level(
+          floors: const [
+            FloorRun(position: Vec2(12, _top + 5), size: Vec2(8, tileSize)),
+          ],
+          goalLeft: 22,
+        ),
+      ),
+      (game) async {
+        game.input!.removeFromParent();
+        // The input's removal resets the push on the next update.
+        game.update(0);
+        final level = game.level!;
+        final ball = level.ball
+          ..body.setTransform(Vector2(11, _top - 0.25), const Rot.identity());
+        game.intent.horizontal = 0.5;
+        _run(game, 2.5);
+        expect(game.level, same(level));
+        expect(ball.body.position.y, closeTo(_top + 5 - 0.2, 0.1));
+        expect(level.canStillLand, isTrue);
+      },
+    );
+  });
+
+  group('laser barriers', () {
+    const barrier = LaserBarrier(
+      x: 8,
+      top: _top - 9,
+      bottom: _top - 0.8,
+      on: 1.4,
+      off: 1,
+      phase: 0,
+    );
+
+    testWithGame(
+      'send the ball back while lit, and let it pass while dark',
+      () => gameOn(_level(lasers: const [barrier], checkpoints: [3])),
+      (game) async {
+        game.input!.removeFromParent();
+        // The input's removal resets the push on the next update.
+        game.update(0);
+        final level = game.level!;
+        final laser = level.children.whereType<LaserBarrierComponent>().single;
+        final ball = level.ball
+          ..body.setTransform(Vector2(3, _top - 0.25), const Rot.identity());
+        game.update(_dt);
+        expect(laser.isOn, isTrue);
+        final canvas = Canvas(PictureRecorder());
+        laser.render(canvas);
+        // Into the lit beam: back to the checkpoint.
+        ball.body
+          ..gravityScale = 0
+          ..setTransform(Vector2(8, _top - 3), const Rot.identity());
+        game
+          ..update(_dt)
+          ..update(_dt);
+        expect(ball.body.position.x, closeTo(3, 0.1));
+        // Dark: the ball passes.
+        _run(game, 1.4);
+        expect(laser.isOn, isFalse);
+        laser.render(canvas);
+        ball.body.setTransform(Vector2(8, _top - 3), const Rot.identity());
+        game
+          ..update(_dt)
+          ..update(_dt);
+        expect(ball.body.position.x, closeTo(8, 0.1));
+        // It flickers just before lighting again.
+        _run(game, 0.75);
+        expect(laser.isWarning, isTrue);
+        laser.render(canvas);
+      },
+    );
+
+    testWithGame(
+      'keep their rhythm through a respawn, and leave the route alone',
+      () => gameOn(_level(lasers: const [barrier], checkpoints: [3])),
+      (game) async {
+        game.input!.removeFromParent();
+        // The input's removal resets the push on the next update.
+        game.update(0);
+        final level = game.level!;
+        final laser = level.children.whereType<LaserBarrierComponent>().single;
+        final ball = level.ball
+          ..body.setTransform(Vector2(3, _top - 0.25), const Rot.identity());
+        game.update(_dt);
+        _run(game, 1);
+        final before = laser.isOn;
+        level.sendBack();
+        expect(laser.isOn, before);
+        _run(game, 0.6);
+        expect(laser.isOn, isFalse);
+        // Rolling under the beam along the ground is safe.
+        ball.body.setTransform(Vector2(6, _top - 0.25), const Rot.identity());
+        game.intent.horizontal = 1;
+        _run(game, 0.8);
+        expect(ball.body.position.x, greaterThan(7));
+        laser.removeFromParent();
+        game.update(_dt);
       },
     );
   });

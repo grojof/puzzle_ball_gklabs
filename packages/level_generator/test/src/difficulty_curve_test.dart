@@ -39,11 +39,22 @@ void main() {
       }
     });
 
-    test('precision rises from about 70-80 % to about 90-95 %', () {
-      final (firstLow, firstHigh) = curve.parametersFor(1).precision;
-      expect(firstLow, closeTo(0.71, 0.01));
-      expect(firstHigh, closeTo(0.82, 0.01));
-      expect(curve.parametersFor(1).margin, firstHigh);
+    test('starts as demanding as the old level 50, never trivial', () {
+      final first = curve.parametersFor(1);
+      expect(first.intensity, 0.76);
+      final (low, high) = first.precision;
+      expect(low, closeTo(0.82, 0.01));
+      expect(high, closeTo(0.89, 0.01));
+      expect(first.margin, high);
+      // Level 4 is a breather: easier, but its gaps still need well over
+      // half of the reach.
+      final breather = curve.parametersFor(4);
+      expect(breather.isBreather, isTrue);
+      expect(breather.intensity, closeTo(0.67, 0.01));
+      expect(breather.precision.$1, greaterThan(0.75));
+    });
+
+    test('precision rises towards 90-95 %', () {
       final (deepLow, deepHigh) = curve.parametersFor(10000).precision;
       expect(deepLow, closeTo(0.9, 0.01));
       expect(deepHigh, lessThanOrEqualTo(0.95));
@@ -60,123 +71,101 @@ void main() {
       );
     });
 
-    test(
-      'starts with the basic obstacles and introduces the rest by level',
-      () {
-        expect(
-          curve.parametersFor(1).weights.keys,
-          unorderedEquals([
-            SectionKind.rampUp,
-            SectionKind.rampDown,
-            SectionKind.gap,
-            SectionKind.drop,
-            SectionKind.stepUp,
-            SectionKind.staircase,
-            SectionKind.cascade,
-            SectionKind.valley,
-            SectionKind.spikes,
-          ]),
-        );
-        expect(
-          curve.parametersFor(2).weights,
-          isNot(contains(SectionKind.ferry)),
-        );
-        expect(curve.parametersFor(3).weights, contains(SectionKind.ferry));
-        expect(
-          curve.parametersFor(6).weights,
-          contains(SectionKind.crumblingHops),
-        );
-        expect(
-          curve.parametersFor(20).weights,
-          isNot(contains(SectionKind.orbGap)),
-        );
-        expect(curve.parametersFor(21).weights, contains(SectionKind.orbGap));
-        expect(curve.parametersFor(21).weights, contains(SectionKind.orbClimb));
-        expect(
-          curve.parametersFor(5).weights,
-          isNot(contains(SectionKind.speedBoost)),
-        );
-        expect(
-          curve.parametersFor(6).weights,
-          contains(SectionKind.speedBoost),
-        );
-        expect(
-          curve.parametersFor(10).weights,
-          isNot(contains(SectionKind.jumpBoost)),
-        );
-        expect(
-          curve.parametersFor(11).weights,
-          contains(SectionKind.jumpBoost),
-        );
-        expect(
-          curve.parametersFor(11).weights,
-          contains(SectionKind.chainedGaps),
-        );
-        expect(
-          curve.parametersFor(15).weights,
-          isNot(contains(SectionKind.gravityBoost)),
-        );
-        for (var level = 1; level <= 60; level++) {
-          final p = curve.parametersFor(level);
-          for (final kind in p.weights.keys) {
-            expect(
-              DifficultyCurve.introductionLevel[kind],
-              lessThanOrEqualTo(level),
-            );
-          }
+    test('introduces every element by level 8', () {
+      expect(
+        curve.parametersFor(1).weights.keys,
+        unorderedEquals([
+          SectionKind.rampUp,
+          SectionKind.rampDown,
+          SectionKind.gap,
+          SectionKind.drop,
+          SectionKind.stepUp,
+          SectionKind.staircase,
+          SectionKind.cascade,
+          SectionKind.valley,
+          SectionKind.spikes,
+          SectionKind.tower,
+          SectionKind.descent,
+        ]),
+      );
+      const order = [
+        (2, {SectionKind.ferry}),
+        (3, {SectionKind.speedBoost}),
+        (4, {SectionKind.crumblingHops}),
+        (5, {SectionKind.chainedGaps}),
+        (6, {SectionKind.jumpBoost}),
+        (7, {SectionKind.gravityBoost}),
+        (8, {SectionKind.orbGap, SectionKind.orbClimb}),
+      ];
+      for (final (level, kinds) in order) {
+        expect(curve.parametersFor(level).introduces, kinds);
+        for (final kind in kinds) {
+          expect(curve.parametersFor(level - 1).weights, isNot(contains(kind)));
+          expect(curve.parametersFor(level).weights, contains(kind));
         }
-        expect(
-          DifficultyCurve.introductionLevel.keys,
-          unorderedEquals(
-            SectionKind.values.where((kind) => kind != SectionKind.flat),
-          ),
-        );
-        expect(
-          curve.parametersFor(16).weights,
-          contains(SectionKind.gravityBoost),
-        );
-      },
-    );
-
-    test('knows which elements each level introduces', () {
+      }
       expect(curve.parametersFor(1).introduces, isEmpty);
-      expect(curve.parametersFor(2).introduces, isEmpty);
-      expect(curve.parametersFor(3).introduces, {SectionKind.ferry});
-      expect(curve.parametersFor(21).introduces, {
-        SectionKind.orbGap,
-        SectionKind.orbClimb,
-      });
-      expect(curve.parametersFor(22).introduces, isEmpty);
+      expect(curve.parametersFor(9).introduces, isEmpty);
+      expect(
+        curve.parametersFor(10).weights.keys,
+        unorderedEquals(
+          SectionKind.values.where((kind) => kind != SectionKind.flat),
+        ),
+      );
+      for (var level = 1; level <= 60; level++) {
+        final p = curve.parametersFor(level);
+        for (final kind in p.weights.keys) {
+          expect(
+            DifficultyCurve.introductionLevel[kind],
+            lessThanOrEqualTo(level),
+          );
+        }
+      }
+      expect(
+        DifficultyCurve.introductionLevel.keys,
+        unorderedEquals(
+          SectionKind.values.where((kind) => kind != SectionKind.flat),
+        ),
+      );
     });
 
     test('the five levels from an introduction feature the element', () {
-      final intro = curve.parametersFor(6);
+      final intro = curve.parametersFor(3);
       expect(intro.weights[SectionKind.speedBoost], 1);
-      expect(curve.parametersFor(10).weights[SectionKind.speedBoost], 1);
-      expect(curve.parametersFor(11).weights[SectionKind.speedBoost], 0.5);
-      expect(curve.parametersFor(3).weights[SectionKind.ferry], 1);
-      expect(curve.parametersFor(8).weights[SectionKind.ferry], 0.5);
+      expect(curve.parametersFor(7).weights[SectionKind.speedBoost], 1);
+      expect(curve.parametersFor(8).weights[SectionKind.speedBoost], 0.5);
+      expect(curve.parametersFor(2).weights[SectionKind.ferry], 1);
+      expect(curve.parametersFor(7).weights[SectionKind.ferry], 0.5);
       expect(curve.parametersFor(1).weights[SectionKind.gap], 1.4);
       expect(curve.parametersFor(2).weights[SectionKind.spikes], 0.9);
-      expect(intro.intensity, lessThan(curve.parametersFor(5).intensity));
+      // Introductions are eased: level 10, which introduces nothing, is
+      // clearly harder than level 8.
+      expect(
+        curve.parametersFor(10).intensity,
+        greaterThan(curve.parametersFor(8).intensity + 0.04),
+      );
       // A level that introduces nothing is not eased.
       expect(
-        curve.parametersFor(26).intensity,
-        greaterThan(curve.parametersFor(25).intensity),
+        curve.parametersFor(11).intensity,
+        greaterThan(curve.parametersFor(10).intensity),
       );
     });
 
-    test('levels last 30-45 s early and 2-3 min deep', () {
-      expect(curve.parametersFor(3).targetDuration, inInclusiveRange(30, 45));
+    test('levels last about 1.5 min first and 4 min deep', () {
+      expect(curve.parametersFor(1).targetDuration, 90);
       expect(
-        curve.parametersFor(150).targetDuration,
-        inInclusiveRange(120, 180),
+        curve.parametersFor(50).targetDuration,
+        inInclusiveRange(150, 170),
       );
-      expect(curve.parametersFor(10000).targetDuration, lessThanOrEqualTo(180));
+      expect(
+        curve.parametersFor(300).targetDuration,
+        inInclusiveRange(210, 240),
+      );
+      expect(curve.parametersFor(10000).targetDuration, lessThanOrEqualTo(240));
     });
 
-    test('checkpoints are at most 40 s apart, 35 s deep', () {
-      expect(curve.parametersFor(1).checkpointSpacing, lessThanOrEqualTo(40));
+    test('checkpoints are at most 35 s apart', () {
+      expect(curve.parametersFor(1).checkpointSpacing, 35);
       expect(curve.parametersFor(500).checkpointSpacing, 35);
     });
   });

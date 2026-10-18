@@ -19,6 +19,7 @@ LevelData course({
   List<Checkpoint> checkpoints = const [],
   List<SpikeStrip> hazards = const [],
   List<MovingPlatform> platforms = const [],
+  List<LaserBarrier> lasers = const [],
   Vec2 ballStart = const Vec2(0.75, 3),
   Vec2? goal,
 }) {
@@ -34,6 +35,7 @@ LevelData course({
     checkpoints: checkpoints,
     hazards: hazards,
     platforms: platforms,
+    lasers: lasers,
     sections: const [],
     estimatedDuration: 10,
   );
@@ -210,6 +212,17 @@ void main() {
       });
     });
 
+    test('rejects a floor run shorter than a tile', () {
+      final level = course(
+        floors: [
+          floor(0, 4),
+          const FloorRun(position: Vec2(6, 4), size: Vec2(0, _tile)),
+          floor(7.5, 4),
+        ],
+      );
+      expect(check(level), contains(endsWith('is shorter than a tile')));
+    });
+
     test('rejects a crumbling island shorter than a tile', () {
       final level = course(
         floors: [
@@ -293,6 +306,36 @@ void main() {
           boosts: const [Boost(position: Vec2(9, 3.4), type: BoostType.jump)],
         );
         expect(check(blocked), contains(startsWith('something blocks')));
+      });
+    });
+
+    group('laser barriers', () {
+      LaserBarrier laser({double bottom = -0.5, double top = -10}) =>
+          LaserBarrier(
+            x: 3,
+            top: top,
+            bottom: bottom,
+            on: 1.4,
+            off: 1,
+            phase: 0,
+          );
+
+      test('accept a barrier above every jump of the route', () {
+        expect(check(course(lasers: [laser()])), isEmpty);
+      });
+
+      test('reject a barrier a jump reaches', () {
+        expect(
+          check(course(lasers: [laser(bottom: 2)])),
+          contains(endsWith('reaches the route')),
+        );
+      });
+
+      test('reject a malformed barrier', () {
+        expect(
+          check(course(lasers: [laser(top: 0)])),
+          contains(endsWith('is malformed')),
+        );
       });
     });
 

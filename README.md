@@ -64,6 +64,7 @@ The ADRs are:
 - [ADR-0011](docs/decisions/0011-hud-layout.md): a small HUD in the top corners
 - [ADR-0012](docs/decisions/0012-self-hosted-web-on-coolify.md): the web game built and served by Coolify on our own
   server
+- [ADR-0013](docs/decisions/0013-demanding-pacing.md): a demanding pace from level 1, everything known by level 8
 
 Contributors (human or AI) start with [AGENTS.md](AGENTS.md).
 

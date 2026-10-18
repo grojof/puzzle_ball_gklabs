@@ -1,3 +1,4 @@
+import 'package:level_generator/src/laser_clearance.dart';
 import 'package:level_generator/src/level_data.dart';
 import 'package:level_generator/src/movement_envelope.dart';
 
@@ -29,6 +30,7 @@ class LevelValidator {
     _checkStartAndGoal(level, violations);
     _checkElementsAboveGround(level, violations);
     _checkSpikePlacement(level, violations);
+    _checkLasers(level, violations);
     _walk(level, margin, violations);
     return violations;
   }
@@ -57,6 +59,8 @@ class LevelValidator {
       final floor = floors[i];
       if (floor.crumbling && floor.size.x < tileSize - _epsilon) {
         violations.add('crumbling island at x=${floor.left} is too short');
+      } else if (floor.size.x < tileSize - _epsilon) {
+        violations.add('floor at x=${floor.left} is shorter than a tile');
       }
       for (final strip in level.hazards) {
         if (strip.left < floor.left || strip.left > floor.right) continue;
@@ -181,6 +185,28 @@ class LevelValidator {
         violations.add(
           'checkpoint at ${checkpoint.position} does not stand on the ground',
         );
+      }
+    }
+  }
+
+  /// Laser barriers hang above every jump of the route around them, with a
+  /// sensible rhythm (design D9 of raise-difficulty-and-pace).
+  void _checkLasers(LevelData level, List<String> violations) {
+    final clearance = LaserClearance(
+      envelope: envelope,
+      floors: level.floors,
+      ramps: level.ramps,
+      platforms: level.platforms,
+      boosts: level.boosts,
+    );
+    for (final laser in level.lasers) {
+      final lowest = clearance.lowestEnd(laser.x);
+      if (lowest == null || laser.bottom > lowest + _epsilon) {
+        violations.add('laser at x=${laser.x} reaches the route');
+      }
+      final rhythm = laser.on >= 0.5 && laser.off >= 0.5;
+      if (laser.top >= laser.bottom || !rhythm) {
+        violations.add('laser at x=${laser.x} is malformed');
       }
     }
   }
