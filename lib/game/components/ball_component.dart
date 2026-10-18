@@ -6,6 +6,7 @@ import 'package:flutter/painting.dart';
 import 'package:puzzle_ball_gklabs/audio/audio_service.dart';
 import 'package:puzzle_ball_gklabs/game/components/goal_component.dart';
 import 'package:puzzle_ball_gklabs/game/components/ground_surface.dart';
+import 'package:puzzle_ball_gklabs/game/components/moving_platform_component.dart';
 import 'package:puzzle_ball_gklabs/game/input/movement_intent.dart';
 import 'package:puzzle_ball_gklabs/haptics/haptics.dart';
 
@@ -32,7 +33,7 @@ class BallComponent extends BodyComponent with ContactCallbacks {
   static const moveForce = 80.0;
 
   /// Upward impulse of a jump.
-  static const jumpImpulse = 80.0;
+  static const jumpImpulse = 65.5;
 
   /// How long after leaving the ground a jump still works (player-controls).
   static const coyoteTime = 0.15;
@@ -56,6 +57,7 @@ class BallComponent extends BodyComponent with ContactCallbacks {
   final Set<GroundSurface> _touching = {};
   double _sinceGround = double.infinity;
   double _sinceJump = double.infinity;
+  int _airJumps = 0;
   late final Timer _boostTimer = Timer(
     boostDuration,
     onTick: _endBoost,
@@ -107,14 +109,50 @@ class BallComponent extends BodyComponent with ContactCallbacks {
     if (intent.horizontal != 0) {
       body.applyForce(Vector2(intent.horizontal * moveForce, 0));
     }
-    if (intent.consumeJump() && _sinceGround <= coyoteTime) {
-      body.applyLinearImpulse(Vector2(0, -jumpImpulse));
-      _sinceGround = double.infinity;
-      _sinceJump = 0;
-      audio.play(GameSound.jump);
-      haptics.play(Haptic.jump);
+    _rideDeck();
+    if (!intent.consumeJump()) return;
+    if (_sinceGround <= coyoteTime) {
+      _jump();
+    } else if (_airJumps > 0) {
+      // An air jump rises the same whatever the timing: from rest.
+      _airJumps--;
+      body.linearVelocity = Vector2(body.linearVelocity.x, 0);
+      _jump();
     }
   }
+
+  /// On a moving platform, the damping acts relative to its deck, so the
+  /// ball rests and rolls on it as on the ground instead of drifting off
+  /// (level-mechanics spec).
+  void _rideDeck() {
+    final center = body.position;
+    for (final surface in _touching) {
+      if (surface is MovingPlatformComponent && surface.supports(center)) {
+        final deck = surface.body.linearVelocity;
+        body.applyForce(deck * (body.mass * linearDamping));
+        return;
+      }
+    }
+  }
+
+  void _jump() {
+    body.applyLinearImpulse(Vector2(0, -jumpImpulse));
+    _sinceGround = double.infinity;
+    _sinceJump = 0;
+    audio.play(GameSound.jump);
+    haptics.play(Haptic.jump);
+  }
+
+  /// Charges one jump the player can use in mid-air: a double-jump orb
+  /// (level-mechanics spec).
+  void chargeAirJump() {
+    _airJumps = 1;
+    audio.play(GameSound.boostJump);
+    haptics.play(Haptic.boost);
+  }
+
+  /// Whether an air jump is charged.
+  bool get hasAirJump => _airJumps > 0;
 
   void applyJumpBoost(double impulse) {
     _startBoost(GameSound.boostJump);
@@ -166,6 +204,7 @@ class BallComponent extends BodyComponent with ContactCallbacks {
     _boostTimer.stop();
     _endBoost();
     _sinceGround = double.infinity;
+    _airJumps = 0;
     body
       ..setTransform(position, const Rot.identity())
       ..linearVelocity = Vector2.zero()

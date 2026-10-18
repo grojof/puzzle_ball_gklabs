@@ -10,6 +10,7 @@ import 'package:level_generator/level_generator.dart';
 import 'package:puzzle_ball_gklabs/audio/audio_service.dart';
 import 'package:puzzle_ball_gklabs/game/camera/camera_controller.dart';
 import 'package:puzzle_ball_gklabs/game/components/hud_layout.dart';
+import 'package:puzzle_ball_gklabs/game/components/joystick_parts.dart';
 import 'package:puzzle_ball_gklabs/game/components/jump_button_component.dart';
 import 'package:puzzle_ball_gklabs/game/components/level_component.dart';
 import 'package:puzzle_ball_gklabs/game/game_config.dart';
@@ -92,14 +93,8 @@ class BallOdysseyGame extends Forge2DGame with HasKeyboardHandlerComponents {
   Component? _input;
   final JoystickComponent _joystick = JoystickComponent(
     anchor: Anchor.bottomLeft,
-    knob: CircleComponent(
-      radius: _joystickRadius * 0.4,
-      paint: Paint()..color = const Color(0xFF2196F3),
-    ),
-    background: CircleComponent(
-      radius: _joystickRadius,
-      paint: Paint()..color = const Color(0x552196F3),
-    ),
+    knob: JoystickKnob(radius: _joystickRadius * 0.4),
+    background: JoystickBase(radius: _joystickRadius),
     margin: const EdgeInsets.only(left: 16, bottom: 16),
   );
   final Vector2 _parallaxVelocity = Vector2.zero();
@@ -201,7 +196,10 @@ class BallOdysseyGame extends Forge2DGame with HasKeyboardHandlerComponents {
 
   Future<void> _addHud() async {
     await camera.viewport.add(
-      JumpButtonComponent(onPressed: intent.requestJump),
+      JumpButtonComponent(
+        onPressed: intent.requestJump,
+        isCharged: () => _level?.hasAirJump ?? false,
+      ),
     );
   }
 

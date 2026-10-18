@@ -74,10 +74,15 @@ Each level is a single `LevelComponent` under the world, built from the `LevelDa
 generator for, with the savegame's seed. It holds terrain, sensors, the goal and the ball:
 
 - **Terrain:** one static body per floor run, painted with the world's generated textures (see Visuals); ramps,
-  boosts (one `BoostComponent` per type), checkpoints and the goal are their own components.
+  boosts and orbs (one `BoostComponent` per type), checkpoints and the goal are their own components.
+- **Mechanics:** `SpikeComponent` is a sensor inset by the ball's radius, so a strip is as wide to clear as a gap.
+  `MovingPlatformComponent` is a kinematic body. It hands its changes of velocity to the ball on its deck, and the
+  ball's damping acts relative to the deck, so the ball rests and rolls on it as on the ground. `CrumblingPlatformComponent` is a floor that stops supporting the ball when it collapses. Grounding
+  goes through `GroundSurface`, which all three floors implement.
 - **Restart and advance:** replace that component in place. Body components destroy their bodies when removed.
-- **Falling:** detected in constant time, by comparing the ball with the level's lowest terrain point. The ball
-  respawns at rest above the last checkpoint it passed, with any boost cancelled; with no checkpoint, the level
+- **Falling:** detected in constant time, by comparing the ball with the level's lowest terrain point. A fall and
+  spikes share `LevelComponent.sendBack()`: the ball respawns at rest above the last checkpoint it passed, with any
+  boost and orb charge cancelled, and crumbled islands and collected orbs come back; with no checkpoint, the level
   restarts.
 - **The goal:** plays its flash-and-fade sequence on the camera viewport and then completes the level.
 
@@ -127,18 +132,25 @@ and copies the centre and zoom it returns into the viewfinder.
 `packages/level_generator` turns a seed and a level number into `LevelData`, the same on every platform
 ([ADR-0009](decisions/0009-level-generator-and-movement-envelope.md)):
 
-1. `DifficultyCurve` maps the level number to `LevelParameters`: stage, breather, intensity, safety margin, obstacle
-   share, target duration, checkpoint spacing and section weights.
+1. `DifficultyCurve` maps the level number to `LevelParameters`: stage, breather, intensity, precision, obstacle
+   share, target duration, checkpoint spacing and section weights, with each element introduced at its level.
 2. `LevelGenerator` walks a cursor from the start platform to the goal and appends sections until the estimated
-   duration reaches the target. Each gap and climb is sized from the speed the player can have there, within the
-   `MovementEnvelope` times the margin. Checkpoints go at the start of a floor run once enough time has passed since
-   the last respawn point.
-3. `LevelValidator` re-checks a level independently: geometry, ramp joins, and every gap and climb against the
-   envelope.
+   duration reaches the target. Each gap, climb, spike strip and boosted section is a share of the reach from the
+   precision interval. The reach comes from the speed the player can have there, read on the measured speed curve.
+   The speed estimate stays honest:
+   - landings cap it, since a player braking in the air to land comes down slower;
+   - ramps down and cascades cap it like drops;
+   - speed boosts add their measured gain to it;
+   - a checkpoint resets it to what a player builds after a respawn.
+   Checkpoints go at the start of a floor run once enough time has passed since the last respawn point.
+3. `LevelValidator` re-checks a level independently: geometry, ramp joins, spikes, ferries, crumbling islands, orbs,
+   and every gap and climb against the envelope.
 
-The game's `ballEnvelope` (`lib/game/ball_envelope.dart`) holds the numbers measured with the real physics. Two game
-tests keep them honest: `movement_envelope_test.dart` drives the real ball and fails if the physics stops reaching
-them, and `level_playthrough_test.dart` has a bot play one level per stage plus two deep levels.
+The game's `ballEnvelope` (`lib/game/ball_envelope.dart`) holds the numbers measured with the real physics, the
+speed curve included. Two game tests keep them honest: `movement_envelope_test.dart` drives the real ball and fails if
+the physics stops reaching them, and `level_playthrough_test.dart` has a bot (`test/helpers/level_bot.dart`) play one
+level per introduction plus deep levels. The bot takes off near edges, holds a steady push in the air, rides ferries
+and uses orbs. Before tuning the curve, run a local stress run of a few hundred levels with the same bot.
 
 ## Audio
 

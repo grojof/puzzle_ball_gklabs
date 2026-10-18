@@ -348,7 +348,8 @@ void main() {
           final boost = game.level!.children.whereType<BoostComponent>().single;
           ball.body.setTransform(Vector2(6, 3.4), const Rot.identity());
           game.update(1 / 60);
-          expect(ball.isBoosted, isTrue);
+          // An orb charges an air jump rather than starting a timed boost.
+          expect(ball.isBoosted, type != BoostType.doubleJump);
           switch (type) {
             case BoostType.jump:
               expect(ball.body.linearVelocity.y, lessThan(-1));
@@ -359,6 +360,8 @@ void main() {
                 ball.body.gravityScale,
                 closeTo(BoostComponent.gravityScale, 1e-6),
               );
+            case BoostType.doubleJump:
+              expect(ball.hasAirJump, isTrue);
           }
           game.update(0.2);
           expect(boost.pulse, isNot(1));
@@ -502,6 +505,46 @@ void main() {
         expect(button.isPressed, isFalse);
       },
     );
+
+    testWithGame(
+      'the jump button shows the charge while an orb charge is held',
+      () => testGame(images: images),
+      (game) async {
+        final button = game.camera.viewport.children
+            .whereType<JumpButtonComponent>()
+            .single;
+        final ball = game.level!.ball;
+        final canvas = Canvas(PictureRecorder());
+        expect(button.showsCharge, isFalse);
+        button.render(canvas);
+        ball.chargeAirJump();
+        expect(button.showsCharge, isTrue);
+        button
+          ..render(canvas)
+          ..onTapDown(TapDownEvent(1, game, TapDownDetails()))
+          ..render(canvas);
+        ball.respawn(Vector2(1, 3));
+        expect(button.showsCharge, isFalse);
+        // A new size records the button again.
+        game.onGameResize(Vector2(400, 900));
+        button.render(canvas);
+        game.joystick.background!.render(canvas);
+        game.joystick.knob!.render(canvas);
+      },
+    );
+
+    test('the charged button draws two arrows inside the button', () {
+      final bounds = JumpButtonComponent.doubleArrowPath(100).getBounds();
+      expect(
+        const Rect.fromLTWH(10, 10, 80, 80).contains(bounds.topLeft),
+        isTrue,
+      );
+      expect(
+        const Rect.fromLTWH(10, 10, 80, 80).contains(bounds.bottomRight),
+        isTrue,
+      );
+      expect(bounds.center.dx, closeTo(50, 1e-9));
+    });
 
     test('the jump button draws an up arrow inside the button', () {
       final bounds = JumpButtonComponent.arrowPath(100).getBounds();

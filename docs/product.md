@@ -27,15 +27,16 @@ What the current baseline does (the rebuild changes it through OpenSpec changes)
 
 | Element | Behavior |
 |---|---|
-| Ball | Rolls with proportional tilt (Android, portrait or landscape), the on-screen joystick or `A`/`D`; jumps with the arrow button, `Space` or a gentle flick of the phone, from the top of the ground only |
+| Ball | Rolls with proportional tilt (Android, portrait or landscape), the on-screen joystick or `A`/`D`; jumps about 2.7 m with the arrow button, `Space` or a gentle flick of the phone, from the top of the ground only, or once in mid-air with an orb's charge |
 | Worlds | Ten levels each, cycling through five biomes (night forest, desert dusk, snowy peaks, crystal caves, volcano), with seeded variations when a biome repeats; a new world announces its name |
-| Look | Generated terrain and backdrops per biome, the painted night-forest backdrop kept; boosts, checkpoints and the goal drawn with depth and a clear icon, the same in every biome |
+| Look | Generated terrain and backdrops per biome, the painted night-forest backdrop kept; boosts, orbs, spikes, platforms, checkpoints and the goal drawn with depth and a clear icon, the same in every biome |
 | Camera | Frames the ball in the lower half with more course ahead the faster it goes, follows the ground smoothly and zooms out before boosts, at high speed and on high jumps, in portrait and landscape |
 | Levels | Generated from the savegame's seed and the level number; about 35 s long at first, growing to two or three minutes deep |
-| Difficulty | Demanding from level 1, with ramps, gaps, drops and steps; stages of five levels add the speed, jump and gravity boosts by level 16; one gentler breather level per stage; it keeps rising with no ceiling |
-| Terrain | Floor runs, ramps, gaps (level, rising or falling), drops and steps up, plus set pieces (staircases, cascades, valleys, island hops), all sized to what the ball can do |
+| Difficulty | Demanding from level 1, with ramps, gaps, drops, steps and spikes; ferries from level 3, speed boosts and crumbling islands from 6, jump boosts and island hops from 11, gravity boosts from 16 and double-jump orbs from 21, each featured in its first five levels; one gentler breather level per stage of five; gaps and climbs use a growing share of the ball's reach, from about 70–80 % to 90–95 %, so deep levels demand take-offs near the edge at full speed; it keeps rising with no ceiling |
+| Terrain | Floor runs, ramps, gaps (level, rising or falling), drops and steps up, plus set pieces (staircases, cascades, valleys, island hops), all sized to what the ball can do from the speed it can build there |
+| Mechanics | Spikes send the ball back like a fall; ferries carry it across gaps too wide to jump, pausing at each edge; crumbling islands collapse 0.6 s after the ball stands on them; a respawn restores crumbled islands and collected orbs |
 | Variety | Each level features two or three sections of its own and alternates bursts of obstacles with rest stretches |
-| Boosts | Jump (upward impulse), speed (forward impulse) and gravity (low gravity for 2 s), each placed before the section that needs it |
+| Boosts | Jump (upward impulse), speed (forward impulse), gravity (low gravity for 2 s) and the double-jump orb (one air jump, shown on the jump button), each placed before the section that needs it |
 | Checkpoints | In longer levels; touching any part of the flag turns it gold, and a fall respawns the ball there |
 | Goal | Reaching it flashes the screen and loads the next level in place |
 | Pause | The pause button, the back button and the app going to the background open the pause menu: resume, restart, settings, levels; back again resumes |

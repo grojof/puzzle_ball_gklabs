@@ -17,6 +17,8 @@ LevelData course({
   List<Ramp> ramps = const [],
   List<Boost> boosts = const [],
   List<Checkpoint> checkpoints = const [],
+  List<SpikeStrip> hazards = const [],
+  List<MovingPlatform> platforms = const [],
   Vec2 ballStart = const Vec2(0.75, 3),
   Vec2? goal,
 }) {
@@ -30,6 +32,8 @@ LevelData course({
     ramps: ramps,
     boosts: boosts,
     checkpoints: checkpoints,
+    hazards: hazards,
+    platforms: platforms,
     sections: const [],
     estimatedDuration: 10,
   );
@@ -153,6 +157,143 @@ void main() {
         check(course(goal: const Vec2(7, 2.25))),
         contains('goal does not stand at the end of the last run'),
       );
+    });
+
+    group('spikes', () {
+      // A start run, a long middle run for the spikes, and the goal run.
+      final runs = [floor(0, 4), floor(6, 4, tiles: 5), floor(15, 4)];
+      List<String> spikes(
+        SpikeStrip strip, {
+        List<Checkpoint> checkpoints = const [],
+        double margin = 0.3,
+      }) => check(
+        course(floors: runs, hazards: [strip], checkpoints: checkpoints),
+        margin: margin,
+      );
+
+      test('accepts a strip inside a run that a jump clears', () {
+        expect(
+          spikes(const SpikeStrip(position: Vec2(7.5, 4), width: 1.5)),
+          isEmpty,
+        );
+      });
+
+      test('rejects a strip wider than a jump from the run-up', () {
+        expect(
+          spikes(const SpikeStrip(position: Vec2(7.5, 4), width: 4.5)),
+          contains(startsWith('spikes of')),
+        );
+      });
+
+      test('rejects a strip less than a tile from a run end', () {
+        expect(
+          spikes(const SpikeStrip(position: Vec2(6.5, 4), width: 1.5)),
+          contains(endsWith('do not lie inside a run')),
+        );
+      });
+
+      test('rejects a strip on the start run', () {
+        expect(
+          spikes(const SpikeStrip(position: Vec2(1.5, 4), width: 1.5)),
+          contains(endsWith('lie on the start or goal')),
+        );
+      });
+
+      test('rejects a strip under a checkpoint', () {
+        expect(
+          spikes(
+            const SpikeStrip(position: Vec2(7.5, 4), width: 1.5),
+            checkpoints: const [Checkpoint(Vec2(8, 4))],
+          ),
+          contains(endsWith('lie under an element')),
+        );
+      });
+    });
+
+    test('rejects a crumbling island shorter than a tile', () {
+      final level = course(
+        floors: [
+          floor(0, 4),
+          const FloorRun(
+            position: Vec2(6, 4),
+            size: Vec2(0.75, _tile),
+            crumbling: true,
+          ),
+          floor(8.25, 4),
+        ],
+      );
+      expect(check(level), contains(endsWith('is too short')));
+    });
+
+    group('orbs', () {
+      const orb = Boost(position: Vec2(3.75, 3.4), type: BoostType.doubleJump);
+
+      test('reject a climb a plain jump makes', () {
+        final level = course(
+          floors: [floor(0, 4), floor(4.5, 3, fill: 1)],
+          boosts: const [orb],
+        );
+        expect(check(level), contains(endsWith('serves no high climb')));
+      });
+
+      test('reject a gap a plain jump clears', () {
+        expect(
+          check(course(boosts: const [orb])),
+          contains(endsWith('serves no long gap')),
+        );
+      });
+
+      test('allow a climb and a gap within the double jump', () {
+        final climb = course(
+          floors: [floor(0, 4), floor(4.5, 1.5, fill: 2.5)],
+          boosts: const [orb],
+        );
+        expect(check(climb, margin: 0.8), isEmpty);
+        final gap = course(
+          floors: [floor(0, 4), floor(4.5 + 9, 4)],
+          boosts: const [orb],
+        );
+        expect(check(gap, margin: 0.8), isEmpty);
+      });
+    });
+
+    group('ferries', () {
+      final runs = [floor(0, 4), floor(14.5, 4)];
+      MovingPlatform ferry({double end = 11.35, double speed = 2.2}) =>
+          MovingPlatform(
+            start: const Vec2(4.65, 4),
+            end: Vec2(end, 4),
+            size: const Vec2(3, 0.5),
+            speed: speed,
+            pause: 0.8,
+          );
+
+      test('bridge a gap too wide to jump', () {
+        expect(check(course(floors: runs, platforms: [ferry()])), isEmpty);
+      });
+
+      test('must reach both edges', () {
+        expect(
+          check(course(floors: runs, platforms: [ferry(end: 10)])),
+          contains(endsWith('does not reach its edges')),
+        );
+      });
+
+      test('move at a speed the ball can ride', () {
+        expect(
+          check(course(floors: runs, platforms: [ferry(speed: 5)])),
+          contains(contains('moves at 5')),
+        );
+      });
+
+      test('have a clear path', () {
+        final blocked = course(
+          floors: runs,
+          platforms: [ferry()],
+          boosts: const [Boost(position: Vec2(9, 3.4), type: BoostType.jump)],
+        );
+        expect(check(blocked), contains(startsWith('something blocks')));
+      });
     });
 
     test('requires boosts above ground and checkpoints on it', () {

@@ -11,6 +11,7 @@ abstract final class ElementPalette {
   static const checkpointIdle = Color(0xFFC7D2DB);
   static const checkpointActive = Color(0xFFFFC531);
   static const portal = Color(0xFF4FE3FF);
+  static const orb = Color(0xFF35B0FF);
 
   /// The outline every element carries.
   static const outline = Color(0xFF0E0B16);
@@ -19,8 +20,10 @@ abstract final class ElementPalette {
   /// rim contrasts with any background, dark, light or in between.
   static const rim = Color(0xFFFFFFFF);
 
-  /// Reserved for the next change's elements.
+  /// The red of spike tips.
   static const hazard = Color(0xFFFF3B3B);
+
+  /// Reserved for the next change's elements.
   static const logicA = Color(0xFF29D3F5);
   static const logicB = Color(0xFFF54BD8);
   static const memory = Color(0x99FFFFFF);
@@ -30,6 +33,7 @@ abstract final class ElementPalette {
     BoostType.jump => jump,
     BoostType.speed => speed,
     BoostType.gravity => gravity,
+    BoostType.doubleJump => orb,
   };
 
   /// The WCAG contrast ratio between [a] and [b], from 1 to 21.
