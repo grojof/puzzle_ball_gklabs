@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:ui';
 
 import 'package:flame/cache.dart';
+import 'package:flame/components.dart' show ParallaxComponent, TextComponent;
 import 'package:flame/events.dart';
 import 'package:flame_forge2d/flame_forge2d.dart';
 import 'package:flame_test/flame_test.dart';
@@ -15,6 +16,7 @@ import 'package:puzzle_ball_gklabs/game/components/level_component.dart';
 import 'package:puzzle_ball_gklabs/game/game_config.dart';
 import 'package:puzzle_ball_gklabs/game/input/manual_input.dart';
 import 'package:puzzle_ball_gklabs/game/input/tilt_input.dart';
+import 'package:puzzle_ball_gklabs/game/visuals/biome_backdrop.dart';
 import 'package:puzzle_ball_gklabs/haptics/haptics.dart';
 import 'package:sensors_plus/sensors_plus.dart';
 
@@ -251,6 +253,99 @@ void main() {
         expect(audio.played, [GameSound.boostJump]);
       },
     );
+  });
+
+  group('world announcement', () {
+    for (final (number, shown) in [(11, true), (12, false)]) {
+      testWithGame(
+        'level $number ${shown ? 'shows' : 'does not show'} the world name',
+        () => testGame(
+          images: images,
+          startLevel: number,
+          totalLevels: number,
+          worldLabel: (n) => n == 11 ? 'World 2 · Desert Dusk' : null,
+        ),
+        (game) async {
+          final texts = game.camera.viewport.children
+              .whereType<TextComponent>()
+              .map((t) => t.text);
+          expect(texts, contains('Level $number'));
+          expect(texts.contains('World 2 · Desert Dusk'), shown);
+        },
+      );
+    }
+  });
+
+  group('checkpoint and goal visuals', () {
+    testWithGame(
+      'a checkpoint bursts on activation, then waves gold',
+      () => testGame(
+        images: images,
+        levelFor: (_) => flatLevel(checkpoints: [4.5]),
+      ),
+      (game) async {
+        final checkpoint = game.level!.children
+            .whereType<CheckPointComponent>()
+            .single;
+        expect(checkpoint.isBursting, isFalse);
+        game.level!.ball.body.setTransform(
+          Vector2(4.5, 3.75),
+          const Rot.identity(),
+        );
+        game.update(1 / 60);
+        expect(checkpoint.isActivated, isTrue);
+        expect(checkpoint.isBursting, isTrue);
+        checkpoint.render(Canvas(PictureRecorder()));
+        game.update(CheckPointComponent.burstDuration);
+        expect(checkpoint.isBursting, isFalse);
+        checkpoint.render(Canvas(PictureRecorder()));
+      },
+    );
+
+    testWithGame('the goal portal swirls', () => testGame(images: images), (
+      game,
+    ) async {
+      final goal = game.level!.children.whereType<GoalComponent>().single;
+      final before = goal.swirlAngle;
+      game.update(0.5);
+      expect(goal.swirlAngle, greaterThan(before));
+      goal.render(Canvas(PictureRecorder()));
+    });
+  });
+
+  group('boost components', () {
+    for (final type in BoostType.values) {
+      testWithGame(
+        'a ${type.name} boost acts on the ball that passes and draws its orb',
+        () => testGame(
+          images: images,
+          levelFor: (_) => flatLevel(
+            boosts: [Boost(position: const Vec2(6, 3.4), type: type)],
+          ),
+        ),
+        (game) async {
+          final ball = game.level!.ball;
+          final boost = game.level!.children.whereType<BoostComponent>().single;
+          ball.body.setTransform(Vector2(6, 3.4), const Rot.identity());
+          game.update(1 / 60);
+          expect(ball.isBoosted, isTrue);
+          switch (type) {
+            case BoostType.jump:
+              expect(ball.body.linearVelocity.y, lessThan(-1));
+            case BoostType.speed:
+              expect(ball.body.linearVelocity.x, greaterThan(1));
+            case BoostType.gravity:
+              expect(
+                ball.body.gravityScale,
+                closeTo(BoostComponent.gravityScale, 1e-6),
+              );
+          }
+          game.update(0.2);
+          expect(boost.pulse, isNot(1));
+          boost.render(Canvas(PictureRecorder()));
+        },
+      );
+    }
   });
 
   group('controls', () {
@@ -565,6 +660,48 @@ void main() {
         }
       },
     );
+
+    for (final (number, painted) in [(1, true), (11, false)]) {
+      testWithGame(
+        'shows the backdrop of world ${(number - 1) ~/ 10 + 1}',
+        () => testGame(
+          images: images,
+          levelFor: (n) => levelGenerator.generate(seed: 'render', level: n),
+          startLevel: number,
+          totalLevels: number,
+        ),
+        (game) async {
+          final layers = game.backdrop!.children;
+          expect(
+            layers.whereType<ParallaxComponent>(),
+            painted ? hasLength(1) : isEmpty,
+          );
+          expect(
+            layers.whereType<BiomeBackdrop>(),
+            painted ? isEmpty : hasLength(1),
+          );
+          expect(layers.whereType<ParticleField>(), hasLength(1));
+        },
+      );
+    }
+
+    // One level per biome of the first cycle.
+    for (final number in [5, 15, 25, 35, 45]) {
+      testWithGame(
+        'draws the terrain of world ${(number - 1) ~/ 10 + 1}',
+        () => testGame(
+          images: images,
+          levelFor: (n) => levelGenerator.generate(seed: 'render', level: n),
+          startLevel: number,
+          totalLevels: number,
+        ),
+        (game) async {
+          expect(game.look!.world, (number - 1) ~/ 10);
+          game.update(0);
+          game.level!.renderTree(Canvas(PictureRecorder()));
+        },
+      );
+    }
   });
 }
 

@@ -1,5 +1,4 @@
 import 'package:level_generator/level_generator.dart';
-import 'package:level_generator/src/random.dart';
 import 'package:test/test.dart';
 
 import '../helpers/envelope.dart';

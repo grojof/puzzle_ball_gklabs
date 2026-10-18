@@ -197,5 +197,34 @@
   "settingsVibrationDesc": "Vibrate on jumps, boosts and checkpoints.",
   "@settingsVibrationDesc": {
     "description": "Description of the vibration switch in settings"
+  },
+  "labelWorld": "World {number}",
+  "@labelWorld": {
+    "description": "Shown under the level label when a new world starts",
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "biomeNightForest": "Night Forest",
+  "@biomeNightForest": {
+    "description": "Name of the night forest biome"
+  },
+  "biomeDesertDusk": "Desert Dusk",
+  "@biomeDesertDusk": {
+    "description": "Name of the desert dusk biome"
+  },
+  "biomeSnowyPeaks": "Snowy Peaks",
+  "@biomeSnowyPeaks": {
+    "description": "Name of the snowy peaks biome"
+  },
+  "biomeCrystalCaves": "Crystal Caves",
+  "@biomeCrystalCaves": {
+    "description": "Name of the crystal caves biome"
+  },
+  "biomeVolcano": "Volcano",
+  "@biomeVolcano": {
+    "description": "Name of the volcano biome"
   }
 }

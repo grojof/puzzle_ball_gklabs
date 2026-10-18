@@ -78,6 +78,7 @@ BallOdysseyGame testGame({
   RecordingHaptics? haptics,
   StreamController<AccelerometerEvent>? sensor,
   void Function(int)? onLevelCompleted,
+  String? Function(int)? worldLabel,
   void Function()? onSessionCompleted,
 }) {
   return BallOdysseyGame(
@@ -89,6 +90,7 @@ BallOdysseyGame testGame({
     config: config,
     images: images,
     levelLabel: (n) => 'Level $n',
+    worldLabel: worldLabel,
     levelTextStyle: const TextStyle(),
     onLevelCompleted: onLevelCompleted,
     onSessionCompleted: onSessionCompleted,

@@ -1,102 +1,103 @@
-import 'dart:ui';
+import 'dart:math' as math;
 
-import 'package:flame/components.dart';
-import 'package:flame/extensions.dart';
-import 'package:flame/image_composition.dart';
 import 'package:flame_forge2d/flame_forge2d.dart';
+import 'package:flutter/painting.dart';
+import 'package:puzzle_ball_gklabs/game/visuals/terrain_paint.dart';
 
+/// A ramp: a static triangle joining two floor runs, drawn with the world's
+/// terrain textures, its surface material following the slope.
 class RampComponent extends BodyComponent with ContactCallbacks {
   new({
     required this.position,
     required this.size,
+    required this.terrain,
     this.inverted = false,
-    this.sprite,
     this.friction = 0.6,
-    this.restitution = 0.0,
-  });
+  }) : super(renderBody: false);
 
+  /// Top-left corner of the ramp's box, in meters.
   @override
   final Vector2 position;
   final Vector2 size;
+  final TerrainPaint terrain;
+
+  /// High on its left (a descent) instead of its right.
   final bool inverted;
   final double friction;
-  final double restitution;
-  final Sprite? sprite;
 
-  late final List<Vector2> vertices;
-  Image? texture;
+  late final List<Vector2> vertices = inverted
+      ? [
+          Vector2(-size.x / 2, size.y / 2),
+          Vector2(size.x / 2, size.y / 2),
+          Vector2(-size.x / 2, -size.y / 2),
+        ]
+      : [
+          Vector2(-size.x / 2, size.y / 2),
+          Vector2(size.x / 2, size.y / 2),
+          Vector2(size.x / 2, -size.y / 2),
+        ];
 
-  @override
-  Future<void> onLoad() async {
-    await super.onLoad();
-    if (sprite != null) {
-      texture = sprite!.image;
-    }
-  }
+  late final Path _triangle = Path()
+    ..addPolygon([for (final v in vertices) Offset(v.x, v.y)], true);
+  late final Rect _bounds = Rect.fromCenter(
+    center: Offset.zero,
+    width: size.x,
+    height: size.y,
+  );
+  late final Paint _body = terrain.body(position + size / 2);
+  late final Paint _depth = Paint()
+    ..shader = const LinearGradient(
+      begin: Alignment.topCenter,
+      end: Alignment.bottomCenter,
+      colors: [Color(0x00000000), Color(0x73000000)],
+    ).createShader(_bounds);
+
+  /// The slope, from its low end to its high end, as start, angle and
+  /// length.
+  late final Offset _slopeStart = inverted
+      ? Offset(size.x / 2, size.y / 2)
+      : Offset(-size.x / 2, size.y / 2);
+  late final double _slopeAngle = inverted
+      ? math.atan2(-size.y, -size.x)
+      : math.atan2(-size.y, size.x);
+  late final double _slopeLength = math.sqrt(size.x * size.x + size.y * size.y);
+  late final Rect _strip = Rect.fromLTWH(
+    0,
+    -TerrainPaint.surfaceOverhang,
+    _slopeLength,
+    TerrainPaint.surfaceHeight,
+  );
+  late final Paint _surface = terrain.surface(left: 0, top: _strip.top);
 
   @override
   Body createBody() {
-    final halfW = size.x / 2;
-    final halfH = size.y / 2;
-
-    vertices = inverted
-        ? [
-            Vector2(-halfW, halfH),
-            Vector2(halfW, halfH),
-            Vector2(-halfW, -halfH),
-          ]
-        : [
-            Vector2(-halfW, halfH),
-            Vector2(halfW, halfH),
-            Vector2(halfW, -halfH),
-          ];
-
-    return world.createBody(
-      BodyDef(position: position + size / 2),
-    )..createShape(
-      Polygon(vertices),
-      ShapeDef(
-        material: SurfaceMaterial(friction: friction, restitution: restitution),
-        enableContactEvents: true,
-        userData: this,
-      ),
-    );
+    return world.createBody(BodyDef(position: position + size / 2))
+      ..createShape(
+        Polygon(vertices),
+        ShapeDef(
+          material: SurfaceMaterial(friction: friction),
+          enableContactEvents: true,
+          userData: this,
+        ),
+      );
   }
 
   @override
   void render(Canvas canvas) {
-    if (texture != null) {
-      final src = Rect.fromLTWH(
-        0,
-        0,
-        texture!.width.toDouble(),
-        texture!.height.toDouble(),
-      );
-      final dst = Rect.fromCenter(
-        center: Offset.zero,
-        width: size.x,
-        height: size.y,
-      );
-
-      canvas.save();
-      final path = Path()
-        ..moveTo(vertices[0].x, vertices[0].y)
-        ..lineTo(vertices[1].x, vertices[1].y)
-        ..lineTo(vertices[2].x, vertices[2].y)
-        ..close();
-
-      canvas
-        ..clipPath(path) // ← Recorta la textura con la forma triangular
-        ..drawImageRect(texture!, src, dst, Paint())
-        ..restore();
-    } else {
-      final path = Path()
-        ..moveTo(vertices[0].x, vertices[0].y)
-        ..lineTo(vertices[1].x, vertices[1].y)
-        ..lineTo(vertices[2].x, vertices[2].y)
-        ..close();
-
-      canvas.drawPath(path, Paint()..color = const Color(0xFF90CAF9));
-    }
+    canvas
+      ..save()
+      ..clipPath(_triangle)
+      ..drawRect(_bounds, _body)
+      ..drawRect(_bounds, _depth)
+      ..restore()
+      ..save()
+      ..translate(_slopeStart.dx, _slopeStart.dy)
+      ..rotate(_slopeAngle);
+    // Descending ramps draw the strip from their low end leftwards, so it
+    // is flipped to keep the material's top up.
+    if (inverted) canvas.scale(1, -1);
+    canvas
+      ..drawRect(_strip, _surface)
+      ..restore();
   }
 }

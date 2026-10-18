@@ -1,0 +1,83 @@
+import 'dart:math' as math;
+
+import 'package:flame_forge2d/flame_forge2d.dart';
+import 'package:flutter/painting.dart';
+import 'package:level_generator/level_generator.dart' show BoostType;
+import 'package:puzzle_ball_gklabs/game/components/ball_component.dart';
+import 'package:puzzle_ball_gklabs/game/visuals/element_painter.dart';
+import 'package:puzzle_ball_gklabs/game/visuals/element_palette.dart';
+
+/// A boost: a sensor that changes the ball's motion when it passes through,
+/// drawn as a glowing orb with its type's color and icon, pulsing gently
+/// (game-visuals spec).
+class BoostComponent extends BodyComponent with ContactCallbacks {
+  new({required this.type, required this.position}) : super(renderBody: false);
+
+  /// The upward impulse of a jump boost.
+  static const jumpImpulse = 120.0;
+
+  /// The forward impulse of a speed boost.
+  static const speedImpulse = 100.0;
+
+  /// The gravity scale during a gravity boost.
+  static const gravityScale = 0.1;
+
+  /// The side of the square sensor, in meters.
+  static const size = 1.0;
+
+  /// The orb's radius, in meters.
+  static const radius = 0.42;
+
+  /// How fast the orb pulses, in cycles per second, and by how much.
+  static const pulseRate = 1.2;
+  static const pulseAmount = 0.06;
+
+  final BoostType type;
+
+  /// Centre of the sensor, in meters.
+  @override
+  final Vector2 position;
+
+  double _time = 0;
+
+  @override
+  Body createBody() {
+    return world.createBody(BodyDef(position: position))..createShape(
+      Polygon.box(size / 2, size / 2),
+      ShapeDef(isSensor: true, enableSensorEvents: true, userData: this),
+    );
+  }
+
+  @override
+  void beginContact(Object other, Contact contact) {
+    if (other is! BallComponent) return;
+    switch (type) {
+      case BoostType.jump:
+        other.applyJumpBoost(jumpImpulse);
+      case BoostType.speed:
+        other.applySpeedBoost(speedImpulse, Vector2(1, 0));
+      case BoostType.gravity:
+        other.applyGravityBoost(gravityScale);
+    }
+  }
+
+  @override
+  void update(double dt) {
+    super.update(dt);
+    _time += dt;
+  }
+
+  /// The orb's current scale, pulsing around 1.
+  double get pulse =>
+      1 + pulseAmount * math.sin(2 * math.pi * pulseRate * _time);
+
+  @override
+  void render(Canvas canvas) {
+    canvas
+      ..save()
+      ..scale(pulse);
+    ElementPainter.orb(canvas, radius, ElementPalette.boost(type));
+    ElementPainter.boostIcon(canvas, type, radius);
+    canvas.restore();
+  }
+}

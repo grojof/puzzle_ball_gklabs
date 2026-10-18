@@ -9,6 +9,7 @@ import 'package:level_generator/level_generator.dart';
 import 'package:puzzle_ball_gklabs/audio/audio_service.dart';
 import 'package:puzzle_ball_gklabs/game/components/components.dart';
 import 'package:puzzle_ball_gklabs/game/input/movement_intent.dart';
+import 'package:puzzle_ball_gklabs/game/visuals/terrain_paint.dart';
 import 'package:puzzle_ball_gklabs/gen/assets.gen.dart';
 import 'package:puzzle_ball_gklabs/haptics/haptics.dart';
 
@@ -24,6 +25,7 @@ class LevelComponent extends Component with HasGameReference<Forge2DGame> {
     required this.intent,
     required this.audio,
     required this.haptics,
+    required this.terrain,
     required this.onFell,
     required this.onCompleted,
     this.onRespawned,
@@ -38,6 +40,9 @@ class LevelComponent extends Component with HasGameReference<Forge2DGame> {
   final MovementIntent intent;
   final AudioSink audio;
   final HapticsSink haptics;
+
+  /// The world's terrain paints.
+  final TerrainPaint terrain;
 
   /// The ball fell below [fallLine] with no active checkpoint.
   final VoidCallback onFell;
@@ -64,9 +69,7 @@ class LevelComponent extends Component with HasGameReference<Forge2DGame> {
   @override
   Future<void> onLoad() async {
     final images = game.images;
-    Sprite sprite(String path) => Sprite(images.fromCache(path));
     final components = Assets.images.components;
-    final floor = sprite(components.floor.path);
 
     ball = BallComponent(
       intent: intent,
@@ -83,7 +86,7 @@ class LevelComponent extends Component with HasGameReference<Forge2DGame> {
         FloorComponent(
           position: _vector(run.position),
           size: _vector(run.size),
-          sprite: floor,
+          terrain: terrain,
         ),
       for (final ramp in data.ramps)
         RampComponent(
@@ -91,7 +94,7 @@ class LevelComponent extends Component with HasGameReference<Forge2DGame> {
           size: _vector(ramp.size),
           // A ramp component "inverted" is high on its left.
           inverted: !ramp.ascending,
-          sprite: floor,
+          terrain: terrain,
         ),
       for (final checkpoint in data.checkpoints)
         CheckPointComponent(
@@ -101,37 +104,11 @@ class LevelComponent extends Component with HasGameReference<Forge2DGame> {
             haptics.play(Haptic.checkpoint);
           },
         ),
-      for (final boost in data.boosts) _boost(boost, sprite),
-      GoalComponent(
-        position: _vector(data.goal),
-        size: Vector2(1, 3.5),
-        sprite: sprite(components.goal.path),
-      ),
+      for (final boost in data.boosts)
+        BoostComponent(type: boost.type, position: _vector(boost.position)),
+      GoalComponent(position: _vector(data.goal), size: Vector2(1, 3.5)),
       ball,
     ]);
-  }
-
-  static Component _boost(Boost boost, Sprite Function(String) sprite) {
-    final components = Assets.images.components;
-    final position = _vector(boost.position);
-    final size = Vector2.all(1);
-    return switch (boost.type) {
-      BoostType.jump => JumpBoostComponent(
-        position: position,
-        size: size,
-        sprite: sprite(components.jumpBoost.path),
-      ),
-      BoostType.speed => SpeedBoostComponent(
-        position: position,
-        size: size,
-        sprite: sprite(components.speedBoost.path),
-      ),
-      BoostType.gravity => GravityBoostComponent(
-        position: position,
-        size: size,
-        sprite: sprite(components.gravityBoost.path),
-      ),
-    };
   }
 
   @override

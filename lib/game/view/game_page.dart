@@ -12,6 +12,7 @@ import 'package:puzzle_ball_gklabs/game/ball_envelope.dart';
 import 'package:puzzle_ball_gklabs/game/ball_odyssey_game.dart';
 import 'package:puzzle_ball_gklabs/game/game_config.dart';
 import 'package:puzzle_ball_gklabs/game/view/pause_menu.dart';
+import 'package:puzzle_ball_gklabs/game/view/world_title.dart';
 import 'package:puzzle_ball_gklabs/haptics/haptics.dart';
 import 'package:puzzle_ball_gklabs/l10n/l10n.dart';
 import 'package:puzzle_ball_gklabs/loading/loading.dart';
@@ -86,6 +87,7 @@ class GamePageState extends State<GamePage> {
       config: _configOf(context.read<SettingsCubit>().state),
       images: context.read<Images>(),
       levelLabel: (n) => '${context.l10n.labelLevel} $n',
+      worldLabel: (n) => worldTitle(context.l10n, savegame.seed, n),
       levelTextStyle: (theme.textTheme.headlineMedium ?? const TextStyle())
           .copyWith(color: Colors.white),
       onLevelCompleted: (n) => unawaited(
