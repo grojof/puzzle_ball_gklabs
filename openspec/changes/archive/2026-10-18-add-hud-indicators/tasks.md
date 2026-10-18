@@ -21,7 +21,7 @@
 
 - [x] 4.1 Write ADR-0011 (HUD layout and sizing) and update `docs/architecture.md`, `docs/product.md` and the README index; verify `docs-check` and the spell check
 - [x] 4.2 Play on the author's phone in portrait and landscape, and in the browser; measure frame time; verify the feedback is noted for the PR
-- [ ] 4.3 Run the local CI checks, open the PR as ready, and squash merge when CI passes; verify CI passes
+- [x] 4.3 Run the local CI checks, open the PR as ready, and squash merge when CI passes; verify CI passes
 
 ## Workflow follow-up
 
