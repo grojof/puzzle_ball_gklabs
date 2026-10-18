@@ -2,11 +2,14 @@ import 'dart:math' as math;
 
 import 'package:flame_forge2d/flame_forge2d.dart';
 import 'package:flutter/painting.dart';
+import 'package:puzzle_ball_gklabs/game/components/ground_surface.dart';
 import 'package:puzzle_ball_gklabs/game/visuals/terrain_paint.dart';
 
 /// A ramp: a static triangle joining two floor runs, drawn with the world's
 /// terrain textures, its surface material following the slope.
-class RampComponent extends BodyComponent with ContactCallbacks {
+class RampComponent extends BodyComponent
+    with ContactCallbacks
+    implements GroundSurface {
   new({
     required this.position,
     required this.size,
@@ -68,6 +71,23 @@ class RampComponent extends BodyComponent with ContactCallbacks {
     TerrainPaint.surfaceHeight,
   );
   late final Paint _surface = terrain.surface(left: 0, top: _strip.top);
+
+  @override
+  bool supports(Vector2 center) {
+    final left = position.x;
+    final right = position.x + size.x;
+    if (center.x < left - GroundSurface.edgeTolerance ||
+        center.x > right + GroundSurface.edgeTolerance) {
+      return false;
+    }
+    final t = ((center.x - left) / size.x).clamp(0.0, 1.0);
+    final top = position.y;
+    final bottom = position.y + size.y;
+    final surface = inverted
+        ? top + (bottom - top) * t
+        : bottom - (bottom - top) * t;
+    return center.y < surface;
+  }
 
   @override
   Body createBody() {

@@ -4,9 +4,8 @@ import 'package:flame/components.dart';
 import 'package:flame_forge2d/flame_forge2d.dart';
 import 'package:flutter/painting.dart';
 import 'package:puzzle_ball_gklabs/audio/audio_service.dart';
-import 'package:puzzle_ball_gklabs/game/components/floor_component.dart';
 import 'package:puzzle_ball_gklabs/game/components/goal_component.dart';
-import 'package:puzzle_ball_gklabs/game/components/ramp_component.dart';
+import 'package:puzzle_ball_gklabs/game/components/ground_surface.dart';
 import 'package:puzzle_ball_gklabs/game/input/movement_intent.dart';
 import 'package:puzzle_ball_gklabs/haptics/haptics.dart';
 
@@ -38,7 +37,11 @@ class BallComponent extends BodyComponent with ContactCallbacks {
   /// How long after leaving the ground a jump still works (player-controls).
   static const coyoteTime = 0.15;
 
-  /// How long a boost lasts and blocks other boosts.
+  /// After a jump, how long the ground is ignored: the contact lingers for a
+  /// frame or two after take-off, which would allow a second jump.
+  static const jumpLockout = 0.25;
+
+  /// How long a boost lasts.
   static const boostDuration = 2.0;
 
   final MovementIntent intent;
@@ -49,9 +52,10 @@ class BallComponent extends BodyComponent with ContactCallbacks {
   final VoidCallback onGoalReached;
   final Image? textureImage;
 
-  /// The floors and ramps the ball rests on.
-  final Set<Object> _ground = {};
+  /// The floors and ramps the ball touches.
+  final Set<GroundSurface> _touching = {};
   double _sinceGround = double.infinity;
+  double _sinceJump = double.infinity;
   late final Timer _boostTimer = Timer(
     boostDuration,
     onTick: _endBoost,
@@ -59,13 +63,15 @@ class BallComponent extends BodyComponent with ContactCallbacks {
   );
   bool _reachedGoal = false;
 
-  /// Whether the ball rests on the top of a floor or a ramp; touching the
-  /// side of a ledge does not count (player-controls spec).
-  bool get isOnGround => _ground.isNotEmpty;
-
-  /// How upright a surface must be to stand on: up to 60° from flat, well
-  /// beyond the steepest ramp.
-  static const _minGroundNormalY = 0.5;
+  /// Whether the ball rests on the top of a floor or a ramp: it touches one
+  /// and its center is above that surface. Touching the side of a ledge does
+  /// not count (player-controls spec), and a contact that began on a corner
+  /// counts once the ball is on top.
+  bool get isOnGround {
+    if (_touching.isEmpty || !isMounted) return false;
+    final center = body.position;
+    return _touching.any((surface) => surface.supports(center));
+  }
 
   /// Whether a boost is running.
   bool get isBoosted => _boostTimer.isRunning();
@@ -95,40 +101,44 @@ class BallComponent extends BodyComponent with ContactCallbacks {
     super.update(dt);
     _boostTimer.update(dt);
     if (_reachedGoal) return;
-    _sinceGround = isOnGround ? 0 : _sinceGround + dt;
+    _sinceJump += dt;
+    final grounded = isOnGround && _sinceJump > jumpLockout;
+    _sinceGround = grounded ? 0 : _sinceGround + dt;
     if (intent.horizontal != 0) {
       body.applyForce(Vector2(intent.horizontal * moveForce, 0));
     }
     if (intent.consumeJump() && _sinceGround <= coyoteTime) {
       body.applyLinearImpulse(Vector2(0, -jumpImpulse));
       _sinceGround = double.infinity;
+      _sinceJump = 0;
       audio.play(GameSound.jump);
       haptics.play(Haptic.jump);
     }
   }
 
   void applyJumpBoost(double impulse) {
-    if (!_startBoost(GameSound.boostJump)) return;
+    _startBoost(GameSound.boostJump);
     body.applyLinearImpulse(Vector2(0, -impulse));
   }
 
   void applySpeedBoost(double impulse, Vector2 direction) {
-    if (!_startBoost(GameSound.boostSpeed)) return;
+    _startBoost(GameSound.boostSpeed);
     body.applyLinearImpulse(direction.normalized() * impulse);
   }
 
   void applyGravityBoost(double gravityScale) {
-    if (!_startBoost(GameSound.boostGravity)) return;
+    _startBoost(GameSound.boostGravity);
     body.gravityScale = gravityScale;
   }
 
-  /// Starts a boost unless one is running; it ends after [boostDuration].
-  bool _startBoost(GameSound sound) {
-    if (isBoosted) return false;
+  /// Starts a boost for [boostDuration], ending the one running, if any:
+  /// every boost the ball passes takes effect, as the level generator
+  /// expects.
+  void _startBoost(GameSound sound) {
+    if (isBoosted) _endBoost();
     audio.play(sound);
     haptics.play(Haptic.boost);
     _boostTimer.start();
-    return true;
   }
 
   void _endBoost() {
@@ -137,26 +147,17 @@ class BallComponent extends BodyComponent with ContactCallbacks {
 
   @override
   void beginContact(Object other, Contact contact) {
-    if (other is FloorComponent || other is RampComponent) {
-      if (_isBelow(contact)) _ground.add(other);
+    if (other is GroundSurface) {
+      _touching.add(other);
     } else if (other is GoalComponent && !_reachedGoal) {
       _reachedGoal = true;
       onGoalReached();
     }
   }
 
-  /// Whether the other shape of [contact] is under the ball: the normal,
-  /// oriented from the ball, points down.
-  bool _isBelow(Contact contact) {
-    final normal = contact.normal;
-    if (normal == null) return false;
-    final down = contact.shapeA.userData == this ? normal.y : -normal.y;
-    return down >= _minGroundNormalY;
-  }
-
   @override
   void endContact(Object other, Contact contact) {
-    _ground.remove(other);
+    if (other is GroundSurface) _touching.remove(other);
   }
 
   /// Puts the ball at rest at [position], cancelling any boost: a respawn at

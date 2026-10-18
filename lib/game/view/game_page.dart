@@ -166,37 +166,47 @@ class GamePageState extends State<GamePage> {
       listenWhen: (previous, current) =>
           previous.settings.controlMode != current.settings.controlMode,
       listener: (_, state) => game.applyConfig(_configOf(state)),
-      child: Scaffold(
-        body: Stack(
-          children: [
-            Positioned.fill(
-              child: GameWidget<BallOdysseyGame>(
-                game: game,
-                focusNode: _focusNode,
-                overlayBuilderMap: {
-                  pauseOverlay: (context, _) => PauseMenu(
-                    onResume: _resume,
-                    onRestart: () => unawaited(_restart()),
-                    onSettings: () => context.push(AppRoutes.settings),
-                    onLevels: () => context.go(AppRoutes.levelsOf(savegame.id)),
-                  ),
-                },
+      // The system back button pauses during play and resumes from the pause
+      // menu, instead of leaving the game (and, at the root, the app).
+      child: PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, _) {
+          if (didPop) return;
+          game.overlays.isActive(pauseOverlay) ? _resume() : pause();
+        },
+        child: Scaffold(
+          body: Stack(
+            children: [
+              Positioned.fill(
+                child: GameWidget<BallOdysseyGame>(
+                  game: game,
+                  focusNode: _focusNode,
+                  overlayBuilderMap: {
+                    pauseOverlay: (context, _) => PauseMenu(
+                      onResume: _resume,
+                      onRestart: () => unawaited(_restart()),
+                      onSettings: () => context.push(AppRoutes.settings),
+                      onLevels: () =>
+                          context.go(AppRoutes.levelsOf(savegame.id)),
+                    ),
+                  },
+                ),
               ),
-            ),
-            const SoundToggleFab(),
-            Positioned(
-              top: 24,
-              left: 24,
-              child: FloatingActionButton.small(
-                key: const Key('game_pause'),
-                heroTag: 'game_pause',
-                tooltip: context.l10n.pauseButton,
-                backgroundColor: Theme.of(context).colorScheme.primary,
-                onPressed: pause,
-                child: const Icon(Icons.pause),
+              const SoundToggleFab(),
+              Positioned(
+                top: 24,
+                left: 24,
+                child: FloatingActionButton.small(
+                  key: const Key('game_pause'),
+                  heroTag: 'game_pause',
+                  tooltip: context.l10n.pauseButton,
+                  backgroundColor: Theme.of(context).colorScheme.primary,
+                  onPressed: pause,
+                  child: const Icon(Icons.pause),
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
