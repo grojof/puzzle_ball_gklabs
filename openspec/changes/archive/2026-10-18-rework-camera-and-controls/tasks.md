@@ -34,7 +34,7 @@
 - [x] 5.1 Update `docs/architecture.md` (camera section), `docs/product.md` (gameplay today, known gaps) and `docs/glossary.md` (look-ahead); verify `docs-check` and the Markdown spell check pass
 - [x] 5.4 Update the docs for the play-test additions (ground-in-view zoom, vibration setting and feedback); verify `docs-check` and the spell check pass
 - [x] 5.2 Play on the author's phone in portrait and landscape, with joystick and tilt, record frame time against task 1.1, and tune the camera constants from the author's feedback; verify no runtime errors in the logs and the feedback noted for the PR
-- [ ] 5.3 Run the local CI checks (format, analyze, bloc lint, tests in random order with coverage at or above the threshold, spell check), open the PR as a draft and mark it ready once green locally; verify CI passes
+- [x] 5.3 Run the local CI checks (format, analyze, bloc lint, tests in random order with coverage at or above the threshold, spell check), open the PR as a draft and mark it ready once green locally; verify CI passes
 
 ## Workflow follow-up
 
