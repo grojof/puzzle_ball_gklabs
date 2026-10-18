@@ -47,6 +47,10 @@ class LevelComponent extends Component with HasGameReference<Forge2DGame> {
   static const reachPerMeter = 1.3;
   static const reachExtra = 20.0;
 
+  /// How high an orb's air jump can still lift the ball, in meters: with a
+  /// charge held, ground up to this much above it is still within reach.
+  static const airJumpRise = 3.0;
+
   static const ballRadius = 0.2;
 
   final LevelData data;
@@ -109,12 +113,14 @@ class LevelComponent extends Component with HasGameReference<Forge2DGame> {
   }
 
   /// Whether some ground lies below the ball that it can still reach,
-  /// given how fast it can fall and travel sideways (game-session spec).
+  /// given how fast it can fall and travel sideways, and how high an orb's
+  /// charge can still lift it (game-session spec).
   bool get canStillLand {
     final position = ball.body.position;
+    final rise = ball.hasAirJump ? airJumpRise : 0.0;
     // Only columns the ball could reach from as high above the level's
     // lowest ground as it is.
-    final widest = reachPerMeter * (fallLine - position.y) + reachExtra;
+    final widest = reachPerMeter * (fallLine - position.y + rise) + reachExtra;
     final first = math.max(0, ((position.x - widest) / columnWidth).floor());
     final last = math.min(
       _ground.length - 1,
@@ -122,12 +128,13 @@ class LevelComponent extends Component with HasGameReference<Forge2DGame> {
     );
     for (var i = first; i <= last; i++) {
       final top = _ground[i];
-      if (top == null || top <= position.y) continue;
+      final below = top == null ? 0.0 : top - position.y + rise;
+      if (below <= 0) continue;
       final left = i * columnWidth;
       final away = position.x < left
           ? left - position.x
           : math.max(0, position.x - (left + columnWidth));
-      if (away <= reachPerMeter * (top - position.y) + reachExtra) return true;
+      if (away <= reachPerMeter * below + reachExtra) return true;
     }
     return false;
   }

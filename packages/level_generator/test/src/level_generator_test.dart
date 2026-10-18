@@ -534,4 +534,4 @@ void main() {
   });
 }
 
-const goldenDigests = [240488651, 2875432451, 194067229];
+const goldenDigests = [3799362494, 3325401801, 6255115];

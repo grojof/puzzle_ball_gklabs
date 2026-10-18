@@ -26,14 +26,15 @@ void main() {
           FloorRun(position: Vec2(40, 1), size: Vec2(6, tileSize)),
         ],
       );
-      expect(clearance.highestGround(15), 4);
-      expect(clearance.highestGround(25), 1);
+      expect(clearance.routeTop(15), 4);
+      // Over the gap to the higher run, the step between them counts.
+      expect(clearance.routeTop(35), 1);
       expect(clearance.clearance(15), testEnvelope.jumpHeight);
       expect(
         clearance.lowestEnd(15),
         4 - testEnvelope.jumpHeight - laserMargin,
       );
-      expect(route(floors: const []).highestGround(5), isNull);
+      expect(route(floors: const []).routeTop(5), isNull);
       expect(route(floors: const []).lowestEnd(5), isNull);
     });
 
@@ -72,7 +73,7 @@ void main() {
           ramps: const [
             Ramp(position: Vec2(14, 2), size: Vec2(3, 2), ascending: false),
           ],
-        ).highestGround(15),
+        ).routeTop(15),
         2,
       );
       final ferry = route(
@@ -86,7 +87,41 @@ void main() {
           ),
         ],
       );
-      expect(ferry.highestGround(15), 3);
+      expect(ferry.routeTop(15), 3);
+    });
+
+    test('counts only steps between consecutive runs, not shortcuts', () {
+      // Down a descent: a top run, a tread, then the bottom run.
+      final descent = route(
+        floors: const [
+          FloorRun(position: Vec2(0, 0), size: Vec2(10, tileSize)),
+          FloorRun(position: Vec2(12, 4), size: Vec2(2, tileSize)),
+          FloorRun(position: Vec2(16, 8), size: Vec2(14, tileSize)),
+        ],
+      );
+      // Over the bottom run, the step from the tread counts, but not a leap
+      // from the top run, which would be a shortcut.
+      expect(descent.routeTop(20), 4);
+      expect(descent.routeTop(13), 0);
+    });
+
+    test('counts a roll off a ledge over the runs below', () {
+      // A ledge, a short tread a drop lower, then the bottom run.
+      final drops = route(
+        floors: const [
+          FloorRun(position: Vec2(0, 0), size: Vec2(10, tileSize)),
+          FloorRun(position: Vec2(10, 5), size: Vec2(2, tileSize)),
+          FloorRun(position: Vec2(12, 10), size: Vec2(30, tileSize)),
+        ],
+      );
+      // Rolling off the top ledge at speed passes over the tread and part
+      // of the bottom run at up to the ledge's height, without a jump.
+      expect(drops.rollOffTop(14), 0);
+      expect(drops.rollOffTop(5), isNull);
+      expect(drops.rollOffTop(40), isNull);
+      expect(drops.lowestEnd(14), 0 - laserMargin);
+      // Far along the bottom run only its own route counts.
+      expect(drops.lowestEnd(40), 10 - testEnvelope.jumpHeight - laserMargin);
     });
 
     test('allows no barrier where a gravity boost serves', () {

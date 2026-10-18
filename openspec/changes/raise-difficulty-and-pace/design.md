@@ -101,6 +101,8 @@ gravity boost is covered.
 - Each frame it checks whether any column lies below the ball by Δh > 0, within `1.3·Δh + 20` m of it horizontally.
   A level has a few hundred columns, a cheap loop. If none does, the ball can no longer land anywhere, and it is sent
   back.
+- With an orb's charge held, ground up to 3 m above the ball still counts, since the air jump can lift it back (the
+  author's play-test asked for this margin).
 - A long jump or drop that can reach real ground is never cut short, as the author asked. A pit far above the rest of
   the level is detected about a second in, instead of after the ball reaches the level's lowest point.
 - *Alternative: the lowest ground within a fixed window around the ball.* Rejected after the author's review: it
@@ -113,11 +115,21 @@ gravity boost is covered.
   - over the lower half of each descent: one or two barriers;
   - after each tower's top, where the route turns back down: one barrier;
   - each beam hangs from 10 m above its bottom end.
-- **Clearance:** the bottom end sits above the route by more than any jump of the route can reach. Let `high` be the
-  highest ground (smallest y) within 18 m either side; the bottom is at `high − (clearance + 1.0)` m.
-  - The window is wider than any gap, so a jump from higher ground across a long falling gap counts.
+- **Clearance:** the bottom end sits above the intended route by more than any of its jumps can reach. Let `high` be
+  the highest point of the route at the barrier's x: the ground under it, and every step from one floor run to the
+  next that passes over it, from leaving the first to landing anywhere on the second. The bottom is at
+  `high − (clearance + 1.0)` m.
   - The margin covers the ball's diameter and the envelope's rounding down.
-  - The stress run found both: the first values, 10 m and 0.5 m, let a route jump graze a barrier.
+  - A flight that skips floor runs, such as a leap from a descent's top over its lower parts, is a shortcut and is
+    not counted, so it meets the barrier.
+  - Each step counts only as far as a jump carries, longer with a speed boost or an orb on the floor it leaves.
+  - Rolling off a ledge without jumping is still the route: a fast ball flies over short treads below. The barrier
+    stays above the ledge's height there, but without a jump on top, since jumping off to clear several runs is the
+    deliberate shortcut it guards.
+  - With these rules, about three in four barriers hang where a jump from the high ground before them passes, and
+    the stress run never touches one.
+  - History: a first window of 10 m let a route jump graze a barrier, and a second of 18 m around the barrier put the
+    barriers out of reach of any shortcut, as the author's play-test found.
   - `clearance` is the plain jump's height (2.65 m).
   - Where a jump boost or an orb serves within those 18 m, it is the boosted height (6.4 m) or the double jump's
     (5.3 m).

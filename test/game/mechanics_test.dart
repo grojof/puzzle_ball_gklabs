@@ -344,6 +344,27 @@ void main() {
     );
 
     testWithGame(
+      "an orb's charge keeps a ledge within reach a little longer",
+      () => gameOn(_level(goalLeft: 200)),
+      (game) async {
+        game.input!.removeFromParent();
+        game.update(0);
+        final level = game.level!;
+        final ball = level.ball;
+        // In the pit just past the start run, 1.5 m below its top.
+        ball.body
+          ..gravityScale = 0
+          ..setTransform(Vector2(12.5, _top + 1.5), const Rot.identity());
+        expect(level.canStillLand, isFalse);
+        ball.chargeAirJump();
+        expect(level.canStillLand, isTrue);
+        // Deeper than an air jump can climb, it is gone either way.
+        ball.body.setTransform(Vector2(12.5, _top + 3.5), const Rot.identity());
+        expect(level.canStillLand, isFalse);
+      },
+    );
+
+    testWithGame(
       'rolling off a ledge onto the ground below is no fall',
       () => gameOn(
         _level(
