@@ -10,11 +10,15 @@ void main() {
     // The generated biomes of the first cycle, and a repeat with a variant.
     for (final level in [11, 21, 31, 41, 61]) {
       final look = WorldLook.forLevel('backdrop', level);
-      test('builds and draws the ${look.biome.name} backdrop', () {
+      test('builds and draws the ${look.biome.name} backdrop', () async {
         var cameraX = 0.0;
         final backdrop = BiomeBackdrop(look: look, cameraX: () => cameraX)
           ..onGameResize(Vector2(800, 360));
         expect(backdrop.layers, hasLength(3));
+        // Bands keep their proportions: no taller than the short side.
+        for (final layer in backdrop.layers) {
+          expect(layer.rect.height, lessThanOrEqualTo(360));
+        }
         backdrop.render(Canvas(PictureRecorder()));
 
         // The far layers move less than the near ones.

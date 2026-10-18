@@ -9,6 +9,11 @@ import 'package:puzzle_ball_gklabs/game/visuals/world_look.dart';
 /// The backdrop of a generated biome: a sky gradient, silhouette layers that
 /// move with the camera at different speeds, and ambient particles (design
 /// D4). Drawn in screen space, behind the world.
+///
+/// Each layer is a band sized by the screen's short side, anchored at the
+/// bottom (or the top, for hanging shapes), so shapes keep their proportions
+/// in portrait and landscape. Bands are rasterized once, so a frame only
+/// draws images.
 class BiomeBackdrop extends Component {
   new({required this.look, required this.cameraX})
     : assert(look.biome != Biome.nightForest, 'The forest is painted');
@@ -25,13 +30,17 @@ class BiomeBackdrop extends Component {
   /// Each layer is generated this many screen widths wide and repeats.
   static const double layerWidths = 1.5;
 
-  final List<ui.Picture> _layers = [];
+  /// Rasterizing resolution, in pixels per logical pixel.
+  static const double resolution = 1.5;
+
+  final List<BackdropLayer> _layers = [];
   double _layerWidth = 0;
   Vector2 _screen = Vector2.zero();
   late Paint _sky;
+  final Paint _image = Paint()..filterQuality = FilterQuality.medium;
 
   /// The silhouette layers, from the farthest; empty until sized.
-  List<ui.Picture> get layers => _layers;
+  List<BackdropLayer> get layers => _layers;
 
   /// The horizontal offset of layer [index] for the current camera, in
   /// pixels, within one layer width.
@@ -46,12 +55,20 @@ class BiomeBackdrop extends Component {
     if (size == _screen || size.x <= 0 || size.y <= 0) return;
     _screen = size.clone();
     _layerWidth = size.x * layerWidths;
-    for (final layer in _layers) {
-      layer.dispose();
+    _disposeLayers();
+    final band = math.min(size.y, math.min(size.x, size.y));
+    final silhouettes = _Silhouettes(look, Size(_layerWidth, band));
+    for (var depth = 0; depth < 3; depth++) {
+      final picture = silhouettes.layer(depth);
+      final top = silhouettes.hangs(depth) ? 0.0 : size.y - band;
+      _layers.add(
+        BackdropLayer(
+          image: _rasterize(picture, _layerWidth, band),
+          rect: Rect.fromLTWH(0, top, _layerWidth, band),
+        ),
+      );
+      picture.dispose();
     }
-    _layers
-      ..clear()
-      ..addAll(_Silhouettes(look, Size(_layerWidth, size.y)).build());
     _sky = Paint()
       ..shader = LinearGradient(
         begin: Alignment.topCenter,
@@ -60,31 +77,66 @@ class BiomeBackdrop extends Component {
       ).createShader(Offset.zero & size.toSize());
   }
 
+  static ui.Image _rasterize(ui.Picture picture, double width, double height) {
+    final recorder = ui.PictureRecorder();
+    Canvas(recorder)
+      ..scale(resolution)
+      ..drawPicture(picture);
+    final scaled = recorder.endRecording();
+    final image = scaled.toImageSync(
+      (width * resolution).ceil(),
+      (height * resolution).ceil(),
+    );
+    scaled.dispose();
+    return image;
+  }
+
   @override
   void render(Canvas canvas) {
     if (_layers.isEmpty) return;
     canvas.drawRect(Offset.zero & _screen.toSize(), _sky);
     for (var i = 0; i < _layers.length; i++) {
+      final layer = _layers[i];
+      final source = Rect.fromLTWH(
+        0,
+        0,
+        layer.image.width.toDouble(),
+        layer.image.height.toDouble(),
+      );
       final offset = offsetOf(i);
       for (final x in [offset - _layerWidth, offset, offset + _layerWidth]) {
         if (x >= _screen.x || x + _layerWidth <= 0) continue;
-        canvas
-          ..save()
-          ..translate(x, 0)
-          ..drawPicture(_layers[i])
-          ..restore();
+        canvas.drawImageRect(
+          layer.image,
+          source,
+          layer.rect.shift(Offset(x, 0)),
+          _image,
+        );
       }
     }
   }
 
-  @override
-  void onRemove() {
+  void _disposeLayers() {
     for (final layer in _layers) {
-      layer.dispose();
+      layer.image.dispose();
     }
     _layers.clear();
+  }
+
+  @override
+  void onRemove() {
+    _disposeLayers();
     super.onRemove();
   }
+}
+
+/// A rasterized silhouette band and where it sits on the screen, before its
+/// parallax offset.
+class BackdropLayer {
+  new({required this.image, required this.rect});
+
+  final ui.Image image;
+  final Rect rect;
 }
 
 /// The silhouette recipes of the generated biomes: up to three layers, each
@@ -99,11 +151,11 @@ class _Silhouettes {
 
   BiomePalette get palette => look.palette;
 
-  List<ui.Picture> build() => [
-    for (var depth = 0; depth < 3; depth++) _layer(depth),
-  ];
+  /// Whether layer [depth] hangs from the top of the screen.
+  bool hangs(int depth) => look.biome == Biome.crystalCaves && depth < 2;
 
-  ui.Picture _layer(int depth) {
+  /// Layer [depth], from 0 (farthest), drawn in its band.
+  ui.Picture layer(int depth) {
     _depth = depth;
     final recorder = ui.PictureRecorder();
     final canvas = Canvas(recorder, Offset.zero & size);
@@ -303,7 +355,7 @@ class _Silhouettes {
       ..lineTo(0, h * 0.06);
     var x = 0.0;
     while (x < w) {
-      final width = random.range(0.02, 0.05) * w;
+      final width = random.range(0.1, 0.22) * h;
       final length = h * random.range(reach * 0.4, reach);
       final end = math.min(w, x + width);
       path
@@ -323,7 +375,7 @@ class _Silhouettes {
       ..lineTo(0, h * base);
     var x = 0.0;
     while (x < w) {
-      final width = random.range(0.03, 0.07) * w;
+      final width = random.range(0.12, 0.26) * h;
       final height = h * random.range(0.05, 0.2);
       final end = math.min(w, x + width);
       path
@@ -452,8 +504,69 @@ class ParticleField extends Component {
 
   Vector2 _screen = Vector2.zero();
   double _time = 0;
-  late final Paint _core = Paint()..color = color;
-  late final Paint _halo = Paint()..color = color.withValues(alpha: 0.18);
+
+  /// The sprite every particle is drawn from, in white; tinted per particle.
+  late final ui.Image _sprite = _drawSprite(style);
+  static const Rect _spriteRect = Rect.fromLTWH(0, 0, _spriteSize, _spriteSize);
+  late final List<RSTransform> _transforms = [
+    for (var i = 0; i < count; i++) RSTransform(1, 0, 0, 0),
+  ];
+  late final List<Rect> _rects = List.filled(count, _spriteRect);
+  late final List<Color> _colors = List.filled(count, color);
+  final Paint _atlas = Paint()..filterQuality = FilterQuality.low;
+
+  /// The sprite's size, in pixels.
+  static const double _spriteSize = 32;
+
+  /// Draws the white sprite of [style]: a soft glow, a flake or a twinkle.
+  static ui.Image _drawSprite(ParticleStyle style) {
+    const c = _spriteSize / 2;
+    final recorder = ui.PictureRecorder();
+    final canvas = Canvas(recorder);
+    const white = Color(0xFFFFFFFF);
+    final glow =
+        style == ParticleStyle.fireflies || style == ParticleStyle.embers;
+    if (glow) {
+      canvas.drawCircle(
+        const Offset(c, c),
+        c,
+        Paint()
+          ..shader =
+              RadialGradient(
+                colors: [
+                  white,
+                  white,
+                  white.withValues(alpha: 0.12),
+                  white.withValues(alpha: 0),
+                ],
+                stops: const [0, 0.22, 0.45, 1],
+              ).createShader(
+                Rect.fromCircle(center: const Offset(c, c), radius: c),
+              ),
+      );
+    } else if (style == ParticleStyle.sparkles) {
+      final paint = Paint()
+        ..color = white
+        ..strokeCap = StrokeCap.round
+        ..strokeWidth = 3;
+      canvas
+        ..drawLine(const Offset(2, c), const Offset(_spriteSize - 2, c), paint)
+        ..drawLine(const Offset(c, 2), const Offset(c, _spriteSize - 2), paint)
+        ..drawCircle(const Offset(c, c), 4, paint);
+    } else {
+      canvas.drawCircle(
+        const Offset(c, c),
+        c * 0.45,
+        Paint()
+          ..color = white
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 1.5),
+      );
+    }
+    final picture = recorder.endRecording();
+    final image = picture.toImageSync(_spriteSize.toInt(), _spriteSize.toInt());
+    picture.dispose();
+    return image;
+  }
 
   /// The particle style for [biome].
   static ParticleStyle styleOf(Biome biome) => switch (biome) {
@@ -502,40 +615,48 @@ class ParticleField extends Component {
   @override
   void render(Canvas canvas) {
     if (_screen.x == 0) return;
-    for (final p in particles) {
-      final center = Offset(p.x * _screen.x, p.y * _screen.y);
+    // Every particle in one draw call, tinted and sized per particle.
+    for (var i = 0; i < particles.length; i++) {
+      final p = particles[i];
       final twinkle = 0.55 + 0.45 * math.sin(_time * 3 * p.speed + p.phase);
-      final radius = switch (style) {
-        ParticleStyle.fireflies => 2.4 * p.size,
-        ParticleStyle.sand => 1.2 * p.size,
-        ParticleStyle.snow => 2.2 * p.size,
-        ParticleStyle.sparkles => 1.6 * p.size,
-        ParticleStyle.embers => 1.8 * p.size,
+      final diameter = switch (style) {
+        ParticleStyle.fireflies => 10.5 * p.size,
+        ParticleStyle.sand => 5.4 * p.size,
+        ParticleStyle.snow => 9.8 * p.size,
+        ParticleStyle.sparkles => 8 * p.size * twinkle,
+        ParticleStyle.embers => 8 * p.size,
       };
-      final glows =
-          style == ParticleStyle.fireflies || style == ParticleStyle.embers;
-      if (glows) {
-        _halo.color = color.withValues(alpha: 0.14 * twinkle);
-        canvas.drawCircle(center, radius * 2.2, _halo);
-      }
-      _core.color = color.withValues(
-        alpha: glows || style == ParticleStyle.sparkles ? twinkle : 0.85,
+      final scale = diameter / _spriteSize;
+      final steady = style == ParticleStyle.sand || style == ParticleStyle.snow;
+      _transforms[i] = RSTransform.fromComponents(
+        rotation: 0,
+        scale: scale,
+        anchorX: _spriteSize / 2,
+        anchorY: _spriteSize / 2,
+        translateX: p.x * _screen.x,
+        translateY: p.y * _screen.y,
       );
-      if (style == ParticleStyle.sparkles) {
-        // A four-pointed twinkle.
-        final arm = radius * 2.5 * twinkle;
-        _core.strokeWidth = radius * 0.6;
-        canvas
-          ..drawLine(center.translate(-arm, 0), center.translate(arm, 0), _core)
-          ..drawLine(center.translate(0, -arm), center.translate(0, arm), _core)
-          ..drawCircle(center, radius * 0.7, _core);
-      } else {
-        canvas.drawCircle(center, radius, _core);
-      }
+      _colors[i] = color.withValues(alpha: steady ? 0.85 : twinkle);
     }
+    canvas.drawAtlas(
+      _sprite,
+      _transforms,
+      _rects,
+      _colors,
+      BlendMode.modulate,
+      null,
+      _atlas,
+    );
+  }
+
+  @override
+  void onRemove() {
+    _sprite.dispose();
+    super.onRemove();
   }
 }
 
+/// One ambient particle, in screen fractions.
 class AmbientParticle {
   new({
     required this.x,

@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'dart:ui' show Picture, PictureRecorder;
 
 import 'package:flame_forge2d/flame_forge2d.dart';
 import 'package:flutter/painting.dart';
@@ -67,6 +68,17 @@ class BoostComponent extends BodyComponent with ContactCallbacks {
     _time += dt;
   }
 
+  /// Each type's orb and icon, recorded once and replayed every frame.
+  static final Map<BoostType, Picture> _art = {};
+
+  static Picture _record(BoostType type) {
+    final recorder = PictureRecorder();
+    final canvas = Canvas(recorder);
+    ElementPainter.orb(canvas, radius, ElementPalette.boost(type));
+    ElementPainter.boostIcon(canvas, type, radius);
+    return recorder.endRecording();
+  }
+
   /// The orb's current scale, pulsing around 1.
   double get pulse =>
       1 + pulseAmount * math.sin(2 * math.pi * pulseRate * _time);
@@ -75,9 +87,8 @@ class BoostComponent extends BodyComponent with ContactCallbacks {
   void render(Canvas canvas) {
     canvas
       ..save()
-      ..scale(pulse);
-    ElementPainter.orb(canvas, radius, ElementPalette.boost(type));
-    ElementPainter.boostIcon(canvas, type, radius);
-    canvas.restore();
+      ..scale(pulse)
+      ..drawPicture(_art[type] ??= _record(type))
+      ..restore();
   }
 }

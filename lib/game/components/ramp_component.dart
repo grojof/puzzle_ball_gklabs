@@ -82,8 +82,14 @@ class RampComponent extends BodyComponent with ContactCallbacks {
       );
   }
 
+  /// The drawn area in world coordinates, to skip drawing when off screen.
+  late final Rect _worldBounds = _bounds
+      .inflate(TerrainPaint.surfaceHeight)
+      .shift(Offset(position.x + size.x / 2, position.y + size.y / 2));
+
   @override
   void render(Canvas canvas) {
+    if (!game.camera.visibleWorldRect.overlaps(_worldBounds)) return;
     canvas
       ..save()
       ..clipPath(_triangle)
