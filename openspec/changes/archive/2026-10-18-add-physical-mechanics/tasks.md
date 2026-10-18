@@ -34,7 +34,7 @@
 
 - [x] 6.1 Update `docs/product.md`, `docs/architecture.md` and `docs/glossary.md` (spikes, ferry, crumbling platform, orb, precision); verify `docs-check` and the spell check pass
 - [x] 6.2 Play on the author's phone: early levels with spikes and ferries, crumbling islands, orb sections, and deep precision; tune the jump impulse and the precision bounds from the feedback; measure frame time; verify the feedback is noted for the PR
-- [ ] 6.3 Run the local CI checks (format, analyze, bloc lint, tests with coverage, packages on VM and Chrome, spell check), open the PR as ready, and squash merge when CI passes; verify CI passes
+- [x] 6.3 Run the local CI checks (format, analyze, bloc lint, tests with coverage, packages on VM and Chrome, spell check), open the PR as ready, and squash merge when CI passes; verify CI passes
 
 ## Workflow follow-up
 
