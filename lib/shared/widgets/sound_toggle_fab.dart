@@ -16,9 +16,11 @@ class SoundToggleFab extends StatelessWidget {
     );
     final l10n = context.l10n;
 
+    // Clear of the status bar and the camera cutout (game-hud spec).
+    final safeArea = MediaQuery.viewPaddingOf(context);
     return Positioned(
-      top: 12,
-      right: 12,
+      top: safeArea.top + 12,
+      right: safeArea.right + 12,
       child: FloatingActionButton(
         heroTag: 'sound_toggle',
         mini: true,

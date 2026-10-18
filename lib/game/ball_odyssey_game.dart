@@ -5,13 +5,12 @@ import 'package:flame/components.dart';
 import 'package:flame/events.dart';
 import 'package:flame/parallax.dart';
 import 'package:flame_forge2d/flame_forge2d.dart';
+import 'package:flutter/foundation.dart' show ValueNotifier;
 import 'package:flutter/painting.dart';
 import 'package:level_generator/level_generator.dart';
 import 'package:puzzle_ball_gklabs/audio/audio_service.dart';
 import 'package:puzzle_ball_gklabs/game/camera/camera_controller.dart';
-import 'package:puzzle_ball_gklabs/game/components/hud_layout.dart';
-import 'package:puzzle_ball_gklabs/game/components/joystick_parts.dart';
-import 'package:puzzle_ball_gklabs/game/components/jump_button_component.dart';
+import 'package:puzzle_ball_gklabs/game/components/components.dart';
 import 'package:puzzle_ball_gklabs/game/components/level_component.dart';
 import 'package:puzzle_ball_gklabs/game/game_config.dart';
 import 'package:puzzle_ball_gklabs/game/input/manual_input.dart';
@@ -42,6 +41,7 @@ class BallOdysseyGame extends Forge2DGame with HasKeyboardHandlerComponents {
     required Images images,
     required this.levelLabel,
     required this.levelTextStyle,
+    required this.hudLabel,
     this.worldLabel,
     this.onLevelCompleted,
     this.onSessionCompleted,
@@ -72,6 +72,9 @@ class BallOdysseyGame extends Forge2DGame with HasKeyboardHandlerComponents {
   final String Function(int levelNumber) levelLabel;
   final TextStyle levelTextStyle;
 
+  /// The text of a pickup message, in the player's language (game-hud spec).
+  final String Function(HudMessage message) hudLabel;
+
   /// The line shown under the level label when a level starts a world, or
   /// null for other levels (game-visuals spec).
   final String? Function(int levelNumber)? worldLabel;
@@ -86,6 +89,10 @@ class BallOdysseyGame extends Forge2DGame with HasKeyboardHandlerComponents {
   final Stream<AccelerometerEvent> Function()? accelerometer;
 
   final MovementIntent intent = MovementIntent();
+
+  /// The system's safe area (status bar, camera cutout), which the HUD keeps
+  /// inside; `GamePage` sets it from the view padding (game-hud spec).
+  final ValueNotifier<EdgeInsets> safeArea = ValueNotifier(EdgeInsets.zero);
 
   GameConfig _config;
   int _levelNumber;
@@ -195,12 +202,56 @@ class BallOdysseyGame extends Forge2DGame with HasKeyboardHandlerComponents {
   }
 
   Future<void> _addHud() async {
-    await camera.viewport.add(
+    await camera.viewport.addAll([
       JumpButtonComponent(
         onPressed: intent.requestJump,
         isCharged: () => _level?.hasAirJump ?? false,
       ),
+      CheckpointTrackComponent(
+        reached: () => _level?.checkpointsReached ?? const [],
+        safeArea: safeArea,
+      ),
+      BoostTrayComponent(
+        activeBoost: () => _activeBall?.activeBoost,
+        boostLeft: () => _activeBall?.boostLeft ?? 0,
+        charged: () => _level?.hasAirJump ?? false,
+        safeArea: safeArea,
+      ),
+    ]);
+  }
+
+  /// The ball of the loaded level, if any.
+  BallComponent? get _activeBall {
+    final level = _level;
+    return level != null && level.isLoaded ? level.ball : null;
+  }
+
+  PickupMessageComponent? _message;
+
+  /// The pickup message showing, if any.
+  PickupMessageComponent? get pickupMessage =>
+      _message?.isMounted ?? false ? _message : null;
+
+  /// Shows [message] above the ball, replacing the one showing (design D4 of
+  /// add-hud-indicators).
+  Future<void> _showPickup(HudMessage message) async {
+    final ball = _activeBall;
+    if (ball == null) return;
+    _message?.removeFromParent();
+    final component = PickupMessageComponent(
+      message: message,
+      text: hudLabel(message),
+      style: levelTextStyle.copyWith(
+        fontSize: HudLayout.messageFontSize(size),
+        fontWeight: FontWeight.w700,
+        color: const Color(0xFFFFFFFF),
+      ),
+      above: () =>
+          camera.localToGlobal(ball.body.position) -
+          Vector2(0, LevelComponent.ballRadius * metersToPixelsScale + 12),
     );
+    _message = component;
+    await camera.viewport.add(component);
   }
 
   /// The on-screen joystick, in joystick mode.
@@ -261,6 +312,7 @@ class BallOdysseyGame extends Forge2DGame with HasKeyboardHandlerComponents {
       onFell: () => unawaited(restartLevel()),
       onCompleted: () => unawaited(_completeLevel()),
       onRespawned: _frameBall,
+      onPickup: (message) => unawaited(_showPickup(message)),
     );
     _level = level;
     await world.add(level);

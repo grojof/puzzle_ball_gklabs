@@ -13,7 +13,11 @@ import 'package:puzzle_ball_gklabs/game/visuals/element_palette.dart';
 /// (game-visuals spec). A double-jump orb charges an air jump and
 /// disappears until [restore] (level-mechanics spec).
 class BoostComponent extends BodyComponent with ContactCallbacks {
-  new({required this.type, required this.position}) : super(renderBody: false);
+  new({required this.type, required this.position, this.onCollected})
+    : super(renderBody: false);
+
+  /// Called when this double-jump orb is collected.
+  final VoidCallback? onCollected;
 
   /// The upward impulse of a jump boost.
   static const jumpImpulse = 120.0;
@@ -67,6 +71,7 @@ class BoostComponent extends BodyComponent with ContactCallbacks {
       case BoostType.doubleJump:
         other.chargeAirJump();
         _collected = true;
+        onCollected?.call();
     }
   }
 

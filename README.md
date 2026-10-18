@@ -60,6 +60,7 @@ The ADRs are:
 - [ADR-0009](docs/decisions/0009-level-generator-and-movement-envelope.md): level generator bounded by a measured
   movement envelope
 - [ADR-0010](docs/decisions/0010-visual-system-and-biomes.md): hybrid visual system with biomes as data
+- [ADR-0011](docs/decisions/0011-hud-layout.md): a small HUD in the top corners
 
 Contributors (human or AI) start with [AGENTS.md](AGENTS.md).
 

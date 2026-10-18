@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:flame/components.dart';
 import 'package:flame_forge2d/flame_forge2d.dart';
 import 'package:flutter/painting.dart';
+import 'package:level_generator/level_generator.dart' show BoostType;
 import 'package:puzzle_ball_gklabs/audio/audio_service.dart';
 import 'package:puzzle_ball_gklabs/game/components/goal_component.dart';
 import 'package:puzzle_ball_gklabs/game/components/ground_surface.dart';
@@ -64,6 +65,7 @@ class BallComponent extends BodyComponent with ContactCallbacks {
     autoStart: false,
   );
   bool _reachedGoal = false;
+  BoostType? _activeBoost;
 
   /// Whether the ball rests on the top of a floor or a ramp: it touches one
   /// and its center is above that surface. Touching the side of a ledge does
@@ -77,6 +79,12 @@ class BallComponent extends BodyComponent with ContactCallbacks {
 
   /// Whether a boost is running.
   bool get isBoosted => _boostTimer.isRunning();
+
+  /// The boost running, if any (game-hud spec).
+  BoostType? get activeBoost => _activeBoost;
+
+  /// The seconds left of the running boost; zero with none.
+  double get boostLeft => isBoosted ? boostDuration - _boostTimer.current : 0;
 
   @override
   Body createBody() {
@@ -155,31 +163,33 @@ class BallComponent extends BodyComponent with ContactCallbacks {
   bool get hasAirJump => _airJumps > 0;
 
   void applyJumpBoost(double impulse) {
-    _startBoost(GameSound.boostJump);
+    _startBoost(BoostType.jump, GameSound.boostJump);
     body.applyLinearImpulse(Vector2(0, -impulse));
   }
 
   void applySpeedBoost(double impulse, Vector2 direction) {
-    _startBoost(GameSound.boostSpeed);
+    _startBoost(BoostType.speed, GameSound.boostSpeed);
     body.applyLinearImpulse(direction.normalized() * impulse);
   }
 
   void applyGravityBoost(double gravityScale) {
-    _startBoost(GameSound.boostGravity);
+    _startBoost(BoostType.gravity, GameSound.boostGravity);
     body.gravityScale = gravityScale;
   }
 
   /// Starts a boost for [boostDuration], ending the one running, if any:
   /// every boost the ball passes takes effect, as the level generator
   /// expects.
-  void _startBoost(GameSound sound) {
+  void _startBoost(BoostType type, GameSound sound) {
     if (isBoosted) _endBoost();
     audio.play(sound);
     haptics.play(Haptic.boost);
     _boostTimer.start();
+    _activeBoost = type;
   }
 
   void _endBoost() {
+    _activeBoost = null;
     if (body.isValid) body.gravityScale = 1;
   }
 

@@ -86,6 +86,12 @@ generator for, with the savegame's seed. It holds terrain, sensors, the goal and
   restarts.
 - **The goal:** plays its flash-and-fade sequence on the camera viewport and then completes the level.
 
+The HUD lives in the camera viewport ([ADR-0011](decisions/0011-hud-layout.md)). `CheckpointTrackComponent` and
+`BoostTrayComponent` read the level's checkpoints and the ball's `activeBoost`, `boostLeft` and `hasAirJump` every
+frame and keep no state of their own, so restarts need no wiring. `PickupMessageComponent` shows a short message over
+the ball when the level reports an orb or a checkpoint; its text comes translated through the game's `hudLabel`
+callback. `HudLayout` sizes every piece from the screen's shorter side.
+
 Input writes a `MovementIntent` (horizontal push and jump requests) that the ball reads:
 
 - `TiltInput` exists only in tilt mode on Android, and subscribes to the accelerometer only while mounted. It reads
