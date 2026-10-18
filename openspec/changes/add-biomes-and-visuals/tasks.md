@@ -28,7 +28,7 @@
 ## 6. Docs and verification
 
 - [x] 6.1 Write ADR-0010 (the visual system: hybrid art, biomes as data, generated textures) and update `docs/product.md`, `docs/architecture.md`, `docs/glossary.md` (world, biome, variant) and the README ADR list; verify `docs-check` and the spell check pass
-- [ ] 6.2 Play every biome with the author on the phone and in Chrome (a test savegame or seed reaching each world), take screenshots of each, measure frame time against 4.9–5.1 ms average and 8.2 ms p99, and tune palettes and recipes from the feedback; ask whether the elements are understood without explanation (if not, decide with the author on first-encounter bubbles); verify no runtime errors and the feedback noted for the PR
+- [x] 6.2 Play every biome with the author on the phone and in Chrome (a test savegame or seed reaching each world), take screenshots of each, measure frame time against 4.9–5.1 ms average and 8.2 ms p99, and tune palettes and recipes from the feedback; ask whether the elements are understood without explanation (if not, decide with the author on first-encounter bubbles); verify no runtime errors and the feedback noted for the PR
 - [ ] 6.3 Run the local CI checks (format, analyze, bloc lint, tests in random order with coverage, packages, licenses if a pubspec changed, spell check), open the PR as a draft and mark it ready once green locally; verify CI passes
 
 ## Workflow follow-up
