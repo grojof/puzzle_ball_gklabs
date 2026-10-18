@@ -19,6 +19,8 @@ void main() {
         ElementPalette.checkpointIdle,
         ElementPalette.checkpointActive,
         ElementPalette.portal,
+        ElementPalette.orb,
+        ElementPalette.hazard,
       ];
       for (final palette in BiomePalette.reference.values) {
         for (final background in palette.all) {

@@ -36,13 +36,20 @@ class Vec2 {
 @immutable
 class FloorRun {
   /// A run from [position] (top-left) of [size].
-  const new({required this.position, required this.size});
+  const new({
+    required this.position,
+    required this.size,
+    this.crumbling = false,
+  });
 
   /// Top-left corner.
   final Vec2 position;
 
   /// Width and height.
   final Vec2 size;
+
+  /// Whether the run collapses a moment after the ball stands on it.
+  final bool crumbling;
 
   /// Left edge.
   double get left => position.x;
@@ -55,13 +62,95 @@ class FloorRun {
 
   @override
   bool operator ==(Object other) =>
-      other is FloorRun && other.position == position && other.size == size;
+      other is FloorRun &&
+      other.position == position &&
+      other.size == size &&
+      other.crumbling == crumbling;
 
   @override
-  int get hashCode => Object.hash(position, size);
+  int get hashCode => Object.hash(position, size, crumbling);
 
   @override
-  String toString() => 'Floor$position$size';
+  String toString() => 'Floor$position$size${crumbling ? 'crumbling' : ''}';
+}
+
+/// A strip of spikes lying on a floor run, from [position] (its left end on
+/// the ground) [width] meters to the right. Touching it sends the ball back.
+@immutable
+class SpikeStrip {
+  /// A strip from [position] (left end, on the ground) of [width].
+  const new({required this.position, required this.width});
+
+  /// The strip's left end, on the ground.
+  final Vec2 position;
+
+  /// The strip's length, in meters.
+  final double width;
+
+  /// Left edge.
+  double get left => position.x;
+
+  /// Right edge.
+  double get right => position.x + width;
+
+  /// The ground the strip lies on, in world y.
+  double get top => position.y;
+
+  @override
+  bool operator ==(Object other) =>
+      other is SpikeStrip && other.position == position && other.width == width;
+
+  @override
+  int get hashCode => Object.hash(position, width);
+
+  @override
+  String toString() => 'Spikes$position${width.toStringAsFixed(3)}';
+}
+
+/// A platform that shuttles between [start] and [end] (top-left positions)
+/// at [speed], pausing [pause] seconds at each end.
+@immutable
+class MovingPlatform {
+  /// A platform of [size] moving between [start] and [end].
+  const new({
+    required this.start,
+    required this.end,
+    required this.size,
+    required this.speed,
+    required this.pause,
+  });
+
+  /// Top-left corner at the near end of the path.
+  final Vec2 start;
+
+  /// Top-left corner at the far end of the path.
+  final Vec2 end;
+
+  /// Width and height.
+  final Vec2 size;
+
+  /// Speed along the path, in m/s.
+  final double speed;
+
+  /// The pause at each end, in seconds.
+  final double pause;
+
+  @override
+  bool operator ==(Object other) =>
+      other is MovingPlatform &&
+      other.start == start &&
+      other.end == end &&
+      other.size == size &&
+      other.speed == speed &&
+      other.pause == pause;
+
+  @override
+  int get hashCode => Object.hash(start, end, size, speed, pause);
+
+  @override
+  String toString() =>
+      'Platform$start->$end$size'
+      ' v=${speed.toStringAsFixed(3)} p=${pause.toStringAsFixed(3)}';
 }
 
 /// A ramp: a right triangle in the box from [position] (top-left) of [size].
@@ -121,6 +210,9 @@ enum BoostType {
 
   /// Lowers gravity for a while.
   gravity,
+
+  /// An orb that charges one jump in mid-air.
+  doubleJump,
 }
 
 /// A boost sensor centred at [position].
@@ -166,8 +258,7 @@ class Checkpoint {
   String toString() => 'Checkpoint$position';
 }
 
-/// The kinds of section a level is built from, in the order the stages
-/// introduce them.
+/// The kinds of section a level is built from.
 enum SectionKind {
   /// Flat ground.
   flat,
@@ -207,6 +298,21 @@ enum SectionKind {
 
   /// A ramp down, a gap and a ramp up back to the same height.
   valley,
+
+  /// A strip of spikes to jump over.
+  spikes,
+
+  /// A gap too wide to jump, bridged by a moving platform.
+  ferry,
+
+  /// Island hops whose islands crumble.
+  crumblingHops,
+
+  /// A double-jump orb before a gap beyond one jump.
+  orbGap,
+
+  /// A double-jump orb before a climb beyond one jump.
+  orbClimb,
 }
 
 /// One generated level.
@@ -224,6 +330,8 @@ class LevelData {
     required this.checkpoints,
     required this.sections,
     required this.estimatedDuration,
+    this.hazards = const [],
+    this.platforms = const [],
     this.featured = const [],
   });
 
@@ -250,6 +358,12 @@ class LevelData {
 
   /// Checkpoints, left to right.
   final List<Checkpoint> checkpoints;
+
+  /// Spike strips, left to right.
+  final List<SpikeStrip> hazards;
+
+  /// Moving platforms, left to right.
+  final List<MovingPlatform> platforms;
 
   /// The sections the level was built from, in order.
   final List<SectionKind> sections;
@@ -281,5 +395,7 @@ class LevelData {
     ...ramps.map((e) => '$e'),
     ...boosts.map((e) => '$e'),
     ...checkpoints.map((e) => '$e'),
+    ...hazards.map((e) => '$e'),
+    ...platforms.map((e) => '$e'),
   ].join('\n');
 }

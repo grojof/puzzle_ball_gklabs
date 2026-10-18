@@ -16,10 +16,72 @@ void main() {
     const ramp = Ramp(position: Vec2(4, 2), size: Vec2(3, 2), ascending: true);
     const boost = Boost(position: Vec2(2, 3.4), type: BoostType.speed);
     const checkpoint = Checkpoint(Vec2(2, 3.75));
+    const spikes = SpikeStrip(position: Vec2(2, 4), width: 1.5);
+    const platform = MovingPlatform(
+      start: Vec2(4, 4),
+      end: Vec2(9, 4),
+      size: Vec2(3, 0.5),
+      speed: 2.2,
+      pause: 0.8,
+    );
 
     test('expose their edges', () {
       expect((floor.left, floor.right, floor.top), (1, 4, 4));
       expect((ramp.left, ramp.right, ramp.top, ramp.bottom), (4, 7, 2, 4));
+      expect((spikes.left, spikes.right, spikes.top), (2, 3.5, 4));
+    });
+
+    test('crumbling runs differ from solid ones', () {
+      const crumbling = FloorRun(
+        position: Vec2(1, 4),
+        size: Vec2(3, 1.5),
+        crumbling: true,
+      );
+      expect(crumbling, isNot(floor));
+      expect(crumbling.hashCode, isNot(floor.hashCode));
+      expect('$crumbling', endsWith('crumbling'));
+      expect('$floor', isNot(contains('crumbling')));
+    });
+
+    test('spikes and platforms have value equality and readable text', () {
+      expect(spikes, const SpikeStrip(position: Vec2(2, 4), width: 1.5));
+      expect(spikes, isNot(const SpikeStrip(position: Vec2(2, 4), width: 2)));
+      expect(spikes.hashCode, isNot(0));
+      expect('$spikes', 'Spikes(2.000, 4.000)1.500');
+      expect(
+        platform,
+        const MovingPlatform(
+          start: Vec2(4, 4),
+          end: Vec2(9, 4),
+          size: Vec2(3, 0.5),
+          speed: 2.2,
+          pause: 0.8,
+        ),
+      );
+      expect(
+        platform,
+        isNot(
+          const MovingPlatform(
+            start: Vec2(4, 4),
+            end: Vec2(9, 4),
+            size: Vec2(3, 0.5),
+            speed: 2.2,
+            pause: 1,
+          ),
+        ),
+      );
+      expect(platform.hashCode, isNot(0));
+      expect(
+        '$platform',
+        'Platform(4.000, 4.000)->(9.000, 4.000)(3.000, 0.500) v=2.200 p=0.800',
+      );
+      expect(
+        const Boost(
+          position: Vec2(1, 1),
+          type: BoostType.doubleJump,
+        ).toString(),
+        startsWith('Boost.doubleJump'),
+      );
     });
 
     test('have value equality and readable text', () {
@@ -63,6 +125,16 @@ void main() {
       ],
       boosts: [Boost(position: Vec2(1, 3.4), type: BoostType.jump)],
       checkpoints: [Checkpoint(Vec2(7, 6.75))],
+      hazards: [SpikeStrip(position: Vec2(1.5, 4), width: 1.5)],
+      platforms: [
+        MovingPlatform(
+          start: Vec2(6, 7),
+          end: Vec2(8, 7),
+          size: Vec2(3, 0.5),
+          speed: 2,
+          pause: 1,
+        ),
+      ],
       sections: [SectionKind.rampDown],
       estimatedDuration: 10,
     );
@@ -74,7 +146,9 @@ void main() {
     test('has a canonical text form listing every element', () {
       final text = level.canonical;
       expect(text, startsWith('seed=s level=1'));
-      expect(text.split('\n'), hasLength(6));
+      expect(text.split('\n'), hasLength(8));
+      expect(text, contains('Spikes'));
+      expect(text, contains('Platform'));
     });
   });
 }

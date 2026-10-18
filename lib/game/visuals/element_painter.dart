@@ -99,6 +99,7 @@ abstract final class ElementPainter {
       BoostType.jump => _chevrons(radius, up: true),
       BoostType.speed => _chevrons(radius, up: false),
       BoostType.gravity => _feather(radius),
+      BoostType.doubleJump => _arrows(radius),
     };
     final stroke = Paint()
       ..style = PaintingStyle.stroke
@@ -130,6 +131,22 @@ abstract final class ElementPainter {
           ..lineTo(d + size * 0.5, 0)
           ..lineTo(d - size * 0.5, size);
       }
+    }
+    return path;
+  }
+
+  /// Two arrows stacked upwards: a jump, then another.
+  static Path _arrows(double radius) {
+    final head = radius * 0.2;
+    final path = Path();
+    for (final top in [-0.46, -0.04]) {
+      final y = radius * top;
+      path
+        ..moveTo(-head, y + head)
+        ..lineTo(0, y)
+        ..lineTo(head, y + head)
+        ..moveTo(0, y)
+        ..lineTo(0, y + radius * 0.4);
     }
     return path;
   }

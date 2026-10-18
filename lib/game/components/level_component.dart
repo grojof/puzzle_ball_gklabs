@@ -17,8 +17,8 @@ import 'package:puzzle_ball_gklabs/haptics/haptics.dart';
 /// level is removing this component (design D1).
 ///
 /// It detects falls in constant time from the level's lowest terrain point,
-/// respawns the ball at the last active checkpoint, and plays the goal
-/// sequence.
+/// sends the ball back after a fall or spikes, restoring the course, and
+/// plays the goal sequence.
 class LevelComponent extends Component with HasGameReference<Forge2DGame> {
   new({
     required this.data,
@@ -60,6 +60,10 @@ class LevelComponent extends Component with HasGameReference<Forge2DGame> {
   final List<Component> _overlays = [];
   CheckPointComponent? _activeCheckpoint;
   bool _fell = false;
+  bool _sendBack = false;
+
+  /// Whether the ball holds a double-jump charge.
+  bool get hasAirJump => isLoaded && ball.hasAirJump;
 
   /// The last checkpoint the ball passed, if any.
   CheckPointComponent? get activeCheckpoint => _activeCheckpoint;
@@ -83,10 +87,32 @@ class LevelComponent extends Component with HasGameReference<Forge2DGame> {
 
     await addAll([
       for (final run in data.floors)
-        FloorComponent(
-          position: _vector(run.position),
-          size: _vector(run.size),
-          terrain: terrain,
+        if (run.crumbling)
+          CrumblingPlatformComponent(
+            position: _vector(run.position),
+            size: _vector(run.size),
+            terrain: terrain,
+          )
+        else
+          FloorComponent(
+            position: _vector(run.position),
+            size: _vector(run.size),
+            terrain: terrain,
+          ),
+      for (final platform in data.platforms)
+        MovingPlatformComponent(
+          start: _vector(platform.start),
+          end: _vector(platform.end),
+          size: _vector(platform.size),
+          speed: platform.speed,
+          pause: platform.pause,
+        ),
+      for (final strip in data.hazards)
+        SpikeComponent(
+          left: strip.left,
+          ground: strip.top,
+          width: strip.width,
+          onTouched: () => _sendBack = true,
         ),
       for (final ramp in data.ramps)
         RampComponent(
@@ -114,11 +140,23 @@ class LevelComponent extends Component with HasGameReference<Forge2DGame> {
   @override
   void update(double dt) {
     super.update(dt);
-    if (_fell || !ball.isMounted || ball.body.position.y <= fallLine) return;
+    if (_fell || !ball.isMounted) return;
+    if (_sendBack || ball.body.position.y > fallLine) sendBack();
+  }
+
+  /// Sends the ball back after a fall or spikes: it respawns at the last
+  /// active checkpoint with the course restored, or the level restarts
+  /// when none is active (level-mechanics spec).
+  void sendBack() {
+    _sendBack = false;
     final checkpoint = _activeCheckpoint;
     if (checkpoint != null) {
       ball.respawn(checkpoint.respawnPoint);
       intent.reset();
+      for (final child in children) {
+        if (child is CrumblingPlatformComponent) child.restore();
+        if (child is BoostComponent) child.restore();
+      }
       onRespawned?.call();
       return;
     }

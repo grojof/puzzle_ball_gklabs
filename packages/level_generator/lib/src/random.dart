@@ -4,7 +4,7 @@ import 'dart:convert';
 ///
 /// Bump it whenever a change makes the same seed and level produce a
 /// different level, so shared seeds can say which generator they belong to.
-const generatorVersion = 1;
+const generatorVersion = 2;
 
 const _mask32 = 0xffffffff;
 

@@ -48,6 +48,12 @@ const _obstacleOverhead = 0.8;
 /// tan(35°): ramps are at most this steep.
 const _maxRampSlope = 0.7002075382097097;
 
+/// About how long spikes and their landing take, in seconds.
+const _spikesTime = 3.0;
+
+/// About how long a ferry crossing takes, in seconds.
+const _ferryTime = 10.0;
+
 /// How often an obstacle is one of the level's featured kinds.
 const _featuredShare = 0.65;
 
@@ -57,6 +63,7 @@ const Set<SectionKind> _climbs = {
   SectionKind.stepUp,
   SectionKind.jumpBoost,
   SectionKind.staircase,
+  SectionKind.orbClimb,
 };
 
 /// Sections that end lower than they start.
@@ -77,6 +84,8 @@ class _Builder {
   final ramps = <Ramp>[];
   final boosts = <Boost>[];
   final checkpoints = <Checkpoint>[];
+  final hazards = <SpikeStrip>[];
+  final platforms = <MovingPlatform>[];
   final sections = <SectionKind>[];
 
   /// The cursor: where the current floor run ends.
@@ -92,8 +101,25 @@ class _Builder {
   /// below it.
   double runFill = 0;
 
+  /// Whether the current run crumbles.
+  bool runCrumbling = false;
+
   /// Estimated speed of a player who keeps pushing right.
   double speed = 0;
+
+  /// Whether the last landing capped [speed], so the player comes down at
+  /// the far end of the landing with only its last tile left to speed up.
+  bool _landedLate = false;
+
+  /// Caps [speed] for a flight that must average at most [cap] to come down
+  /// on its landing. Braking in the air against the ball's damping leaves
+  /// it well below that average when it lands: about half, measured with
+  /// the bot.
+  void _capSpeed(double cap) {
+    if (speed <= cap) return;
+    speed = cap / 2;
+    _landedLate = true;
+  }
 
   double duration = 0;
   double sinceRespawn = 0;
@@ -103,18 +129,44 @@ class _Builder {
   /// The kinds this level features (design D10).
   late final List<SectionKind> featured;
 
+  /// The kinds this level introduces that have not appeared yet.
+  final List<SectionKind> _toIntroduce = [];
+
   double get intensity => parameters.intensity;
   double get margin => parameters.margin;
+
+  /// A share of the reach to use, drawn from the level's precision interval
+  /// (design D3 of add-physical-mechanics).
+  double _share() {
+    final (low, high) = parameters.precision;
+    return random.range(low, high);
+  }
+
   double get runLength => x - runStart;
 
   void start() {
     final pool = Map.of(parameters.weights);
-    featured = [for (var i = random.intIn(2, 3); i > 0; i--) _take(pool)];
+    // The sections this level introduces are always among its featured ones.
+    final introduced = [
+      for (final kind in SectionKind.values)
+        if (parameters.introduces.contains(kind)) kind,
+    ];
+    pool.removeWhere((kind, _) => introduced.contains(kind));
+    featured = [
+      ...introduced,
+      for (var i = random.intIn(2, 3) - introduced.length; i > 0; i--)
+        _take(pool),
+    ];
+    _toIntroduce.addAll(introduced);
     _flat(3);
     ballStart = Vec2(tileSize / 2, y - 1);
   }
 
   void finish() {
+    // Spikes never lie on the goal's run.
+    if (hazards.isNotEmpty && hazards.last.left >= runStart) {
+      _section(SectionKind.gap);
+    }
     _flat(3);
     goal = Vec2(x - tileSize / 2, y - 1.75);
     _closeRun();
@@ -129,6 +181,8 @@ class _Builder {
     ramps: List.unmodifiable(ramps),
     boosts: List.unmodifiable(boosts),
     checkpoints: List.unmodifiable(checkpoints),
+    hazards: List.unmodifiable(hazards),
+    platforms: List.unmodifiable(platforms),
     sections: List.unmodifiable(sections),
     estimatedDuration: duration,
     featured: List.unmodifiable(featured),
@@ -184,6 +238,16 @@ class _Builder {
         _cascade();
       case SectionKind.valley:
         _valley();
+      case SectionKind.spikes:
+        _spikes();
+      case SectionKind.ferry:
+        _ferry();
+      case SectionKind.crumblingHops:
+        _crumblingHops();
+      case SectionKind.orbGap:
+        _orbGap();
+      case SectionKind.orbClimb:
+        _orbClimb();
     }
     sections.add(kind);
     if (kind == SectionKind.flat) {
@@ -195,7 +259,7 @@ class _Builder {
   }
 
   /// The length of the landing run after an obstacle, in tiles.
-  int get _landingTiles => margin < 0.6 ? 3 : 2;
+  int get _landingTiles => intensity < 0.6 ? 3 : 2;
 
   /// Caps the estimated speed after a flight of [time] seconds that covers
   /// [covered] meters over the obstacle and must come down on a landing of
@@ -203,7 +267,7 @@ class _Builder {
   /// and so reaches what follows slower.
   void _land(double time, {double covered = 0, int? landingTiles}) {
     final landing = ((landingTiles ?? _landingTiles) - 1) * tileSize;
-    speed = math.min(speed, (covered + landing) / time);
+    _capSpeed((covered + landing) / time);
   }
 
   /// An obstacle kind: usually one of the featured kinds, otherwise any
@@ -217,6 +281,21 @@ class _Builder {
     }
     if (y > _startHeight + 6) {
       weights.removeWhere((kind, _) => _descents.contains(kind));
+    }
+    // Spikes never lie on the start's or the goal's run, and a ferry takes a
+    // while: neither when the level is about to end.
+    final left = parameters.targetDuration - duration;
+    if (runStart == 0 || left < _spikesTime) {
+      weights.remove(SectionKind.spikes);
+    }
+    if (left < _ferryTime) weights.remove(SectionKind.ferry);
+    // An element first appears in its introduction level, at the first
+    // obstacle that allows it.
+    for (final kind in _toIntroduce) {
+      if (weights.containsKey(kind)) {
+        _toIntroduce.remove(kind);
+        return kind;
+      }
     }
     final mine = Map.of(weights)
       ..removeWhere((kind, _) => !featured.contains(kind));
@@ -235,7 +314,11 @@ class _Builder {
   void _flat(int tiles) {
     final distance = tiles * tileSize;
     x += distance;
-    speed = envelope.speedAfter(distance, startSpeed: speed);
+    speed = envelope.speedAfter(
+      _landedLate ? tileSize : distance,
+      startSpeed: speed,
+    );
+    _landedLate = false;
     _time(distance);
   }
 
@@ -244,6 +327,7 @@ class _Builder {
       FloorRun(
         position: Vec2(runStart, y),
         size: Vec2(runLength, tileSize + runFill),
+        crumbling: runCrumbling,
       ),
     );
   }
@@ -251,6 +335,7 @@ class _Builder {
   void _openRun({double fill = 0}) {
     runStart = x;
     runFill = fill;
+    runCrumbling = false;
   }
 
   double _rampHeight() => random.range(0.75, 0.75 + 2.25 * intensity);
@@ -272,7 +357,10 @@ class _Builder {
     _time(width, obstacle: true);
   }
 
-  void _rampDown(double height) {
+  /// A ramp down [height] meters. A player faster than the ramp's slope
+  /// flies off its top as off a ledge, so the landing of [landingTiles]
+  /// after it caps the speed as a drop does.
+  void _rampDown(double height, {int? landingTiles}) {
     final width = math.max(
       height / _maxRampSlope * random.range(1, 1.4),
       tileSize,
@@ -285,6 +373,11 @@ class _Builder {
     y += height;
     _openRun();
     _time(width, obstacle: true);
+    _land(
+      envelope.fallTime(height),
+      covered: width,
+      landingTiles: landingTiles,
+    );
   }
 
   double _gapRise() {
@@ -292,21 +385,18 @@ class _Builder {
     return random.range(-2.5, 0.6 * envelope.maxClimb(margin));
   }
 
-  /// A gap of a width the current speed can clear, landing [rise] higher.
-  ///
-  /// Never wider than the reach at the current speed; the landings after
-  /// every obstacle leave enough run-up for the minimum gap.
+  /// A gap landing [rise] higher, using a share of the reach at the current
+  /// speed from the precision interval, and never more than its high end.
   void _gap(double rise, {int? landingTiles}) {
     const minGap = tileSize * 0.8;
-    final allowed = _allowedGap(rise);
-    final low = 0.25 + 0.2 * intensity;
-    final high = 0.45 + 0.55 * intensity;
-    final width = math.max(minGap, allowed * random.range(low, high));
-    _jumpGap(math.min(width, allowed), rise, landingTiles: landingTiles);
+    final reach = _reach(rise);
+    final width = math.max(minGap, reach * _share());
+    _jumpGap(math.min(width, reach * margin), rise, landingTiles: landingTiles);
   }
 
-  double _allowedGap(double rise) =>
-      envelope.maxGap(speed: speed, rise: rise, margin: margin);
+  /// The full reach of a jump at the current speed, landing [rise] higher.
+  double _reach(double rise) =>
+      envelope.maxGap(speed: speed, rise: rise, margin: 1);
 
   /// A gap of [width] landing [rise] higher, flown in [time] seconds (a
   /// plain jump's air time by default) onto a landing of [landingTiles].
@@ -333,10 +423,7 @@ class _Builder {
     if (land) _land(envelope.fallTime(height));
   }
 
-  double _stepHeight() => math.max(
-    0.6,
-    envelope.maxClimb(margin) * random.range(0.4, 0.4 + 0.6 * intensity),
-  );
+  double _stepHeight() => math.max(0.6, envelope.maxClimb(1) * _share());
 
   void _stepUp(double height) {
     _closeRun();
@@ -365,68 +452,177 @@ class _Builder {
   }
 
   /// Drops with treads between them. Overshooting a tread only lands on a
-  /// lower one, so only the final landing caps the speed: as if the whole
-  /// cascade were flown over in one fall.
+  /// lower one, so a player may fly from any ledge to the final landing, as
+  /// long as the flight clears the treads in between; the fastest such
+  /// flight caps the speed.
   void _cascade() {
     final drops = random.intIn(2, 3);
-    final start = x;
-    var fallen = 0.0;
+    final ledges = <double>[];
+    final heights = <double>[];
     for (var i = 0; i < drops; i++) {
       if (i > 0) _flat(random.intIn(1, 2));
+      ledges.add(x);
       final height = random.range(1, 1 + 1.5 * intensity);
+      heights.add(height);
       _drop(height, land: false);
-      fallen += height;
     }
-    _land(envelope.fallTime(fallen), covered: x - start);
+    final landing = x + (_landingTiles - 1) * tileSize;
+    var cap = 0.0;
+    for (var from = 0; from < drops; from++) {
+      final fallen = heights.sublist(from).reduce((a, b) => a + b);
+      final flight = (landing - ledges[from]) / envelope.fallTime(fallen);
+      var clears = true;
+      var below = 0.0;
+      for (var next = from + 1; next < drops; next++) {
+        below += heights[next - 1];
+        final reach = ledges[next] - ledges[from];
+        if (reach / flight > envelope.fallTime(below)) clears = false;
+      }
+      if (clears) cap = math.max(cap, flight);
+    }
+    _capSpeed(cap);
+  }
+
+  /// A strip of spikes on the run, a tile after the section starts, as wide
+  /// as a share of the jump reach at the speed available.
+  void _spikes() {
+    const double minWidth = 1;
+    _flat(1);
+    final reach = _reach(0);
+    final width = math.min(
+      math.max(minWidth, reach * _share()),
+      reach * margin,
+    );
+    hazards.add(SpikeStrip(position: Vec2(x, y), width: width));
+    x += width;
+    _time(width, obstacle: true);
+    _land(envelope.flightTime, covered: width);
+  }
+
+  /// Room to stop and wait, then a gap too wide to jump, 1.2 to 2.5 times
+  /// the reach, with a platform shuttling across it from just beyond the
+  /// near edge to just short of the far one (design D4).
+  void _ferry() {
+    const platform = Vec2(2 * tileSize, 0.5);
+    const crack = 0.15;
+    const ferrySpeed = 2.2;
+    const pause = 0.8;
+    final width = math.max(
+      _reach(0) * random.range(1.2, 2.5),
+      platform.x + 2 * crack + tileSize,
+    );
+    _flat(2);
+    _closeRun();
+    platforms.add(
+      MovingPlatform(
+        start: Vec2(x + crack, y),
+        end: Vec2(x + width - crack - platform.x, y),
+        size: platform,
+        speed: ferrySpeed,
+        pause: pause,
+      ),
+    );
+    x += width;
+    _openRun();
+    // On average, half a round trip to wait for the platform, then the ride.
+    final travel = width - 2 * crack - platform.x;
+    final wait = 2 * (travel / ferrySpeed) + pause;
+    duration += wait;
+    sinceRespawn += wait;
+    // The player steps off the platform at its speed.
+    speed = math.min(speed, ferrySpeed);
+  }
+
+  /// Island hops whose islands crumble: a player who keeps moving crosses
+  /// them before they fall.
+  void _crumblingHops() {
+    final count = random.intIn(2, 3);
+    for (var i = 0; i < count; i++) {
+      final last = i == count - 1;
+      final between = last ? _landingTiles : random.intIn(1, 2);
+      _gap(_gapRise(), landingTiles: between);
+      if (!last) {
+        runCrumbling = true;
+        _flat(between);
+      }
+    }
+  }
+
+  /// An orb on the approach, then a gap beyond one jump and within the
+  /// double jump's reach.
+  void _orbGap() {
+    _boostApproach(BoostType.doubleJump, tiles: 3);
+    final width = _boosted(
+      envelope.maxDoubleJumpGap(speed: speed, margin: 1),
+      _reach(0),
+    );
+    _jumpGap(width, 0, time: envelope.doubleJumpDistance / envelope.topSpeed);
+  }
+
+  /// An orb on the approach, then a climb beyond one jump and within the
+  /// double jump's reach.
+  void _orbClimb() {
+    _boostApproach(BoostType.doubleJump, tiles: 2, inset: tileSize * 0.4);
+    _stepUp(_boosted(envelope.maxDoubleJumpClimb(1), envelope.maxClimb(1)));
   }
 
   void _valley() {
     final height = _rampHeight();
-    _rampDown(height);
+    _rampDown(height, landingTiles: 2);
     _flat(2);
     _gap(0, landingTiles: 2);
     _flat(2);
     _rampUp(height);
   }
 
-  /// A boost on the approach, [inset] meters before the end of the run.
-  void _boostApproach(BoostType type, {required int tiles, double? inset}) {
-    _flat(tiles);
-    boosts.add(
-      Boost(position: Vec2(x - (inset ?? tileSize / 2), y - 0.6), type: type),
+  /// A boost on the approach, [inset] meters before the end of the run;
+  /// returns the speed the player picks it up at.
+  double _boostApproach(
+    BoostType type, {
+    required int tiles,
+    double inset = tileSize / 2,
+  }) {
+    final run = _landedLate ? tileSize : tiles * tileSize;
+    final pickUp = envelope.speedAfter(
+      math.max(0, run - inset),
+      startSpeed: speed,
     );
+    _flat(tiles);
+    boosts.add(Boost(position: Vec2(x - inset, y - 0.6), type: type));
+    return pickUp;
   }
 
-  /// A width between just beyond the unboosted reach and [boostedMax].
-  double _boostedWidth(double boostedMax) {
-    final unboosted = _allowedGap(0);
-    final low = math.min(unboosted * 1.15, boostedMax * 0.6);
-    final high = math.max(low, boostedMax * random.range(0.6, 0.85));
-    return random.range(low, high);
-  }
+  /// A share of a [boostedReach] from the precision interval, beyond the
+  /// [unboostedReach] by at least 5 % so the boost is needed, and never
+  /// beyond the interval's high end.
+  double _boosted(double boostedReach, double unboostedReach) => math.min(
+    math.max(boostedReach * _share(), unboostedReach * 1.05),
+    boostedReach * margin,
+  );
 
   void _speedBoost() {
-    _boostApproach(BoostType.speed, tiles: 3);
-    final width = _boostedWidth(envelope.maxSpeedBoostGap(margin));
+    final pickUp = _boostApproach(BoostType.speed, tiles: 3);
+    final width = _boosted(
+      envelope.maxSpeedBoostGap(speed: pickUp, margin: 1),
+      _reach(0),
+    );
     speed = envelope.topSpeed;
     _jumpGap(width, 0);
   }
 
   void _jumpBoost() {
     _boostApproach(BoostType.jump, tiles: 2, inset: tileSize * 0.4);
-    final low = envelope.maxClimb(margin) * 1.05;
-    final high = envelope.maxBoostedClimb(margin);
-    _stepUp(random.range(low, math.max(low, high * random.range(0.7, 1))));
+    _stepUp(_boosted(envelope.maxBoostedClimb(1), envelope.maxClimb(1)));
   }
 
   void _gravityBoost() {
     _boostApproach(BoostType.gravity, tiles: 3);
-    final boostedMax = envelope.maxGravityBoostGap(
-      speed: speed,
-      margin: margin,
+    final width = _boosted(
+      envelope.maxGravityBoostGap(speed: speed, margin: 1),
+      _reach(0),
     );
     _jumpGap(
-      _boostedWidth(boostedMax),
+      width,
       0,
       time: envelope.gravityBoostJumpDistance / envelope.topSpeed,
     );
@@ -439,5 +635,8 @@ class _Builder {
     if (runLength < 2 * tileSize) return;
     checkpoints.add(Checkpoint(Vec2(runStart + tileSize / 2, y)));
     sinceRespawn = 0;
+    // A player respawning here starts from rest on this run.
+    speed = math.min(speed, envelope.speedAfter(runLength - tileSize / 2));
+    _landedLate = false;
   }
 }

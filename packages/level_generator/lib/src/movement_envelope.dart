@@ -13,10 +13,13 @@ class MovementEnvelope {
     required this.jumpHeight,
     required this.flightTime,
     required this.topSpeed,
-    required this.timeToTopSpeed,
+    required this.speedCurve,
     required this.jumpBoostHeight,
     required this.speedBoostJumpDistance,
+    required this.speedBoostGain,
     required this.gravityBoostJumpDistance,
+    required this.doubleJumpHeight,
+    required this.doubleJumpDistance,
   });
 
   /// Height of a standing jump, in meters.
@@ -28,28 +31,64 @@ class MovementEnvelope {
   /// Top horizontal speed while pushing, in m/s.
   final double topSpeed;
 
-  /// Time to reach [topSpeed] from rest, as uniform acceleration (which
-  /// underestimates the real, faster start, so it errs on the safe side).
-  final double timeToTopSpeed;
+  /// The speed after pushing from rest over `n × curveStep` meters, for
+  /// n = 1, 2, …: measured with the real ball and rounded down. Past its end
+  /// the speed stays at its last value.
+  final List<double> speedCurve;
+
+  /// The distance between [speedCurve] samples, in meters.
+  static const double curveStep = 0.75;
 
   /// Height reached from a jump boost, without jumping, in meters.
   final double jumpBoostHeight;
 
-  /// Distance of a jump taken right after a speed boost, in meters.
+  /// Distance of a jump taken right after a speed boost picked up at top
+  /// speed, in meters.
   final double speedBoostJumpDistance;
+
+  /// The speed a speed boost adds, in m/s.
+  final double speedBoostGain;
 
   /// Distance of a jump taken at top speed during a gravity boost, in meters.
   final double gravityBoostJumpDistance;
 
-  /// Horizontal acceleration while pushing, in m/s².
-  double get acceleration => topSpeed / timeToTopSpeed;
+  /// Height of a jump followed by an air jump at its apex, in meters.
+  final double doubleJumpHeight;
+
+  /// Distance of a running jump at top speed with an air jump at its apex,
+  /// in meters.
+  final double doubleJumpDistance;
 
   /// Speed reached after pushing over [distance] meters, starting at
-  /// [startSpeed].
-  double speedAfter(double distance, {double startSpeed = 0}) => math.min(
-    topSpeed,
-    math.sqrt(startSpeed * startSpeed + 2 * acceleration * distance),
-  );
+  /// [startSpeed]: read on [speedCurve] from where it reaches [startSpeed].
+  /// Only exact operations, so it is the same on every platform.
+  double speedAfter(double distance, {double startSpeed = 0}) =>
+      math.min(topSpeed, _speedAt(_distanceFor(startSpeed) + distance));
+
+  /// The curve's speed after [distance] meters from rest.
+  double _speedAt(double distance) {
+    if (distance <= 0) return 0;
+    final position = distance / curveStep;
+    final index = position.floor();
+    if (index >= speedCurve.length) return speedCurve.last;
+    final lower = index == 0 ? 0.0 : speedCurve[index - 1];
+    final upper = speedCurve[index];
+    return lower + (upper - lower) * (position - index);
+  }
+
+  /// The distance from rest at which the curve reaches [speed].
+  double _distanceFor(double speed) {
+    if (speed <= 0) return 0;
+    var lower = 0.0;
+    for (var index = 0; index < speedCurve.length; index++) {
+      final upper = speedCurve[index];
+      if (speed <= upper) {
+        return (index + (speed - lower) / (upper - lower)) * curveStep;
+      }
+      lower = upper;
+    }
+    return speedCurve.length * curveStep;
+  }
 
   /// Air time of a jump landing [rise] meters above its take-off (negative
   /// when landing lower), or null when the landing is out of reach.
@@ -85,8 +124,23 @@ class MovementEnvelope {
   /// The highest ledge a jump boost can reach, scaled by [margin].
   double maxBoostedClimb(double margin) => margin * jumpBoostHeight;
 
-  /// The widest gap after a speed boost, scaled by [margin].
-  double maxSpeedBoostGap(double margin) => margin * speedBoostJumpDistance;
+  /// The widest gap after a speed boost picked up at [speed], scaled by
+  /// [margin]. The boost adds [speedBoostGain] to the speed it finds, and a
+  /// jump's distance grows with its launch speed: scaling the measured jump
+  /// by the launch speed stays within it, as the push in the air adds a
+  /// share that does not shrink.
+  double maxSpeedBoostGap({required double speed, required double margin}) =>
+      margin *
+      speedBoostJumpDistance *
+      math.min(1, (speed + speedBoostGain) / (topSpeed + speedBoostGain));
+
+  /// The highest ledge a jump with an air jump reaches, scaled by [margin].
+  double maxDoubleJumpClimb(double margin) => margin * doubleJumpHeight;
+
+  /// The widest gap a jump with an air jump clears at [speed], scaled by
+  /// [margin].
+  double maxDoubleJumpGap({required double speed, required double margin}) =>
+      margin * doubleJumpDistance * math.min(1, speed / topSpeed);
 
   /// The widest gap during a gravity boost at [speed], scaled by [margin].
   double maxGravityBoostGap({required double speed, required double margin}) =>

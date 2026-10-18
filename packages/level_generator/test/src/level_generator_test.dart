@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:level_generator/level_generator.dart';
 import 'package:test/test.dart';
 
@@ -57,6 +59,25 @@ void main() {
           expect(violations, isEmpty, reason: '$seed / level $n');
         }
       }
+    });
+  });
+
+  group('precision', () {
+    test('early gaps need most of the reach, deep ones nearly all', () {
+      List<double> shares(int from, int to) => [
+        for (final seed in seeds)
+          for (var n = from; n <= to; n++)
+            ...validator.gapShares(level(n, seed)),
+      ];
+      final early = shares(1, 5);
+      final deep = shares(300, 304);
+      double mean(List<double> values) =>
+          values.reduce((a, b) => a + b) / values.length;
+      // The validator's speed is generous, so these are lower bounds.
+      expect(mean(early), inInclusiveRange(0.5, 0.85));
+      expect(early.reduce(math.max), lessThanOrEqualTo(0.85));
+      expect(mean(deep), greaterThan(mean(early)));
+      expect(deep.reduce(math.max), lessThanOrEqualTo(0.96));
     });
   });
 
@@ -161,7 +182,7 @@ void main() {
   });
 
   group('structure', () {
-    test('the first stage mixes the basic obstacles, without boosts', () {
+    test('the first two levels mix the basics, spikes and set pieces', () {
       const basics = {
         SectionKind.flat,
         SectionKind.rampUp,
@@ -172,31 +193,46 @@ void main() {
         SectionKind.staircase,
         SectionKind.cascade,
         SectionKind.valley,
+        SectionKind.spikes,
       };
       final seen = <SectionKind>{};
       for (final seed in seeds) {
-        for (var n = 1; n <= 5; n++) {
+        for (var n = 1; n <= 2; n++) {
           final data = level(n, seed);
           expect(data.sections.toSet().difference(basics), isEmpty);
           expect(data.boosts, isEmpty);
+          expect(data.platforms, isEmpty);
+          expect(data.floors.where((floor) => floor.crumbling), isEmpty);
           seen.addAll(data.sections);
         }
       }
       expect(seen, basics);
     });
 
-    test('no level uses an element before its stage', () {
+    test('no level uses an element before its introduction', () {
       for (final seed in seeds) {
         for (var n = 1; n <= 60; n++) {
-          final stage = curve.parametersFor(n).stage;
           for (final kind in level(n, seed).sections) {
             if (kind == SectionKind.flat) continue;
             expect(
-              DifficultyCurve.introductionStage[kind],
-              lessThanOrEqualTo(stage),
+              DifficultyCurve.introductionLevel[kind],
+              lessThanOrEqualTo(n),
               reason: '$seed / level $n uses $kind',
             );
           }
+        }
+      }
+    });
+
+    test('each element appears, featured, in the level that introduces it', () {
+      // Level 1 has too many first elements to fit them all.
+      for (final MapEntry(key: kind, value: intro)
+          in DifficultyCurve.introductionLevel.entries) {
+        if (intro == 1) continue;
+        for (final seed in seeds) {
+          final data = level(intro, seed);
+          expect(data.sections, contains(kind), reason: '$seed / $kind');
+          expect(data.featured, contains(kind), reason: '$seed / $kind');
         }
       }
     });
@@ -208,12 +244,19 @@ void main() {
           final data = level(n, seed);
           for (final boost in data.boosts) {
             counts[boost.type] = counts[boost.type]! + 1;
-            final section = switch (boost.type) {
-              BoostType.speed => SectionKind.speedBoost,
-              BoostType.jump => SectionKind.jumpBoost,
-              BoostType.gravity => SectionKind.gravityBoost,
+            final served = switch (boost.type) {
+              BoostType.speed => [SectionKind.speedBoost],
+              BoostType.jump => [SectionKind.jumpBoost],
+              BoostType.gravity => [SectionKind.gravityBoost],
+              BoostType.doubleJump => [
+                SectionKind.orbGap,
+                SectionKind.orbClimb,
+              ],
             };
-            expect(data.sections, contains(section));
+            expect(
+              data.sections.toSet().intersection(served.toSet()),
+              isNotEmpty,
+            );
           }
         }
       }
@@ -245,9 +288,139 @@ void main() {
       expect(checked, greaterThan(0));
     });
 
+    test('spikes lie inside runs, as wide as a jump clears', () {
+      var checked = 0;
+      for (final seed in seeds) {
+        for (var n = 1; n <= 60; n++) {
+          final data = level(n, seed);
+          final margin = curve.parametersFor(n).margin;
+          for (final strip in data.hazards) {
+            final run = data.floors.singleWhere(
+              (f) => strip.left >= f.left && strip.right <= f.right,
+            );
+            expect(strip.top, run.top);
+            expect(strip.left - run.left, greaterThanOrEqualTo(tileSize));
+            expect(run.right - strip.right, greaterThanOrEqualTo(tileSize));
+            expect(strip.width, greaterThanOrEqualTo(1));
+            expect(
+              strip.width,
+              lessThanOrEqualTo(
+                testEnvelope.maxGap(
+                  speed: testEnvelope.topSpeed,
+                  rise: 0,
+                  margin: margin,
+                ),
+              ),
+            );
+            expect(run, isNot(data.floors.first));
+            expect(run, isNot(data.floors.last));
+            checked++;
+          }
+        }
+      }
+      expect(checked, greaterThan(0));
+    });
+
+    test('ferries cross gaps too wide to jump, from edge to edge', () {
+      var checked = 0;
+      for (final seed in seeds) {
+        for (var n = 3; n <= 60; n++) {
+          final data = level(n, seed);
+          for (final ferry in data.platforms) {
+            final near = data.floors.lastWhere((f) => f.right <= ferry.start.x);
+            final far = data.floors.firstWhere(
+              (f) => f.left >= ferry.end.x + ferry.size.x,
+            );
+            expect(ferry.start.x - near.right, closeTo(0.15, 1e-9));
+            expect(far.left - ferry.end.x - ferry.size.x, closeTo(0.15, 1e-9));
+            expect((ferry.start.y, ferry.end.y), (near.top, far.top));
+            expect(
+              far.left - near.right,
+              greaterThan(
+                testEnvelope.maxGap(
+                      speed: testEnvelope.topSpeed,
+                      rise: 0,
+                      margin: 1,
+                    ) *
+                    0.5,
+              ),
+            );
+            expect((ferry.speed, ferry.pause), (2.2, 0.8));
+            expect(ferry.size.x, 2 * tileSize);
+            checked++;
+          }
+        }
+      }
+      expect(checked, greaterThan(0));
+    });
+
+    test('crumbling islands are one or two tiles between gaps', () {
+      var checked = 0;
+      for (final seed in seeds) {
+        for (var n = 6; n <= 60; n++) {
+          final data = level(n, seed);
+          final floors = data.floors;
+          for (var i = 0; i < floors.length; i++) {
+            if (!floors[i].crumbling) continue;
+            expect(
+              floors[i].size.x,
+              anyOf(closeTo(tileSize, 1e-9), closeTo(2 * tileSize, 1e-9)),
+            );
+            expect(floors[i].left, greaterThan(floors[i - 1].right));
+            expect(floors[i + 1].left, greaterThan(floors[i].right));
+            checked++;
+          }
+        }
+      }
+      expect(checked, greaterThan(0));
+    });
+
+    test('orbs precede gaps and climbs beyond one jump', () {
+      var gaps = 0;
+      var climbs = 0;
+      for (final seed in seeds) {
+        for (var n = 21; n <= 120; n++) {
+          final data = level(n, seed);
+          final margin = curve.parametersFor(n).margin;
+          for (final orb in data.boosts.where(
+            (b) => b.type == BoostType.doubleJump,
+          )) {
+            final i = data.floors.indexWhere(
+              (f) => orb.position.x >= f.left && orb.position.x <= f.right,
+            );
+            final floor = data.floors[i];
+            final next = data.floors[i + 1];
+            if (next.left - floor.right > 1e-9) {
+              expect(
+                next.left - floor.right,
+                lessThanOrEqualTo(
+                  testEnvelope.maxDoubleJumpGap(
+                    speed: testEnvelope.topSpeed,
+                    margin: margin,
+                  ),
+                ),
+              );
+              gaps++;
+            } else {
+              final climb = floor.top - next.top;
+              expect(climb, greaterThan(testEnvelope.maxClimb(margin)));
+              expect(
+                climb,
+                lessThanOrEqualTo(testEnvelope.maxDoubleJumpClimb(margin)),
+              );
+              climbs++;
+            }
+          }
+        }
+      }
+      expect(gaps, greaterThan(0));
+      expect(climbs, greaterThan(0));
+    });
+
     test('estimated durations follow the pacing', () {
       for (final seed in seeds) {
-        expect(level(3, seed).estimatedDuration, inInclusiveRange(30, 45));
+        // About 35-45 s; the last section may run a little over.
+        expect(level(3, seed).estimatedDuration, inInclusiveRange(30, 48));
         expect(level(150, seed).estimatedDuration, inInclusiveRange(120, 180));
       }
     });
@@ -274,4 +447,4 @@ void main() {
   });
 }
 
-const goldenDigests = [4263875808, 1417179950, 1049659038];
+const goldenDigests = [1292913836, 3135107716, 577518912];

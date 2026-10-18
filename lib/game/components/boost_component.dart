@@ -10,7 +10,8 @@ import 'package:puzzle_ball_gklabs/game/visuals/element_palette.dart';
 
 /// A boost: a sensor that changes the ball's motion when it passes through,
 /// drawn as a glowing orb with its type's color and icon, pulsing gently
-/// (game-visuals spec).
+/// (game-visuals spec). A double-jump orb charges an air jump and
+/// disappears until [restore] (level-mechanics spec).
 class BoostComponent extends BodyComponent with ContactCallbacks {
   new({required this.type, required this.position}) : super(renderBody: false);
 
@@ -40,6 +41,10 @@ class BoostComponent extends BodyComponent with ContactCallbacks {
   final Vector2 position;
 
   double _time = 0;
+  bool _collected = false;
+
+  /// Whether this double-jump orb has been collected.
+  bool get isCollected => _collected;
 
   @override
   Body createBody() {
@@ -51,7 +56,7 @@ class BoostComponent extends BodyComponent with ContactCallbacks {
 
   @override
   void beginContact(Object other, Contact contact) {
-    if (other is! BallComponent) return;
+    if (other is! BallComponent || _collected) return;
     switch (type) {
       case BoostType.jump:
         other.applyJumpBoost(jumpImpulse);
@@ -59,6 +64,9 @@ class BoostComponent extends BodyComponent with ContactCallbacks {
         other.applySpeedBoost(speedImpulse, Vector2(1, 0));
       case BoostType.gravity:
         other.applyGravityBoost(gravityScale);
+      case BoostType.doubleJump:
+        other.chargeAirJump();
+        _collected = true;
     }
   }
 
@@ -83,8 +91,12 @@ class BoostComponent extends BodyComponent with ContactCallbacks {
   double get pulse =>
       1 + pulseAmount * math.sin(2 * math.pi * pulseRate * _time);
 
+  /// Shows a collected orb again: after a respawn.
+  void restore() => _collected = false;
+
   @override
   void render(Canvas canvas) {
+    if (_collected) return;
     canvas
       ..save()
       ..scale(pulse)
