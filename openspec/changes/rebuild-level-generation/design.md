@@ -69,7 +69,9 @@ integers are JavaScript doubles, exact only up to 2^53.
   curve's outputs that use `exp` are quantized to 1e-6, so a last-bit difference between platforms cannot change a
   level.
 - A **golden test** fixes the first values of the PRNG and a digest of selected generated levels. It runs on the VM
-  and in Chrome (`dart test -p vm,chrome`; the package workflow's `platform: vm,chrome`).
+  and in Chrome (`dart test -p vm,chrome` locally; in CI, the package workflow measures coverage on the VM and runs
+  a separate `web` job with `dart test --platform chrome`, because Chrome's coverage records do not merge with the
+  VM's).
 - A `generatorVersion` constant is bumped whenever output changes on purpose. The next change uses it to keep shared
   seeds meaningful.
 

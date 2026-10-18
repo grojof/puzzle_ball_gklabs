@@ -21,5 +21,23 @@ jobs:
     with:
       dart_sdk: "3.13.5"
       working_directory: packages/level_generator
-      # Determinism across platforms is a requirement (level-generation spec).
-      platform: "vm,chrome"
+      # Coverage on the VM only: Chrome's coverage maps lines differently and is
+      # reported as a separate, partial record that would fail the 100 % gate.
+      platform: "vm"
+
+  # Determinism across platforms is a requirement (level-generation spec): the
+  # golden tests must also pass in a browser. No coverage here.
+  web:
+    if: ${{ !github.event.pull_request.draft }}
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/level_generator
+    steps:
+      # Same action versions as Very Good's dart_package workflow.
+      - uses: actions/checkout@v7
+      - uses: dart-lang/setup-dart@v1.8.1
+        with:
+          sdk: "3.13.5"
+      - run: dart pub get
+      - run: dart test --platform chrome
