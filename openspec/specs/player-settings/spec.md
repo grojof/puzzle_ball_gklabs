@@ -1,14 +1,15 @@
 # player-settings Specification
 
 ## Purpose
-Defines the player's persisted preferences (music volume, effects volume, mute, control mode and language) and the
-settings screen where they are changed.
+Defines the player's persisted preferences (music volume, effects volume, mute, control mode, vibration and language)
+and the settings screen where they are changed.
 
 ## Requirements
 
 ### Requirement: Settings screen
-The game SHALL provide a settings screen with music volume, effects volume, control mode (tilt or joystick) and
-language, reachable from the title screen and from the in-game pause menu. Changes SHALL apply immediately.
+The game SHALL provide a settings screen with music volume, effects volume, control mode (tilt or joystick),
+vibration and language, reachable from the title screen and from the in-game pause menu. Changes SHALL apply
+immediately. Control mode and vibration SHALL only be offered on Android.
 
 #### Scenario: Open from the title screen
 - **WHEN** the player opens settings from the title screen
@@ -22,6 +23,10 @@ language, reachable from the title screen and from the in-game pause menu. Chang
 - **WHEN** the player releases the effects volume slider
 - **THEN** a sample effect plays at the new volume
 
+#### Scenario: Turning vibration off during a session
+- **WHEN** the player turns vibration off in the settings opened from the pause menu and resumes
+- **THEN** jumps, boosts and checkpoints no longer vibrate
+
 ### Requirement: Settings persist
 Every setting SHALL be stored on the device and restored on the next launch.
 
@@ -31,11 +36,12 @@ Every setting SHALL be stored on the device and restored on the next launch.
 
 ### Requirement: Default settings
 On first launch, the music and effects volumes SHALL be 100 %, sound SHALL NOT be muted, the control mode SHALL be the
-joystick, and the language SHALL be the device language if it is English, Spanish or Catalan, or English otherwise.
+joystick, vibration SHALL be enabled, and the language SHALL be the device language if it is English, Spanish
+or Catalan, or English otherwise.
 
 #### Scenario: First launch on a Spanish device
 - **WHEN** the app starts for the first time on a device set to Spanish
-- **THEN** the game is in Spanish, with full volumes, sound on and joystick control
+- **THEN** the game is in Spanish, with full volumes, sound on, joystick control and vibration on
 
 #### Scenario: First launch on an unsupported language
 - **WHEN** the app starts for the first time on a device set to German
