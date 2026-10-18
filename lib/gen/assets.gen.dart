@@ -80,35 +80,8 @@ class $AssetsImagesComponentsGen {
   AssetGenImage get ball =>
       const AssetGenImage('assets/images/components/ball.png');
 
-  /// File path: assets/images/components/floor.png
-  AssetGenImage get floor =>
-      const AssetGenImage('assets/images/components/floor.png');
-
-  /// File path: assets/images/components/goal.png
-  AssetGenImage get goal =>
-      const AssetGenImage('assets/images/components/goal.png');
-
-  /// File path: assets/images/components/gravity_boost.png
-  AssetGenImage get gravityBoost =>
-      const AssetGenImage('assets/images/components/gravity_boost.png');
-
-  /// File path: assets/images/components/jump_boost.png
-  AssetGenImage get jumpBoost =>
-      const AssetGenImage('assets/images/components/jump_boost.png');
-
-  /// File path: assets/images/components/speed_boost.png
-  AssetGenImage get speedBoost =>
-      const AssetGenImage('assets/images/components/speed_boost.png');
-
   /// List of all assets
-  List<AssetGenImage> get values => [
-    ball,
-    floor,
-    goal,
-    gravityBoost,
-    jumpBoost,
-    speedBoost,
-  ];
+  List<AssetGenImage> get values => [ball];
 }
 
 class $AssetsImagesParallaxGen {

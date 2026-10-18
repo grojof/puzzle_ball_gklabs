@@ -59,6 +59,7 @@ The ADRs are:
 - [ADR-0008](docs/decisions/0008-material-ui.md): Material from `material_ui`
 - [ADR-0009](docs/decisions/0009-level-generator-and-movement-envelope.md): level generator bounded by a measured
   movement envelope
+- [ADR-0010](docs/decisions/0010-visual-system-and-biomes.md): hybrid visual system with biomes as data
 
 Contributors (human or AI) start with [AGENTS.md](AGENTS.md).
 

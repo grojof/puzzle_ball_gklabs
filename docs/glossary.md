@@ -22,6 +22,9 @@ audience: maintainer
 | **Featured sections** | The two or three sections and set pieces a level uses most, which give it its own character. |
 | **Phrase** | A group of back-to-back obstacles, or a rest stretch of flat ground; levels alternate them for rhythm. |
 | **Run** | A playthrough of consecutive levels from one seed. |
+| **World** | Ten consecutive levels sharing one biome; the first level of a world announces its number and biome. |
+| **Biome** | The look of a world: a palette, a terrain material, a backdrop and ambient particles (night forest, desert dusk, snowy peaks, crystal caves, volcano). |
+| **Variant** | How a repeated biome differs from its first appearance: palette, time of day and backdrop layers, drawn from the seed. |
 | **Floor run** | A stretch of ground at one height, built as a single physics body and drawn with repeated tiles. |
 | **Savegame** | Stored progress: seed, current level and timestamps. |
 | **Tile** | A floor block of the terrain, 1.5 m wide in the physics world. |

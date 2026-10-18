@@ -4,6 +4,7 @@ import 'package:flame_test/flame_test.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:puzzle_ball_gklabs/game/ball_envelope.dart';
 import 'package:puzzle_ball_gklabs/game/ball_odyssey_game.dart';
+import 'package:puzzle_ball_gklabs/game/components/boost_component.dart';
 
 import '../helpers/game_helpers.dart';
 
@@ -103,7 +104,7 @@ void main() {
       game,
     ) async {
       final ground = await prepare(game);
-      game.level!.ball.applyJumpBoost(120);
+      game.level!.ball.applyJumpBoost(BoostComponent.jumpImpulse);
       final (_, height) = fly(game, ground);
       expect(height, greaterThanOrEqualTo(ballEnvelope.jumpBoostHeight));
     });
@@ -112,7 +113,7 @@ void main() {
       final ground = await prepare(game);
       final ball = game.level!.ball;
       push(game, ground, 3);
-      ball.applySpeedBoost(100, Vector2(1, 0));
+      ball.applySpeedBoost(BoostComponent.speedImpulse, Vector2(1, 0));
       game.update(_dt);
       ball.body.setTransform(Vector2(1, ground), const Rot.identity());
       game.intent.requestJump();
@@ -129,7 +130,7 @@ void main() {
       push(game, ground, 3);
       ball
         ..body.setTransform(Vector2(1, ground), const Rot.identity())
-        ..applyGravityBoost(0.1);
+        ..applyGravityBoost(BoostComponent.gravityScale);
       game.intent.requestJump();
       final (distance, _) = fly(game, ground);
       expect(

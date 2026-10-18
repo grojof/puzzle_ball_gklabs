@@ -159,5 +159,11 @@
   "pauseRestart": "Reiniciar nivel",
   "noSavegameSelected": "No hay ninguna partida seleccionada.",
   "settingsVibration": "Vibración",
-  "settingsVibrationDesc": "Vibra al saltar, con los impulsos y en los puntos de control."
+  "settingsVibrationDesc": "Vibra al saltar, con los impulsos y en los puntos de control.",
+  "labelWorld": "Mundo {number}",
+  "biomeNightForest": "Bosque nocturno",
+  "biomeDesertDusk": "Desierto al atardecer",
+  "biomeSnowyPeaks": "Cumbres nevadas",
+  "biomeCrystalCaves": "Cuevas de cristal",
+  "biomeVolcano": "Volcán"
 }

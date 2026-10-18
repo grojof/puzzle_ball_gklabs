@@ -16,6 +16,10 @@ import 'package:puzzle_ball_gklabs/game/game_config.dart';
 import 'package:puzzle_ball_gklabs/game/input/manual_input.dart';
 import 'package:puzzle_ball_gklabs/game/input/movement_intent.dart';
 import 'package:puzzle_ball_gklabs/game/input/tilt_input.dart';
+import 'package:puzzle_ball_gklabs/game/visuals/biome_backdrop.dart';
+import 'package:puzzle_ball_gklabs/game/visuals/terrain_paint.dart';
+import 'package:puzzle_ball_gklabs/game/visuals/terrain_textures.dart';
+import 'package:puzzle_ball_gklabs/game/visuals/world_look.dart';
 import 'package:puzzle_ball_gklabs/gen/assets.gen.dart';
 import 'package:puzzle_ball_gklabs/haptics/haptics.dart';
 import 'package:sensors_plus/sensors_plus.dart';
@@ -37,6 +41,7 @@ class BallOdysseyGame extends Forge2DGame with HasKeyboardHandlerComponents {
     required Images images,
     required this.levelLabel,
     required this.levelTextStyle,
+    this.worldLabel,
     this.onLevelCompleted,
     this.onSessionCompleted,
     this.accelerometer,
@@ -66,6 +71,10 @@ class BallOdysseyGame extends Forge2DGame with HasKeyboardHandlerComponents {
   final String Function(int levelNumber) levelLabel;
   final TextStyle levelTextStyle;
 
+  /// The line shown under the level label when a level starts a world, or
+  /// null for other levels (game-visuals spec).
+  final String? Function(int levelNumber)? worldLabel;
+
   /// A level was completed; [levelNumber] is the one just finished.
   final void Function(int levelNumber)? onLevelCompleted;
 
@@ -93,14 +102,24 @@ class BallOdysseyGame extends Forge2DGame with HasKeyboardHandlerComponents {
     ),
     margin: const EdgeInsets.only(left: 16, bottom: 16),
   );
-  late final ParallaxComponent _parallax;
-  late final ParallaxLayer _layer2;
-  late final ParallaxLayer _layer3;
   final Vector2 _parallaxVelocity = Vector2.zero();
+
+  /// The painted forest's moving layers, while the forest is shown.
+  List<ParallaxLayer> _forestLayers = const [];
+  Component? _backdrop;
+  WorldLook? _backdropLook;
+
+  /// The backdrop of the current world.
+  Component? get backdrop => _backdrop;
   final CameraController _camera = CameraController(
     metersToPixels: metersToPixelsScale,
   );
+  final TerrainTextureCache _textures = TerrainTextureCache();
+  WorldLook? _look;
   bool _loading = false;
+
+  /// How the current world looks.
+  WorldLook? get look => _look;
 
   /// The level being played (1-based).
   int get levelNumber => _levelNumber;
@@ -122,13 +141,46 @@ class BallOdysseyGame extends Forge2DGame with HasKeyboardHandlerComponents {
     await super.onLoad();
     camera.viewfinder.anchor = Anchor.center;
     _camera.viewport = size;
-    await _addBackdrop();
     await _addHud();
     await _applyInput();
     await _loadLevel(_levelNumber);
   }
 
-  Future<void> _addBackdrop() async {
+  /// Shows the backdrop of [look], replacing the previous world's (design
+  /// D4, D7).
+  Future<void> _showBackdrop(WorldLook look) async {
+    if (_backdropLook?.biome == look.biome &&
+        _backdropLook?.variant == look.variant) {
+      return;
+    }
+    _backdrop?.removeFromParent();
+    _forestLayers = const [];
+    final particles = ParticleField(
+      style: ParticleField.styleOf(look.biome),
+      color: look.palette.particle,
+      seed: look.variant ^ look.biome.index,
+      count: look.biome == Biome.nightForest ? 12 : ParticleField.calmCount,
+    );
+    final backdrop = Component(
+      priority: -10,
+      children: [
+        if (look.biome == Biome.nightForest) ...[
+          await _paintedForest(),
+          if (look.variant != 0) ScreenTint(look.palette.skyBottom),
+        ] else
+          BiomeBackdrop(
+            look: look,
+            cameraX: () => camera.viewfinder.position.x,
+          ),
+        particles,
+      ],
+    );
+    _backdrop = backdrop;
+    _backdropLook = look;
+    await camera.backdrop.add(backdrop);
+  }
+
+  Future<ParallaxComponent> _paintedForest() async {
     Future<ParallaxLayer> layer(String path, Vector2 velocity) =>
         ParallaxLayer.load(
           ParallaxImageData(path),
@@ -136,18 +188,15 @@ class BallOdysseyGame extends Forge2DGame with HasKeyboardHandlerComponents {
           images: images,
         );
     final parallax = Assets.images.parallax;
-    final layer1 = await layer(parallax.layer1.path, Vector2(0.1, 1));
-    _layer2 = await layer(parallax.layer2.path, Vector2(2.5, 1));
-    _layer3 = await layer(parallax.layer3.path, Vector2(1, 1));
-    _parallax = ParallaxComponent(
-      parallax: Parallax([
-        layer1,
-        _layer2,
-        _layer3,
-      ], baseVelocity: _parallaxVelocity),
-      priority: -10,
+    final layers = [
+      await layer(parallax.layer1.path, Vector2(0.1, 1)),
+      await layer(parallax.layer2.path, Vector2(2.5, 1)),
+      await layer(parallax.layer3.path, Vector2(1, 1)),
+    ];
+    _forestLayers = layers;
+    return ParallaxComponent(
+      parallax: Parallax(layers, baseVelocity: _parallaxVelocity),
     );
-    await camera.backdrop.add(_parallax);
   }
 
   Future<void> _addHud() async {
@@ -199,11 +248,18 @@ class BallOdysseyGame extends Forge2DGame with HasKeyboardHandlerComponents {
     _level?.removeFromParent();
     intent.reset();
     _levelNumber = levelNumber;
+    final data = levelFor(levelNumber);
+    // Textures are ready before the level exists, never made during play.
+    final look = WorldLook.forLevel(data.seed, data.level);
+    final textures = await _textures.get(look);
+    await _showBackdrop(look);
+    _look = look;
     final level = LevelComponent(
-      data: levelFor(levelNumber),
+      data: data,
       intent: intent,
       audio: audio,
       haptics: haptics,
+      terrain: TerrainPaint(textures),
       onFell: () => unawaited(restartLevel()),
       onCompleted: () => unawaited(_completeLevel()),
       onRespawned: _frameBall,
@@ -226,22 +282,40 @@ class BallOdysseyGame extends Forge2DGame with HasKeyboardHandlerComponents {
         Shadow(blurRadius: 4, offset: Offset(2, 2), color: Color(0x8A000000)),
       ],
     );
-    final text = TextComponent(
-      text: levelLabel(levelNumber),
+    await _showFadingText(levelLabel(levelNumber), style, size / 2);
+    final world = worldLabel?.call(levelNumber);
+    if (world != null) {
+      await _showFadingText(
+        world,
+        style.copyWith(fontSize: 22),
+        size / 2 + Vector2(0, 40),
+      );
+    }
+  }
+
+  /// Fades [text] in at [position] on the viewport, holds it, and fades it
+  /// out.
+  Future<void> _showFadingText(
+    String text,
+    TextStyle style,
+    Vector2 position,
+  ) async {
+    final component = TextComponent(
+      text: text,
       textRenderer: TextPaint(style: style),
       anchor: Anchor.center,
-      position: size / 2,
+      position: position,
       priority: 1000,
     );
     final fade = _TextFade(
-      onOpacity: (o) => text.textRenderer = TextPaint(
+      onOpacity: (o) => component.textRenderer = TextPaint(
         style: style.copyWith(
           color: (style.color ?? const Color(0xFFFFFFFF)).withValues(alpha: o),
         ),
       ),
     );
-    await camera.viewport.add(text);
-    await text.add(fade);
+    await camera.viewport.add(component);
+    await component.add(fade);
   }
 
   @override
@@ -252,8 +326,10 @@ class BallOdysseyGame extends Forge2DGame with HasKeyboardHandlerComponents {
     final ball = level.ball.body;
 
     _parallaxVelocity.x = ball.linearVelocity.x * 4;
-    _layer2.update(Vector2(10 * dt, 0), dt);
-    _layer3.update(Vector2(20 * dt, 0), dt);
+    if (_forestLayers.length == 3) {
+      _forestLayers[1].update(Vector2(10 * dt, 0), dt);
+      _forestLayers[2].update(Vector2(20 * dt, 0), dt);
+    }
 
     _camera.update(dt, ball.position, ball.linearVelocity);
     _applyCamera();
@@ -290,6 +366,7 @@ class BallOdysseyGame extends Forge2DGame with HasKeyboardHandlerComponents {
     final input = _input;
     if (input is TiltInput) input.stop();
     _level = null;
+    _textures.clear();
     world.physicsWorld.destroy();
   }
 }

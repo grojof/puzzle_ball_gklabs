@@ -159,5 +159,11 @@
   "pauseRestart": "Reinicia el nivell",
   "noSavegameSelected": "No hi ha cap partida seleccionada.",
   "settingsVibration": "Vibració",
-  "settingsVibrationDesc": "Vibra en saltar, amb els impulsos i als punts de control."
+  "settingsVibrationDesc": "Vibra en saltar, amb els impulsos i als punts de control.",
+  "labelWorld": "Món {number}",
+  "biomeNightForest": "Bosc nocturn",
+  "biomeDesertDusk": "Desert al capvespre",
+  "biomeSnowyPeaks": "Cims nevats",
+  "biomeCrystalCaves": "Coves de cristall",
+  "biomeVolcano": "Volcà"
 }

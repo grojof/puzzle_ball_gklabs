@@ -73,8 +73,8 @@ The game receives settings as a `GameConfig` value and reports progress through 
 Each level is a single `LevelComponent` under the world, built from the `LevelData` that `GamePage` asks the
 generator for, with the savegame's seed. It holds terrain, sensors, the goal and the ball:
 
-- **Terrain:** one static body per floor run, with the tile sprite repeated along it and only the visible tiles
-  drawn; ramps, boosts and checkpoints are their own components.
+- **Terrain:** one static body per floor run, painted with the world's generated textures (see Visuals); ramps,
+  boosts (one `BoostComponent` per type), checkpoints and the goal are their own components.
 - **Restart and advance:** replace that component in place. Body components destroy their bodies when removed.
 - **Falling:** detected in constant time, by comparing the ball with the level's lowest terrain point. The ball
   respawns at rest above the last checkpoint it passed, with any boost cancelled; with no checkpoint, the level
@@ -92,6 +92,19 @@ Input writes a `MovementIntent` (horizontal push and jump requests) that the bal
 - `applyConfig` swaps the two when the setting changes.
 
 Boosts end on a game-time `Timer` owned by the ball, so they pause with the game and vanish with the level.
+
+## Visuals
+
+`lib/game/visuals/` holds the visual system ([ADR-0010](decisions/0010-visual-system-and-biomes.md)):
+
+- `WorldLook` derives the world, biome and variant from the seed and level number, and `BiomePalette` holds each
+  biome's colors.
+- `TerrainTextures` draws a body and a surface texture per world when a level loads, cached for the last two looks;
+  `TerrainPaint` paints floors and ramps with them through repeating image shaders anchored in world coordinates.
+- `BiomeBackdrop` draws the sky, three cached silhouette layers and the parallax for the generated biomes;
+  `ParticleField` adds ambient particles; the night forest keeps the painted `ParallaxComponent`.
+- `ElementPalette` and `ElementPainter` give boosts, checkpoints and the goal fixed colors and depth: a shadow, a
+  glow, a lit body, and a dark outline with a light rim.
 
 ## Camera
 
