@@ -74,8 +74,8 @@ void main() {
       double mean(List<double> values) =>
           values.reduce((a, b) => a + b) / values.length;
       // The validator's speed is generous, so these are lower bounds.
-      expect(mean(early), inInclusiveRange(0.5, 0.85));
-      expect(early.reduce(math.max), lessThanOrEqualTo(0.85));
+      expect(mean(early), inInclusiveRange(0.6, 0.9));
+      expect(early.reduce(math.max), lessThanOrEqualTo(0.9));
       expect(mean(deep), greaterThan(mean(early)));
       expect(deep.reduce(math.max), lessThanOrEqualTo(0.96));
     });
@@ -182,7 +182,7 @@ void main() {
   });
 
   group('structure', () {
-    test('the first two levels mix the basics, spikes and set pieces', () {
+    test('the first level mixes the basics, spikes and set pieces', () {
       const basics = {
         SectionKind.flat,
         SectionKind.rampUp,
@@ -194,10 +194,12 @@ void main() {
         SectionKind.cascade,
         SectionKind.valley,
         SectionKind.spikes,
+        SectionKind.tower,
+        SectionKind.descent,
       };
       final seen = <SectionKind>{};
-      for (final seed in seeds) {
-        for (var n = 1; n <= 2; n++) {
+      for (final seed in [...seeds, ...seeds.map((s) => '$s+')]) {
+        for (var n = 1; n <= 1; n++) {
           final data = level(n, seed);
           expect(data.sections.toSet().difference(basics), isEmpty);
           expect(data.boosts, isEmpty);
@@ -417,11 +419,96 @@ void main() {
       expect(climbs, greaterThan(0));
     });
 
+    /// The longest run of consecutive floor-to-floor changes in [data] that
+    /// all go the same way ([up] or down), summed, in meters.
+    double longestRun(LevelData data, {required bool up}) {
+      var best = 0.0;
+      var run = 0.0;
+      final floors = data.floors;
+      for (var i = 1; i < floors.length; i++) {
+        final change = floors[i - 1].top - floors[i].top;
+        final along = up ? change : -change;
+        if (along > 1e-9) {
+          run += along;
+          if (run > best) best = run;
+        } else if (along < -1e-9) {
+          run = 0;
+        }
+      }
+      return best;
+    }
+
+    test('towers climb at least 8 m', () {
+      var checked = 0;
+      for (final seed in seeds) {
+        for (var n = 1; n <= 40; n++) {
+          final data = level(n, seed);
+          if (!data.sections.contains(SectionKind.tower)) continue;
+          expect(longestRun(data, up: true), greaterThanOrEqualTo(8));
+          checked++;
+        }
+      }
+      expect(checked, greaterThan(0));
+    });
+
+    test('descents go a long way down', () {
+      var checked = 0;
+      for (final seed in seeds) {
+        for (var n = 1; n <= 40; n++) {
+          final data = level(n, seed);
+          if (!data.sections.contains(SectionKind.descent)) continue;
+          expect(longestRun(data, up: false), greaterThanOrEqualTo(6.5));
+          checked++;
+        }
+      }
+      expect(checked, greaterThan(0));
+    });
+
+    test('long levels climb and descend over a wide band', () {
+      for (final seed in seeds) {
+        for (final n in [50, 150, 300]) {
+          final tops = [for (final floor in level(n, seed).floors) floor.top];
+          final span = tops.reduce(math.max) - tops.reduce(math.min);
+          expect(span, greaterThan(15), reason: '$seed / level $n');
+          expect(span, lessThanOrEqualTo(75), reason: '$seed / level $n');
+        }
+      }
+    });
+
+    test('laser barriers guard descents and clear the route', () {
+      var guarded = 0;
+      for (final seed in seeds) {
+        for (var n = 1; n <= 40; n++) {
+          final data = level(n, seed);
+          final clearance = LaserClearance(
+            envelope: testEnvelope,
+            floors: data.floors,
+            ramps: data.ramps,
+            platforms: data.platforms,
+            boosts: data.boosts,
+          );
+          for (final laser in data.lasers) {
+            final lowest = clearance.lowestEnd(laser.x)!;
+            expect(laser.bottom, lessThanOrEqualTo(lowest));
+            expect(laser.top, lessThan(laser.bottom));
+          }
+          if (data.sections.contains(SectionKind.descent)) {
+            guarded += data.lasers.isEmpty ? 0 : 1;
+          }
+          // Consecutive barriers alternate.
+          for (var i = 1; i < data.lasers.length; i++) {
+            expect(data.lasers[i].phase, isNot(data.lasers[i - 1].phase));
+          }
+        }
+      }
+      expect(guarded, greaterThan(0));
+    });
+
     test('estimated durations follow the pacing', () {
       for (final seed in seeds) {
-        // About 35-45 s; the last section may run a little over.
-        expect(level(3, seed).estimatedDuration, inInclusiveRange(30, 48));
-        expect(level(150, seed).estimatedDuration, inInclusiveRange(120, 180));
+        // About 1.5 min first, 4 min deep; the last section may run over.
+        expect(level(1, seed).estimatedDuration, inInclusiveRange(80, 105));
+        expect(level(300, seed).estimatedDuration, inInclusiveRange(210, 255));
       }
     });
 
@@ -447,4 +534,4 @@ void main() {
   });
 }
 
-const goldenDigests = [1292913836, 3135107716, 577518912];
+const goldenDigests = [3799362494, 3325401801, 6255115];

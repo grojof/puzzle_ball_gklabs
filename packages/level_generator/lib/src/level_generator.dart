@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:level_generator/src/difficulty_curve.dart';
+import 'package:level_generator/src/laser_clearance.dart';
 import 'package:level_generator/src/level_data.dart';
 import 'package:level_generator/src/movement_envelope.dart';
 import 'package:level_generator/src/random.dart';
@@ -48,6 +49,20 @@ const _obstacleOverhead = 0.8;
 /// tan(35°): ramps are at most this steep.
 const _maxRampSlope = 0.7002075382097097;
 
+/// How long a laser barrier hangs, and its rhythm, in meters and seconds.
+const _laserLength = 10.0;
+const _laserOn = 1.4;
+const _laserOff = 1.0;
+
+/// The least height a tower climbs, in meters.
+const _towerHeight = 8.0;
+
+/// How much more often climbs or descents towards the heading come.
+const _headingBias = 2.5;
+
+/// The most a tower climbs or a descent drops, in meters.
+const _bigSection = 16.0;
+
 /// About how long spikes and their landing take, in seconds.
 const _spikesTime = 3.0;
 
@@ -55,7 +70,16 @@ const _spikesTime = 3.0;
 const _ferryTime = 10.0;
 
 /// How often an obstacle is one of the level's featured kinds.
-const _featuredShare = 0.65;
+const _featuredShare = 0.7;
+
+/// How often an obstacle simply heads for the course's target height,
+/// whatever the level features.
+const _journeyShare = 0.15;
+
+/// How far above and below its start a course may wander, in meters
+/// (design D4 of raise-difficulty-and-pace).
+const _maxRise = 40.0;
+const _maxFall = 25.0;
 
 /// Sections that end higher than they start.
 const Set<SectionKind> _climbs = {
@@ -64,6 +88,7 @@ const Set<SectionKind> _climbs = {
   SectionKind.jumpBoost,
   SectionKind.staircase,
   SectionKind.orbClimb,
+  SectionKind.tower,
 };
 
 /// Sections that end lower than they start.
@@ -71,6 +96,7 @@ const Set<SectionKind> _descents = {
   SectionKind.rampDown,
   SectionKind.drop,
   SectionKind.cascade,
+  SectionKind.descent,
 };
 
 class _Builder {
@@ -88,6 +114,10 @@ class _Builder {
   final platforms = <MovingPlatform>[];
   final sections = <SectionKind>[];
 
+  /// Where laser barriers should hang, and for a tower's top, the height
+  /// the route must fall below after it for the barrier to be worth it.
+  final _laserSites = <({double x, double? above})>[];
+
   /// The cursor: where the current floor run ends.
   double x = 0;
 
@@ -103,6 +133,11 @@ class _Builder {
 
   /// Whether the current run crumbles.
   bool runCrumbling = false;
+
+  /// The height the course is heading for, in world y; null until chosen.
+  /// Climbs or descents towards it are favored, so the course travels up
+  /// and down (design D4 of raise-difficulty-and-pace).
+  double? _heading;
 
   /// Estimated speed of a player who keeps pushing right.
   double speed = 0;
@@ -183,9 +218,47 @@ class _Builder {
     checkpoints: List.unmodifiable(checkpoints),
     hazards: List.unmodifiable(hazards),
     platforms: List.unmodifiable(platforms),
+    lasers: List.unmodifiable(_lasers()),
     sections: List.unmodifiable(sections),
     estimatedDuration: duration,
     featured: List.unmodifiable(featured),
+  );
+
+  /// The laser barriers at the recorded sites, each hanging just above
+  /// every jump of the route around it, alternating (design D9 of
+  /// raise-difficulty-and-pace).
+  List<LaserBarrier> _lasers() {
+    final clearance = LaserClearance(
+      envelope: envelope,
+      floors: floors,
+      ramps: ramps,
+      platforms: platforms,
+      boosts: boosts,
+    );
+    final lasers = <LaserBarrier>[];
+    for (final site in _laserSites) {
+      final above = site.above;
+      if (above != null && !_fallsAfter(site.x, above)) continue;
+      final bottom = clearance.lowestEnd(site.x);
+      if (bottom == null) continue;
+      lasers.add(
+        LaserBarrier(
+          x: site.x,
+          top: bottom - _laserLength,
+          bottom: bottom,
+          on: _laserOn,
+          off: _laserOff,
+          phase: lasers.length.isOdd ? (_laserOn + _laserOff) / 2 : 0,
+        ),
+      );
+    }
+    return lasers;
+  }
+
+  /// Whether the ground within 20 m after [x] falls more than 6 m below
+  /// [height]: worth guarding against a leap off the top.
+  bool _fallsAfter(double x, double height) => floors.any(
+    (floor) => floor.right > x && floor.left < x + 20 && floor.top > height + 6,
   );
 
   /// Draws a key of [pool] by weight and removes it.
@@ -248,6 +321,10 @@ class _Builder {
         _orbGap();
       case SectionKind.orbClimb:
         _orbClimb();
+      case SectionKind.tower:
+        _tower();
+      case SectionKind.descent:
+        _descent();
     }
     sections.add(kind);
     if (kind == SectionKind.flat) {
@@ -276,11 +353,25 @@ class _Builder {
     final weights = Map.of(parameters.weights);
     // Keep the course within a vertical band, so it reads as a journey
     // rather than a tower or a pit.
-    if (y < _startHeight - 15) {
+    if (y < _startHeight - _maxRise) {
       weights.removeWhere((kind, _) => _climbs.contains(kind));
     }
-    if (y > _startHeight + 6) {
+    if (y > _startHeight + _maxFall) {
       weights.removeWhere((kind, _) => _descents.contains(kind));
+    }
+    // Head for a height inside the band, and pick another once there.
+    final heading = _heading ??= _newHeading();
+    if ((heading - y).abs() < 3) _heading = _newHeading();
+    final towards = _heading! < y ? _climbs : _descents;
+    weights.updateAll(
+      (kind, weight) => towards.contains(kind) ? weight * _headingBias : weight,
+    );
+    // Towers and descents only where they fit inside the band.
+    if (y - _bigSection < _startHeight - _maxRise) {
+      weights.remove(SectionKind.tower);
+    }
+    if (y + _bigSection > _startHeight + _maxFall) {
+      weights.remove(SectionKind.descent);
     }
     // Spikes never lie on the start's or the goal's run, and a ferry takes a
     // while: neither when the level is about to end.
@@ -296,6 +387,11 @@ class _Builder {
         _toIntroduce.remove(kind);
         return kind;
       }
+    }
+    final journey = Map.of(weights)
+      ..removeWhere((kind, _) => !towards.contains(kind));
+    if (journey.isNotEmpty && random.chance(_journeyShare)) {
+      return random.weighted(journey);
     }
     final mine = Map.of(weights)
       ..removeWhere((kind, _) => !featured.contains(kind));
@@ -414,13 +510,15 @@ class _Builder {
   }
 
   /// A ledge to fall [height] meters from; [land] caps the speed for the
-  /// landing that follows.
-  void _drop(double height, {bool land = true}) {
+  /// landing of [landingTiles] that follows.
+  void _drop(double height, {bool land = true, int? landingTiles}) {
     _closeRun();
     y += height;
     _openRun();
     _time(tileSize / 2, obstacle: true);
-    if (land) _land(envelope.fallTime(height));
+    if (land) {
+      _land(envelope.fallTime(height), landingTiles: landingTiles);
+    }
   }
 
   double _stepHeight() => math.max(0.6, envelope.maxClimb(1) * _share());
@@ -564,6 +662,72 @@ class _Builder {
   void _orbClimb() {
     _boostApproach(BoostType.doubleJump, tiles: 2, inset: tileSize * 0.4);
     _stepUp(_boosted(envelope.maxDoubleJumpClimb(1), envelope.maxClimb(1)));
+  }
+
+  /// A long climb: four to six tall steps with one-tile treads, some with a
+  /// rising gap instead of the tread, until at least [_towerHeight] meters
+  /// are climbed (design D5 of raise-difficulty-and-pace).
+  void _tower() {
+    final start = x;
+    var steps = 0;
+    var climbed = 0.0;
+    while (steps < 4 || (climbed < _towerHeight && steps < 6)) {
+      final height = _stepHeight();
+      if (steps > 0 && random.chance(0.2 + 0.3 * intensity)) {
+        // A gap that rises onto the next tread, lower than a step, taken
+        // from a tread of its own.
+        final rise = height * 0.6;
+        if (runLength < tileSize) _flat(1);
+        _gap(rise, landingTiles: 1);
+        _flat(1);
+        climbed += rise;
+      } else {
+        if (steps > 0) _flat(1);
+        _stepUp(height);
+        climbed += height;
+      }
+      steps++;
+    }
+    // Guard a leap off the top, where the route turns back down.
+    if (x > start) _laserSites.add((x: x + 6, above: y));
+  }
+
+  /// A long way down: three to five drops, ramps down and falling gaps, with
+  /// short treads between them, descending 8–16 m (design D6 of
+  /// raise-difficulty-and-pace).
+  void _descent() {
+    final start = x;
+    final parts = random.intIn(3, 5);
+    final part = (8 + 8 * _share()) / parts;
+    for (var i = 0; i < parts; i++) {
+      final last = i == parts - 1;
+      final tread = last ? _landingTiles : random.intIn(1, 2);
+      final height = part * random.range(0.85, 1.15);
+      switch (random.intIn(0, 2)) {
+        case 0:
+          _drop(height, landingTiles: tread);
+        case 1:
+          _rampDown(height, landingTiles: tread);
+        default:
+          _gap(-math.min(height, 3.5), landingTiles: tread);
+      }
+      if (!last) _flat(tread);
+    }
+    // Barriers over the lower half guard a leap from the top.
+    final count = random.intIn(1, 2);
+    for (var i = 0; i < count; i++) {
+      final along = count == 1 ? 0.7 : 0.6 + 0.25 * i;
+      _laserSites.add((x: start + (x - start) * along, above: null));
+    }
+  }
+
+  /// A height to head for, inside the band, at least 10 m from here.
+  double _newHeading() {
+    const low = _startHeight - _maxRise + 5;
+    const high = _startHeight + _maxFall - 5;
+    final target = random.range(low, high);
+    if ((target - y).abs() >= 10) return target;
+    return target < y ? math.max(low, y - 10) : math.min(high, y + 10);
   }
 
   void _valley() {

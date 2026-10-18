@@ -5,10 +5,11 @@ import 'package:flutter/painting.dart';
 import 'package:puzzle_ball_gklabs/game/components/ball_component.dart';
 import 'package:puzzle_ball_gklabs/game/components/floor_component.dart';
 
-/// A floor run that collapses: once the ball stands on it, it shakes for
-/// [delay] seconds, then falls away and fades, until [restore] brings it
-/// back (level-mechanics spec). Drawn as cracked ground (game-visuals
-/// spec).
+/// A floor run that collapses: once the ball has stood on it for [delay]
+/// seconds in all, shaking meanwhile, it falls away and fades, until
+/// [restore] brings it back (level-mechanics spec). Only time on top counts:
+/// a graze of its corner or a bounce off it does not use up the delay.
+/// Drawn as cracked ground (game-visuals spec).
 class CrumblingPlatformComponent extends FloorComponent {
   new({required super.position, required super.size, required super.terrain});
 
@@ -21,8 +22,11 @@ class CrumblingPlatformComponent extends FloorComponent {
   /// How far it shakes, in meters.
   static const shakeAmount = 0.05;
 
-  /// Seconds since the ball first stood on it; null before that.
+  /// Seconds the ball has stood on it; null before it first did.
   double? _standing;
+
+  /// The ball while it touches this platform.
+  BallComponent? _ball;
 
   /// Seconds since it collapsed; null while it stands.
   double? _collapsed;
@@ -38,9 +42,12 @@ class CrumblingPlatformComponent extends FloorComponent {
 
   @override
   void beginContact(Object other, Contact contact) {
-    if (other is BallComponent && _standing == null) {
-      if (supports(other.body.position)) _standing = 0;
-    }
+    if (other is BallComponent) _ball = other;
+  }
+
+  @override
+  void endContact(Object other, Contact contact) {
+    if (other is BallComponent) _ball = null;
   }
 
   @override
@@ -51,10 +58,10 @@ class CrumblingPlatformComponent extends FloorComponent {
       _collapsed = collapsed + dt;
       return;
     }
-    final standing = _standing;
-    if (standing == null) return;
-    _standing = standing + dt;
-    if (_standing! >= delay) {
+    final ball = _ball;
+    final onTop = ball != null && supports(ball.body.position);
+    if (onTop) _standing = (_standing ?? 0) + dt;
+    if ((_standing ?? 0) >= delay) {
       _collapsed = 0;
       body.isEnabled = false;
     }
@@ -64,6 +71,7 @@ class CrumblingPlatformComponent extends FloorComponent {
   void restore() {
     _standing = null;
     _collapsed = null;
+    _ball = null;
     body.isEnabled = true;
   }
 

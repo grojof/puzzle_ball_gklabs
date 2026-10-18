@@ -78,17 +78,19 @@ class DifficultyCurve {
   /// Positions inside a stage that are breathers.
   static const breatherPositions = {3};
 
-  /// How much easier a breather is.
-  static const breatherFactor = 0.65;
+  /// How much easier a breather is: gentler, never trivial (design D1 of
+  /// raise-difficulty-and-pace).
+  static const breatherFactor = 0.88;
 
   /// How much easier a level that introduces an element is.
-  static const introFactor = 0.85;
+  static const introFactor = 0.92;
 
   /// How many levels feature an element from its introduction.
   static const featureLength = 5;
 
-  /// The intensity of the very first level: already a real challenge.
-  static const startIntensity = 0.45;
+  /// The intensity of the very first level: as demanding as level 50 was
+  /// before raise-difficulty-and-pace.
+  static const startIntensity = 0.76;
 
   /// The share of the reach that gaps and climbs use, at intensity 0 and
   /// how much it grows with intensity, for the interval's low and high ends
@@ -105,10 +107,24 @@ class DifficultyCurve {
   static const precisionHighGrowth = 0.23;
 
   /// Levels over which the base intensity rises most of the way to 1.
-  static const intensityScale = 60.0;
+  static const intensityScale = 100.0;
 
-  /// The level at which each obstacle first appears (design D5 of
-  /// add-physical-mechanics).
+  /// The estimated duration of the first level, in seconds (design D2 of
+  /// raise-difficulty-and-pace).
+  static const startDuration = 90.0;
+
+  /// How much longer deep levels get, in seconds.
+  static const durationGrowth = 150.0;
+
+  /// Levels over which the duration grows most of the way.
+  static const durationScale = 80.0;
+
+  /// The longest stretch between respawn points, in seconds.
+  static const checkpointSeconds = 35.0;
+
+  /// The level at which each obstacle first appears: everything by level 8,
+  /// leaving level 10 on to later mechanics (design D3 of
+  /// raise-difficulty-and-pace).
   static const Map<SectionKind, int> introductionLevel = {
     SectionKind.rampUp: 1,
     SectionKind.rampDown: 1,
@@ -119,14 +135,16 @@ class DifficultyCurve {
     SectionKind.cascade: 1,
     SectionKind.valley: 1,
     SectionKind.spikes: 1,
-    SectionKind.ferry: 3,
-    SectionKind.speedBoost: 6,
-    SectionKind.crumblingHops: 6,
-    SectionKind.jumpBoost: 11,
-    SectionKind.chainedGaps: 11,
-    SectionKind.gravityBoost: 16,
-    SectionKind.orbGap: 21,
-    SectionKind.orbClimb: 21,
+    SectionKind.tower: 1,
+    SectionKind.descent: 1,
+    SectionKind.ferry: 2,
+    SectionKind.speedBoost: 3,
+    SectionKind.crumblingHops: 4,
+    SectionKind.chainedGaps: 5,
+    SectionKind.jumpBoost: 6,
+    SectionKind.gravityBoost: 7,
+    SectionKind.orbGap: 8,
+    SectionKind.orbClimb: 8,
   };
 
   static const Map<SectionKind, double> _baseWeights = {
@@ -147,6 +165,8 @@ class DifficultyCurve {
     SectionKind.crumblingHops: 0.6,
     SectionKind.orbGap: 0.4,
     SectionKind.orbClimb: 0.35,
+    SectionKind.tower: 0.6,
+    SectionKind.descent: 0.6,
   };
 
   /// The parameters of [level] (from 1).
@@ -193,11 +213,10 @@ class DifficultyCurve {
       margin: _quantize(precisionHighBase + precisionHighGrowth * intensity),
       obstacleShare: _quantize(0.35 + 0.45 * intensity),
       targetDuration: _quantize(
-        35 +
-            115 * (1 - math.exp(-(level - 1) / 60)) +
-            25 * (1 - math.exp(-(level - 1) / 600)),
+        startDuration +
+            durationGrowth * (1 - math.exp(-(level - 1) / durationScale)),
       ),
-      checkpointSpacing: _quantize(40 - 5 * math.min(1, level / 100)),
+      checkpointSpacing: checkpointSeconds,
       weights: weights,
       introduces: introduces,
     );

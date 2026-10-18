@@ -15,6 +15,9 @@ const double _dt = 1 / 60;
 /// The world's gravity, in m/s².
 const double _gravity = 10;
 
+/// The speed the bot slows to before a step up onto a short tread, in m/s.
+const double _shortTreadSpeed = 4.5;
+
 /// A stretch of ground to land on, clear of spikes.
 typedef Landing = ({double left, double right, double top});
 
@@ -49,6 +52,9 @@ class LevelBot {
 
   /// The ground to land on after a jump over spikes, set at take-off.
   Landing? _pending;
+
+  /// The ferry the bot has set off to board, by index.
+  int? _boarding;
 
   /// The world y of the terrain surface at [x], or null over a gap.
   double? surfaceAt(double x) {
@@ -161,6 +167,16 @@ class LevelBot {
       // boost launches the ball on its own, and after the orb the ball
       // jumps at the riser and again at the apex.
       final rise = climb > 0.05 ? _riseTime(ball, climb + 0.05) : null;
+      // Before a step up onto a short tread, slows down so the jump lands
+      // on it, as a player would.
+      if (rise != null && run.right - p.x < 8 && v.x > _shortTreadSpeed) {
+        final tread = data.floors.where(
+          (floor) => (floor.left - run.right).abs() < 1e-6,
+        );
+        if (tread.isNotEmpty && tread.first.size.x <= 2 * tileSize + 1e-6) {
+          return (push: -1, jump: false);
+        }
+      }
       // Against a riser the ball stops a radius short of the edge.
       final lead = rise != null
           ? math.max(0.25, v.x * rise)
@@ -194,10 +210,11 @@ class LevelBot {
         return (push: 1, jump: true);
       }
     }
-    // Below a ledge to land on, braking would only pull back into its riser.
-    // Pushing into the riser rolls the ball over its corner at the top, but
-    // drags it down on the way up to an air jump.
-    if (bottom > target.top) {
+    // Below a ledge to land on and still before its riser, braking would
+    // only pull back into it. Pushing into the riser rolls the ball over its
+    // corner at the top, but drags it down on the way up to an air jump.
+    // Once over the ledge, it steers as usual, to stay on a short tread.
+    if (bottom > target.top && p.x < target.left + LevelComponent.ballRadius) {
       final atRiser = target.left - p.x < LevelComponent.ballRadius + 0.15;
       return (push: atRiser && ball.hasAirJump ? 0 : 1, jump: false);
     }
@@ -279,8 +296,25 @@ class LevelBot {
       if (!ball.isOnGround || run == null) continue;
       if ((run.right - nearEdge).abs() > 1e-6) continue;
       if (run.right - p.x > 12) continue;
+      // Boards if it gets well onto the deck before the pause ends, and
+      // once it has set off, carries on.
       final docked = deck.x - run.right < 0.35;
-      if (docked && ferry.pauseLeft > 0.5) return (push: 1, jump: false);
+      if (!docked) _boarding = null;
+      if (docked && _boarding == i) return (push: 1, jump: false);
+      // The time to roll that far, speeding up from its current speed
+      // against the damping.
+      final far = deck.x + 0.8 - p.x;
+      final speed = math.max(0, v.x);
+      final pull = math.max(
+        2,
+        force - BallComponent.linearDamping * (speed + 2) / 2,
+      );
+      final aboardIn =
+          (-speed + math.sqrt(speed * speed + 2 * pull * far)) / pull;
+      if (docked && aboardIn < ferry.pauseLeft) {
+        _boarding = i;
+        return (push: 1, jump: false);
+      }
       final wait = run.right - 0.45;
       final ahead = wait - p.x;
       final allowed = ahead <= 0 ? 0.0 : math.sqrt(1.4 * force * ahead);

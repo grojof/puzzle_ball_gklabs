@@ -200,6 +200,62 @@ class Ramp {
   String toString() => 'Ramp$position$size${ascending ? 'up' : 'down'}';
 }
 
+/// A laser barrier: a vertical beam at [x] from [top] down to [bottom]
+/// (world y), on for [on] seconds and off for [off], shifted by [phase].
+/// Touching it while on sends the ball back.
+@immutable
+class LaserBarrier {
+  /// A barrier at [x] between [top] and [bottom], with its rhythm.
+  const new({
+    required this.x,
+    required this.top,
+    required this.bottom,
+    required this.on,
+    required this.off,
+    required this.phase,
+  });
+
+  /// Horizontal position, in meters.
+  final double x;
+
+  /// The beam's upper end, in world y.
+  final double top;
+
+  /// The beam's lower end, in world y.
+  final double bottom;
+
+  /// Seconds lit per cycle.
+  final double on;
+
+  /// Seconds dark per cycle.
+  final double off;
+
+  /// Seconds into the cycle at time zero.
+  final double phase;
+
+  /// Whether the beam is lit at [time] seconds.
+  bool isOnAt(double time) => (time + phase) % (on + off) < on;
+
+  @override
+  bool operator ==(Object other) =>
+      other is LaserBarrier &&
+      other.x == x &&
+      other.top == top &&
+      other.bottom == bottom &&
+      other.on == on &&
+      other.off == off &&
+      other.phase == phase;
+
+  @override
+  int get hashCode => Object.hash(x, top, bottom, on, off, phase);
+
+  @override
+  String toString() =>
+      'Laser(${x.toStringAsFixed(3)}, ${top.toStringAsFixed(3)}..'
+      '${bottom.toStringAsFixed(3)}) ${on.toStringAsFixed(3)}/'
+      '${off.toStringAsFixed(3)}+${phase.toStringAsFixed(3)}';
+}
+
 /// The kinds of boost.
 enum BoostType {
   /// Throws the ball upwards.
@@ -313,6 +369,12 @@ enum SectionKind {
 
   /// A double-jump orb before a climb beyond one jump.
   orbClimb,
+
+  /// A long climb by four to six tall steps, some with a gap before them.
+  tower,
+
+  /// A long way down by drops, ramps down and gaps.
+  descent,
 }
 
 /// One generated level.
@@ -332,6 +394,7 @@ class LevelData {
     required this.estimatedDuration,
     this.hazards = const [],
     this.platforms = const [],
+    this.lasers = const [],
     this.featured = const [],
   });
 
@@ -365,6 +428,9 @@ class LevelData {
   /// Moving platforms, left to right.
   final List<MovingPlatform> platforms;
 
+  /// Laser barriers, left to right.
+  final List<LaserBarrier> lasers;
+
   /// The sections the level was built from, in order.
   final List<SectionKind> sections;
 
@@ -397,5 +463,6 @@ class LevelData {
     ...checkpoints.map((e) => '$e'),
     ...hazards.map((e) => '$e'),
     ...platforms.map((e) => '$e'),
+    ...lasers.map((e) => '$e'),
   ].join('\n');
 }

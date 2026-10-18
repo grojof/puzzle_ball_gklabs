@@ -10,6 +10,7 @@ export 'ground_surface.dart';
 export 'hud_layout.dart';
 export 'joystick_parts.dart';
 export 'jump_button_component.dart';
+export 'laser_barrier_component.dart';
 export 'moving_platform_component.dart';
 export 'pickup_message_component.dart';
 export 'ramp_component.dart';

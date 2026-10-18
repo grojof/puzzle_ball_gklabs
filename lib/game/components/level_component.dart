@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flame/components.dart';
 import 'package:flame/effects.dart';
@@ -16,9 +17,9 @@ import 'package:puzzle_ball_gklabs/haptics/haptics.dart';
 /// Everything one level is made of, under a single root, so unloading the
 /// level is removing this component (design D1).
 ///
-/// It detects falls in constant time from the level's lowest terrain point,
-/// sends the ball back after a fall or spikes, restoring the course, and
-/// plays the goal sequence.
+/// It detects a fall once no ground is left that the ball could still land
+/// on, sends the ball back after a fall, spikes or a laser, restoring the
+/// course, and plays the goal sequence.
 class LevelComponent extends Component with HasGameReference<Forge2DGame> {
   new({
     required this.data,
@@ -30,10 +31,25 @@ class LevelComponent extends Component with HasGameReference<Forge2DGame> {
     required this.onCompleted,
     this.onRespawned,
     this.onPickup,
-  }) : fallLine = data.lowestPoint + fallMargin;
+  }) : fallLine = data.lowestPoint + fallMargin,
+       _ground = _groundColumns(data);
 
-  /// How far below the lowest terrain the ball counts as fallen, in meters.
+  /// How far below the lowest terrain the ball counts as fallen, in meters:
+  /// a backstop to [canStillLand].
   static const fallMargin = 10.0;
+
+  /// The width of a ground column, in meters.
+  static const columnWidth = 2.0;
+
+  /// How far sideways a falling ball can travel per meter it falls, and
+  /// how much farther a boost can carry it, in meters (design D7 of
+  /// raise-difficulty-and-pace).
+  static const reachPerMeter = 1.3;
+  static const reachExtra = 20.0;
+
+  /// How high an orb's air jump can still lift the ball, in meters: with a
+  /// charge held, ground up to this much above it is still within reach.
+  static const airJumpRise = 3.0;
 
   static const ballRadius = 0.2;
 
@@ -59,6 +75,69 @@ class LevelComponent extends Component with HasGameReference<Forge2DGame> {
 
   /// World y (downwards) past which the ball has fallen out of the level.
   final double fallLine;
+
+  /// The lowest ground (largest world y) of each [columnWidth] column from
+  /// x 0, or null where there is none: the last ground a falling ball could
+  /// land on there.
+  final List<double?> _ground;
+
+  static List<double?> _groundColumns(LevelData data) {
+    var end = 0.0;
+    for (final floor in data.floors) {
+      end = math.max(end, floor.right);
+    }
+    final columns = List<double?>.filled((end / columnWidth).ceil() + 1, null);
+    void see(double left, double right, double top) {
+      final first = math.max(0, (left / columnWidth).floor());
+      final last = math.min(columns.length - 1, (right / columnWidth).floor());
+      for (var i = first; i <= last; i++) {
+        final current = columns[i];
+        columns[i] = current == null ? top : math.max(current, top);
+      }
+    }
+
+    for (final floor in data.floors) {
+      see(floor.left, floor.right, floor.top);
+    }
+    for (final ramp in data.ramps) {
+      see(ramp.left, ramp.right, ramp.bottom);
+    }
+    for (final platform in data.platforms) {
+      see(
+        math.min(platform.start.x, platform.end.x),
+        math.max(platform.start.x, platform.end.x) + platform.size.x,
+        math.max(platform.start.y, platform.end.y),
+      );
+    }
+    return columns;
+  }
+
+  /// Whether some ground lies below the ball that it can still reach,
+  /// given how fast it can fall and travel sideways, and how high an orb's
+  /// charge can still lift it (game-session spec).
+  bool get canStillLand {
+    final position = ball.body.position;
+    final rise = ball.hasAirJump ? airJumpRise : 0.0;
+    // Only columns the ball could reach from as high above the level's
+    // lowest ground as it is.
+    final widest = reachPerMeter * (fallLine - position.y + rise) + reachExtra;
+    final first = math.max(0, ((position.x - widest) / columnWidth).floor());
+    final last = math.min(
+      _ground.length - 1,
+      ((position.x + widest) / columnWidth).ceil(),
+    );
+    for (var i = first; i <= last; i++) {
+      final top = _ground[i];
+      final below = top == null ? 0.0 : top - position.y + rise;
+      if (below <= 0) continue;
+      final left = i * columnWidth;
+      final away = position.x < left
+          ? left - position.x
+          : math.max(0, position.x - (left + columnWidth));
+      if (away <= reachPerMeter * below + reachExtra) return true;
+    }
+    return false;
+  }
 
   late final BallComponent ball;
   late final List<CheckPointComponent> _checkpoints;
@@ -128,6 +207,11 @@ class LevelComponent extends Component with HasGameReference<Forge2DGame> {
           speed: platform.speed,
           pause: platform.pause,
         ),
+      for (final laser in data.lasers)
+        LaserBarrierComponent(
+          barrier: laser,
+          onTouched: () => _sendBack = true,
+        ),
       for (final strip in data.hazards)
         SpikeComponent(
           left: strip.left,
@@ -159,7 +243,9 @@ class LevelComponent extends Component with HasGameReference<Forge2DGame> {
   void update(double dt) {
     super.update(dt);
     if (_fell || !ball.isMounted) return;
-    if (_sendBack || ball.body.position.y > fallLine) sendBack();
+    final fell =
+        ball.body.position.y > fallLine || (!ball.isOnGround && !canStillLand);
+    if (_sendBack || fell) sendBack();
   }
 
   /// Sends the ball back after a fall or spikes: it respawns at the last

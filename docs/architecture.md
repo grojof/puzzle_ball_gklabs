@@ -80,8 +80,11 @@ generator for, with the savegame's seed. It holds terrain, sensors, the goal and
   ball's damping acts relative to the deck, so the ball rests and rolls on it as on the ground. `CrumblingPlatformComponent` is a floor that stops supporting the ball when it collapses. Grounding
   goes through `GroundSurface`, which all three floors implement.
 - **Restart and advance:** replace that component in place. Body components destroy their bodies when removed.
-- **Falling:** detected in constant time, by comparing the ball with the level's lowest terrain point. A fall and
-  spikes share `LevelComponent.sendBack()`: the ball respawns at rest above the last checkpoint it passed, with any
+- **Falling:** a fall is detected once no ground is left below the ball that it could still reach: `LevelComponent`
+  keeps the lowest ground of every 2 m column and checks, while the ball is in the air, whether any lies within the
+  sideways reach of its fall ([ADR-0013](decisions/0013-demanding-pacing.md)). The level's lowest point is a backstop.
+  Laser barriers (`LaserBarrierComponent`) light and darken on their own clock. A fall, spikes and a lit laser
+  share `LevelComponent.sendBack()`: the ball respawns at rest above the last checkpoint it passed, with any
   boost and orb charge cancelled, and crumbled islands and collected orbs come back; with no checkpoint, the level
   restarts.
 - **The goal:** plays its flash-and-fade sequence on the camera viewport and then completes the level.

@@ -31,6 +31,48 @@ void main() {
       expect((spikes.left, spikes.right, spikes.top), (2, 3.5, 4));
     });
 
+    test('laser barriers have a rhythm, value equality and text', () {
+      const laser = LaserBarrier(
+        x: 5,
+        top: -8,
+        bottom: 2,
+        on: 1.4,
+        off: 1,
+        phase: 1.2,
+      );
+      // 1.2 s into a 2.4 s cycle at time zero: lit until 0.2 s, then dark
+      // until 1.2 s.
+      expect(laser.isOnAt(0), isTrue);
+      expect(laser.isOnAt(0.3), isFalse);
+      expect(laser.isOnAt(1.3), isTrue);
+      expect(
+        laser,
+        const LaserBarrier(
+          x: 5,
+          top: -8,
+          bottom: 2,
+          on: 1.4,
+          off: 1,
+          phase: 1.2,
+        ),
+      );
+      expect(
+        laser,
+        isNot(
+          const LaserBarrier(
+            x: 5,
+            top: -8,
+            bottom: 2,
+            on: 1.4,
+            off: 1,
+            phase: 0,
+          ),
+        ),
+      );
+      expect(laser.hashCode, isNot(0));
+      expect('$laser', 'Laser(5.000, -8.000..2.000) 1.400/1.000+1.200');
+    });
+
     test('crumbling runs differ from solid ones', () {
       const crumbling = FloorRun(
         position: Vec2(1, 4),
@@ -135,6 +177,7 @@ void main() {
           pause: 1,
         ),
       ],
+      lasers: [LaserBarrier(x: 3, top: -9, bottom: 1, on: 1, off: 1, phase: 0)],
       sections: [SectionKind.rampDown],
       estimatedDuration: 10,
     );
@@ -146,7 +189,8 @@ void main() {
     test('has a canonical text form listing every element', () {
       final text = level.canonical;
       expect(text, startsWith('seed=s level=1'));
-      expect(text.split('\n'), hasLength(8));
+      expect(text.split('\n'), hasLength(9));
+      expect(text, contains('Laser'));
       expect(text, contains('Spikes'));
       expect(text, contains('Platform'));
     });
