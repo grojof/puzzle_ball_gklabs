@@ -44,6 +44,7 @@ and `Space` to jump.
 | [Product](docs/product.md) | Vision, players, gameplay today, known gaps and open questions |
 | [Architecture](docs/architecture.md) | How the app and game are structured, and the target layering |
 | [Development](docs/development.md) | Toolchain, flavors, tests, localization, CI and release signing |
+| [Deployment](docs/deployment.md) | The web game on the self-hosted Coolify server: setup, updates, rollback |
 | [Glossary](docs/glossary.md) | Domain vocabulary: levels, seeds, difficulty, terrain |
 | [Decisions](docs/decisions/) | Architecture decision records (ADRs) |
 
@@ -61,6 +62,8 @@ The ADRs are:
   movement envelope
 - [ADR-0010](docs/decisions/0010-visual-system-and-biomes.md): hybrid visual system with biomes as data
 - [ADR-0011](docs/decisions/0011-hud-layout.md): a small HUD in the top corners
+- [ADR-0012](docs/decisions/0012-self-hosted-web-on-coolify.md): the web game built and served by Coolify on our own
+  server
 
 Contributors (human or AI) start with [AGENTS.md](AGENTS.md).
 

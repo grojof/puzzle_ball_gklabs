@@ -1,0 +1,17 @@
+# Only what `flutter build web` needs goes into the build context.
+.git
+.github
+.claude
+.idea
+.vscode
+**/.dart_tool
+**/build
+**/coverage
+**/test
+android
+docs
+openspec
+tool
+*.md
+Dockerfile
+.dockerignore
