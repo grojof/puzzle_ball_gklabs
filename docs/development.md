@@ -128,6 +128,8 @@ CI minutes are limited, so every workflow is scoped tightly:
 | `pr_checks.yaml` | `spell-check` | Spelling of the changed Markdown files (`.github/cspell.json`) | Every PR |
 | `main.yaml` | `build` | Format, analysis, bloc lint and tests with coverage (Flutter 3.47.x) | PRs that change more than docs |
 | `license_check.yaml` | `license_check` | Dependency licenses are in the allowed list | PRs that change a `pubspec.yaml` |
+| `<package>.yaml` | `build` | The package's analysis and tests at 100 % coverage, on the VM | PRs that change that package |
+| `level_generator.yaml` | `web` | The generator's tests, golden digests included, in Chrome (no coverage) | PRs that change the generator |
 
 Stale runs of the same branch are cancelled. Dependabot (`.github/dependabot.yaml`) proposes one grouped pub
 update and one grouped GitHub Actions update per month.
@@ -146,7 +148,9 @@ flutter analyze
 dart run bloc_tools:bloc lint .
 flutter test --coverage --test-randomize-ordering-seed random
 # each package (pure Dart ones with dart, app_ui with flutter)
-for p in packages/*/; do (cd "$p" && dart pub global run very_good_cli:very_good test --coverage --min-coverage 100); done
+for p in packages/*/; do (cd "$p" && rm -rf coverage && dart pub global run very_good_cli:very_good test --coverage --min-coverage 100); done
+# the generator must give the same levels in a browser
+(cd packages/level_generator && dart test --platform chrome)
 npx --yes cspell@9 --config .github/cspell.json --no-progress "**/*.md"
 # only when a pubspec.yaml changed:
 very_good packages check licenses --dependency-type=direct-main --dependency-type=transitive --allowed="MIT,BSD-3-Clause,BSD-2-Clause,Apache-2.0" --skip-packages="pubspec_lock_parse"

@@ -1,5 +1,5 @@
 import 'package:flame/components.dart';
-import 'package:puzzle_ball_gklabs/game/levels/level_data.dart';
+import 'package:level_generator/level_generator.dart';
 
 /// --- AJUSTES DE CÁMARA ---
 /// Tune these values to control camera smoothing and zoom.
@@ -15,7 +15,7 @@ class CameraBehaviorConfig {
 /// top of the blocks in the direction of travel to anticipate jumps and drops.
 void adjustCameraHeightForTerrain(
   CameraComponent camera,
-  List<FloorData> floors,
+  List<FloorRun> floors,
   Vector2 ballPos, {
   double lookAhead = 0.5,
   double lookBehind = 0.0,
@@ -74,7 +74,7 @@ void adjustCameraHeightForTerrain(
     return dx.abs() > nearRange && dx.abs() <= farRange;
   }).toList();
 
-  double avgY(List<FloorData> blocks) {
+  double avgY(List<FloorRun> blocks) {
     if (blocks.isEmpty) return ballPos.y;
     double sumY = 0;
     for (final f in blocks) {
@@ -177,7 +177,7 @@ void adjustCameraHeightForTerrain(
 
 void adjustCameraForBoostsSmooth(
   CameraComponent camera,
-  List<BoostData> boosts,
+  List<Boost> boosts,
   Vector2 ballPos,
   double defaultZoom,
   double currentZoom,

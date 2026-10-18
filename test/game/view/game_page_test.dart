@@ -27,14 +27,18 @@ void main() {
 
   /// Pumps the game route with a settings route above it and returns the
   /// page state once the game has loaded.
-  Future<(TestDependencies, GoRouter)> pumpGame(WidgetTester tester) async {
+  Future<(TestDependencies, GoRouter)> pumpGame(
+    WidgetTester tester, {
+    SavedGame? game,
+  }) async {
+    final played = game ?? savegame;
     final deps = TestDependencies(images: images);
     final router = GoRouter(
       initialLocation: '/game',
       routes: [
         GoRoute(
           path: '/game',
-          builder: (_, _) => const GamePage(savegameId: 'g1', isWeb: false),
+          builder: (_, _) => GamePage(savegameId: played.id, isWeb: false),
         ),
         GoRoute(
           path: '/settings',
@@ -46,7 +50,7 @@ void main() {
     addTearDown(router.dispose);
     await tester.runAsync(() async {
       await deps.load();
-      await deps.savegames.add(savegame);
+      await deps.savegames.add(played);
       await deps.preload.loadSequentially();
     });
     await tester.runAsync(() async {
@@ -139,6 +143,31 @@ void main() {
 
       expect(router.state.uri.path, '/levels');
       expect(game.world.physicsWorld.isValid, isFalse);
+    });
+
+    testWidgets('each savegame plays the levels of its own seed', (
+      tester,
+    ) async {
+      await pumpGame(tester);
+      final first = tester.state<GamePageState>(find.byType(GamePage)).game!;
+      final firstLevel = first.level!.data;
+
+      await pumpGame(
+        tester,
+        game: SavedGame(
+          id: 'g2',
+          seed: 'another seed',
+          totalLevels: 5,
+          currentLevel: 1,
+          createdAt: DateTime(2026, 10),
+          lastPlayed: DateTime(2026, 10),
+        ),
+      );
+      final second = tester.state<GamePageState>(find.byType(GamePage)).game!;
+
+      expect(firstLevel.seed, '1');
+      expect(second.level!.data.seed, 'another seed');
+      expect(second.level!.data.canonical, isNot(firstLevel.canonical));
     });
 
     testWidgets('without a savegame it says so', (tester) async {

@@ -1,0 +1,43 @@
+name: level_generator
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Runs only when the package changes, to keep CI minutes low.
+on:
+  pull_request:
+    branches:
+      - main
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - "packages/level_generator/**"
+      - ".github/workflows/level_generator.yaml"
+
+jobs:
+  build:
+    if: ${{ !github.event.pull_request.draft }}
+    uses: VeryGoodOpenSource/very_good_workflows/.github/workflows/dart_package.yml@v1
+    with:
+      dart_sdk: "3.13.5"
+      working_directory: packages/level_generator
+      # Coverage on the VM only: Chrome's coverage maps lines differently and is
+      # reported as a separate, partial record that would fail the 100 % gate.
+      platform: "vm"
+
+  # Determinism across platforms is a requirement (level-generation spec): the
+  # golden tests must also pass in a browser. No coverage here.
+  web:
+    if: ${{ !github.event.pull_request.draft }}
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/level_generator
+    steps:
+      # Same action versions as Very Good's dart_package workflow.
+      - uses: actions/checkout@v7
+      - uses: dart-lang/setup-dart@v1.8.1
+        with:
+          sdk: "3.13.5"
+      - run: dart pub get
+      - run: dart test --platform chrome
