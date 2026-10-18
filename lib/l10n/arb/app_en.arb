@@ -226,5 +226,13 @@
   "biomeVolcano": "Volcano",
   "@biomeVolcano": {
     "description": "Name of the volcano biome"
+  },
+  "hudDoubleJump": "Double jump!",
+  "@hudDoubleJump": {
+    "description": "Floating message when the ball collects a double-jump orb"
+  },
+  "hudCheckpoint": "Checkpoint",
+  "@hudCheckpoint": {
+    "description": "Floating message when the ball reaches a checkpoint"
   }
 }

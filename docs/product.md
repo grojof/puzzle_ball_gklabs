@@ -38,6 +38,7 @@ What the current baseline does (the rebuild changes it through OpenSpec changes)
 | Variety | Each level features two or three sections of its own and alternates bursts of obstacles with rest stretches |
 | Boosts | Jump (upward impulse), speed (forward impulse), gravity (low gravity for 2 s) and the double-jump orb (one air jump, shown on the jump button), each placed before the section that needs it |
 | Checkpoints | In longer levels; touching any part of the flag turns it gold, and a fall respawns the ball there |
+| HUD | Small checkpoint flags under the pause button (grey, then gold), the running boost with a ring that empties and the orb's charge under the sound button, and a short message over the ball for an orb or a checkpoint; all clear of the status bar and the camera cutout |
 | Goal | Reaching it flashes the screen and loads the next level in place |
 | Pause | The pause button, the back button and the app going to the background open the pause menu: resume, restart, settings, levels; back again resumes |
 | Settings | Music and effects volume, quick mute, control mode and vibration (both hidden on the web), language (device by default) |

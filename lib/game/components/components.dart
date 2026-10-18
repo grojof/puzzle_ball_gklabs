@@ -1,6 +1,8 @@
 export 'ball_component.dart';
 export 'boost_component.dart';
+export 'boost_tray_component.dart';
 export 'checkpoint_component.dart';
+export 'checkpoint_track_component.dart';
 export 'crumbling_platform_component.dart';
 export 'floor_component.dart';
 export 'goal_component.dart';
@@ -9,5 +11,6 @@ export 'hud_layout.dart';
 export 'joystick_parts.dart';
 export 'jump_button_component.dart';
 export 'moving_platform_component.dart';
+export 'pickup_message_component.dart';
 export 'ramp_component.dart';
 export 'spike_component.dart';

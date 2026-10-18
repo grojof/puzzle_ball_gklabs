@@ -29,6 +29,7 @@ class LevelComponent extends Component with HasGameReference<Forge2DGame> {
     required this.onFell,
     required this.onCompleted,
     this.onRespawned,
+    this.onPickup,
   }) : fallLine = data.lowestPoint + fallMargin;
 
   /// How far below the lowest terrain the ball counts as fallen, in meters.
@@ -53,14 +54,23 @@ class LevelComponent extends Component with HasGameReference<Forge2DGame> {
   /// The ball respawned at a checkpoint.
   final VoidCallback? onRespawned;
 
+  /// The ball collected an orb or reached a checkpoint (game-hud spec).
+  final void Function(HudMessage message)? onPickup;
+
   /// World y (downwards) past which the ball has fallen out of the level.
   final double fallLine;
 
   late final BallComponent ball;
+  late final List<CheckPointComponent> _checkpoints;
   final List<Component> _overlays = [];
   CheckPointComponent? _activeCheckpoint;
   bool _fell = false;
   bool _sendBack = false;
+
+  /// Whether each checkpoint, in course order, has been reached.
+  List<bool> get checkpointsReached => isLoaded
+      ? [for (final checkpoint in _checkpoints) checkpoint.isActivated]
+      : const [];
 
   /// Whether the ball holds a double-jump charge.
   bool get hasAirJump => isLoaded && ball.hasAirJump;
@@ -85,6 +95,17 @@ class LevelComponent extends Component with HasGameReference<Forge2DGame> {
       textureImage: images.fromCache(components.ball.path),
     );
 
+    _checkpoints = [
+      for (final checkpoint in data.checkpoints)
+        CheckPointComponent(
+          ground: _vector(checkpoint.position),
+          onActivated: (component) {
+            _activeCheckpoint = component;
+            haptics.play(Haptic.checkpoint);
+            onPickup?.call(HudMessage.checkpoint);
+          },
+        ),
+    ];
     await addAll([
       for (final run in data.floors)
         if (run.crumbling)
@@ -122,16 +143,13 @@ class LevelComponent extends Component with HasGameReference<Forge2DGame> {
           inverted: !ramp.ascending,
           terrain: terrain,
         ),
-      for (final checkpoint in data.checkpoints)
-        CheckPointComponent(
-          ground: _vector(checkpoint.position),
-          onActivated: (component) {
-            _activeCheckpoint = component;
-            haptics.play(Haptic.checkpoint);
-          },
-        ),
+      ..._checkpoints,
       for (final boost in data.boosts)
-        BoostComponent(type: boost.type, position: _vector(boost.position)),
+        BoostComponent(
+          type: boost.type,
+          position: _vector(boost.position),
+          onCollected: () => onPickup?.call(HudMessage.doubleJump),
+        ),
       GoalComponent(position: _vector(data.goal), size: Vector2(1, 3.5)),
       ball,
     ]);

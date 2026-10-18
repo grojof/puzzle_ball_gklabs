@@ -2,10 +2,12 @@ import 'package:flame/cache.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:puzzle_ball_gklabs/game/components/hud_layout.dart';
 import 'package:puzzle_ball_gklabs/game/view/game_page.dart';
 import 'package:puzzle_ball_gklabs/game/view/pause_menu.dart';
 import 'package:puzzle_ball_gklabs/l10n/l10n.dart';
 import 'package:puzzle_ball_gklabs/settings/settings.dart';
+import 'package:puzzle_ball_gklabs/shared/widgets/sound_toggle_fab.dart';
 import 'package:savegame_repository/savegame_repository.dart';
 
 import '../../helpers/game_helpers.dart';
@@ -71,6 +73,23 @@ void main() {
   }
 
   group('GamePage', () {
+    testWidgets('the pause button sits where the HUD expects it', (
+      tester,
+    ) async {
+      await pumpGame(tester);
+      final rect = tester.getRect(find.byKey(const Key('game_pause')));
+      expect(rect.left, HudLayout.pauseInset);
+      expect(rect.top, HudLayout.pauseInset);
+      expect(rect.width, HudLayout.pauseSize);
+      expect(rect.height, HudLayout.pauseSize);
+      final sound = tester.getRect(find.byType(SoundToggleFab));
+      final screen = tester.getSize(find.byType(GamePage));
+      expect(sound.top, HudLayout.soundInset);
+      expect(screen.width - sound.right, HudLayout.soundInset);
+      expect(sound.width, HudLayout.soundSize);
+      expect(sound.height, HudLayout.soundSize);
+    });
+
     testWidgets('creates one game and pauses on demand', (tester) async {
       await pumpGame(tester);
       final state = tester.state<GamePageState>(find.byType(GamePage));

@@ -92,6 +92,7 @@ BallOdysseyGame testGame({
     levelLabel: (n) => 'Level $n',
     worldLabel: worldLabel,
     levelTextStyle: const TextStyle(),
+    hudLabel: (message) => message.name,
     onLevelCompleted: onLevelCompleted,
     onSessionCompleted: onSessionCompleted,
     accelerometer: sensor == null ? null : () => sensor.stream,

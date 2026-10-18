@@ -165,5 +165,7 @@
   "biomeDesertDusk": "Desierto al atardecer",
   "biomeSnowyPeaks": "Cumbres nevadas",
   "biomeCrystalCaves": "Cuevas de cristal",
-  "biomeVolcano": "Volcán"
+  "biomeVolcano": "Volcán",
+  "hudDoubleJump": "¡Doble salto!",
+  "hudCheckpoint": "Punto de control"
 }

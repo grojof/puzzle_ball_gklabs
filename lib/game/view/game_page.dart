@@ -10,7 +10,9 @@ import 'package:puzzle_ball_gklabs/app/router.dart';
 import 'package:puzzle_ball_gklabs/audio/audio_service.dart';
 import 'package:puzzle_ball_gklabs/game/ball_envelope.dart';
 import 'package:puzzle_ball_gklabs/game/ball_odyssey_game.dart';
+import 'package:puzzle_ball_gklabs/game/components/hud_layout.dart';
 import 'package:puzzle_ball_gklabs/game/game_config.dart';
+import 'package:puzzle_ball_gklabs/game/view/hud_text.dart';
 import 'package:puzzle_ball_gklabs/game/view/pause_menu.dart';
 import 'package:puzzle_ball_gklabs/game/view/world_title.dart';
 import 'package:puzzle_ball_gklabs/haptics/haptics.dart';
@@ -87,6 +89,7 @@ class GamePageState extends State<GamePage> {
       config: _configOf(context.read<SettingsCubit>().state),
       images: context.read<Images>(),
       levelLabel: (n) => '${context.l10n.labelLevel} $n',
+      hudLabel: (message) => hudText(context.l10n, message),
       worldLabel: (n) => worldTitle(context.l10n, savegame.seed, n),
       levelTextStyle: (theme.textTheme.headlineMedium ?? const TextStyle())
           .copyWith(color: Colors.white),
@@ -161,6 +164,10 @@ class GamePageState extends State<GamePage> {
       );
     }
     if (game == null) return const Scaffold();
+    // The HUD and the buttons stay clear of the status bar and the camera
+    // cutout (game-hud spec).
+    final safeArea = MediaQuery.viewPaddingOf(context);
+    game.safeArea.value = safeArea;
 
     return BlocListener<SettingsCubit, SettingsState>(
       listenWhen: (previous, current) =>
@@ -194,8 +201,8 @@ class GamePageState extends State<GamePage> {
               ),
               const SoundToggleFab(),
               Positioned(
-                top: 24,
-                left: 24,
+                top: safeArea.top + HudLayout.pauseInset,
+                left: safeArea.left + HudLayout.pauseInset,
                 child: FloatingActionButton.small(
                   key: const Key('game_pause'),
                   heroTag: 'game_pause',

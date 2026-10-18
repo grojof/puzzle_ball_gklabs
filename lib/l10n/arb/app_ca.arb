@@ -165,5 +165,7 @@
   "biomeDesertDusk": "Desert al capvespre",
   "biomeSnowyPeaks": "Cims nevats",
   "biomeCrystalCaves": "Coves de cristall",
-  "biomeVolcano": "Volcà"
+  "biomeVolcano": "Volcà",
+  "hudDoubleJump": "Doble salt!",
+  "hudCheckpoint": "Punt de control"
 }
