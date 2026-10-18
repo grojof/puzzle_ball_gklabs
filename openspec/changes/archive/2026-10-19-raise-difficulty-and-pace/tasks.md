@@ -26,7 +26,7 @@
 
 - [x] 5.1 Write ADR-0013 (pacing) and update `docs/product.md`, `docs/glossary.md` and the README index; verify `docs-check` and the spell check
 - [x] 5.2 Play on the author's phone: levels 1–10 and some deep levels, with towers and descents; measure frame time; verify the feedback is noted for the PR
-- [ ] 5.3 Run the local CI checks, open the PR as ready, and squash merge when CI passes; verify CI passes
+- [x] 5.3 Run the local CI checks, open the PR as ready, and squash merge when CI passes; verify CI passes
 
 ## Workflow follow-up
 
