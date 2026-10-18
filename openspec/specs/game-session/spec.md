@@ -11,7 +11,7 @@ A play session SHALL keep a single running game from the moment the player enter
 game screen. Restarting a level and advancing to the next level SHALL NOT recreate the game screen or change the route.
 
 #### Scenario: Restart after a fall keeps the session
-- **WHEN** the ball falls out of the level
+- **WHEN** the ball falls out of the level and no checkpoint of that level has been activated
 - **THEN** the same level restarts with the ball at its start position, the game screen stays mounted and the route is unchanged
 
 #### Scenario: Advance after reaching the goal keeps the session
@@ -68,3 +68,21 @@ Changing the language SHALL update the visible texts in place, without restartin
 #### Scenario: Language change from settings
 - **WHEN** the player changes the language in the settings screen
 - **THEN** the texts switch to the new language and the player stays on the current screen
+
+### Requirement: Checkpoints
+Passing a checkpoint SHALL activate it, with visible feedback. Its activation area SHALL cover the whole flag, from
+the ground to the top of the post, so touching any part of it counts. When the ball falls after a checkpoint has been
+activated, the ball SHALL respawn at rest above the last activated checkpoint, with any running boost cancelled, and
+the level SHALL NOT be rebuilt.
+
+#### Scenario: Touching the top of the flag
+- **WHEN** the ball jumps over a checkpoint and touches only the top of its post
+- **THEN** the checkpoint activates
+
+#### Scenario: Respawn at the last checkpoint
+- **WHEN** the ball passes two checkpoints and then falls
+- **THEN** it reappears at rest above the second checkpoint, and the rest of the level is unchanged
+
+#### Scenario: Fall during a boost
+- **WHEN** the ball falls while a gravity boost is running and a checkpoint is active
+- **THEN** it respawns at the checkpoint with normal gravity
