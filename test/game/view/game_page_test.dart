@@ -130,6 +130,22 @@ void main() {
       expect(game.paused, isTrue);
     });
 
+    testWidgets('the back button pauses, then resumes', (tester) async {
+      await pumpGame(tester);
+      final game = tester.state<GamePageState>(find.byType(GamePage)).game!;
+
+      await tester.binding.handlePopRoute();
+      await tester.pump();
+      expect(game.paused, isTrue);
+      expect(find.byType(PauseMenu), findsOneWidget);
+      expect(find.byType(GamePage), findsOneWidget);
+
+      await tester.binding.handlePopRoute();
+      await tester.pump();
+      expect(game.paused, isFalse);
+      expect(find.byType(PauseMenu), findsNothing);
+    });
+
     testWidgets('leaving the screen destroys the physics world', (
       tester,
     ) async {

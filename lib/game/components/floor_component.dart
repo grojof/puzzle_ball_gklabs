@@ -1,5 +1,6 @@
 import 'package:flame_forge2d/flame_forge2d.dart';
 import 'package:flutter/painting.dart';
+import 'package:puzzle_ball_gklabs/game/components/ground_surface.dart';
 import 'package:puzzle_ball_gklabs/game/visuals/terrain_paint.dart';
 
 /// A floor run: one static body for a whole run of ground (design D4 of the
@@ -7,7 +8,9 @@ import 'package:puzzle_ball_gklabs/game/visuals/terrain_paint.dart';
 ///
 /// Drawn from the world's generated textures: the body below, darkening
 /// with depth, and the surface material along the top (game-visuals spec).
-class FloorComponent extends BodyComponent with ContactCallbacks {
+class FloorComponent extends BodyComponent
+    with ContactCallbacks
+    implements GroundSurface {
   new({
     required this.position,
     required this.size,
@@ -52,6 +55,12 @@ class FloorComponent extends BodyComponent with ContactCallbacks {
     ..style = PaintingStyle.stroke
     ..strokeWidth = 0.04
     ..color = const Color(0x59000000);
+
+  @override
+  bool supports(Vector2 center) =>
+      center.x >= position.x - GroundSurface.edgeTolerance &&
+      center.x <= position.x + size.x + GroundSurface.edgeTolerance &&
+      center.y < position.y;
 
   @override
   Body createBody() {

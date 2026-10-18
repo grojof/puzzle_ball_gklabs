@@ -38,7 +38,7 @@ What the current baseline does (the rebuild changes it through OpenSpec changes)
 | Boosts | Jump (upward impulse), speed (forward impulse) and gravity (low gravity for 2 s), each placed before the section that needs it |
 | Checkpoints | In longer levels; touching any part of the flag turns it gold, and a fall respawns the ball there |
 | Goal | Reaching it flashes the screen and loads the next level in place |
-| Pause | A pause button and the app going to the background open the pause menu: resume, restart, settings, levels |
+| Pause | The pause button, the back button and the app going to the background open the pause menu: resume, restart, settings, levels; back again resumes |
 | Settings | Music and effects volume, quick mute, control mode and vibration (both hidden on the web), language (device by default) |
 | Vibration | On by default on Android: a light pulse when the ball jumps, a strong one for boosts, a double one for checkpoints |
 | Audio | Music starts on launch (on the web, at the first interaction); effects share one loudness |

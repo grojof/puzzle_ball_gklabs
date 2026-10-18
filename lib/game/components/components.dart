@@ -3,6 +3,7 @@ export 'boost_component.dart';
 export 'checkpoint_component.dart';
 export 'floor_component.dart';
 export 'goal_component.dart';
+export 'ground_surface.dart';
 export 'hud_layout.dart';
 export 'jump_button_component.dart';
 export 'ramp_component.dart';

@@ -243,14 +243,14 @@ void main() {
 
     final audio = RecordingAudioSink();
     testWithGame(
-      'only one boost runs at a time, each with its sound',
+      'every boost takes effect with its sound, even back to back',
       () => testGame(images: images, audio: audio),
       (game) async {
         game.level!.ball
           ..applyJumpBoost(10)
           ..applySpeedBoost(10, Vector2(1, 0));
 
-        expect(audio.played, [GameSound.boostJump]);
+        expect(audio.played, [GameSound.boostJump, GameSound.boostSpeed]);
       },
     );
   });
@@ -313,6 +313,26 @@ void main() {
     });
   });
 
+  group('boost chains', () {
+    testWithGame(
+      'a boost taken while another runs still takes effect',
+      () => testGame(images: images),
+      (game) async {
+        final ball = game.level!.ball..applySpeedBoost(10, Vector2(1, 0));
+        expect(ball.isBoosted, isTrue);
+        game.update(0.5);
+        ball.applyGravityBoost(0.1);
+        expect(ball.body.gravityScale, closeTo(0.1, 1e-6));
+        // The new boost lasts its own full duration.
+        game.update(BallComponent.boostDuration - 0.1);
+        expect(ball.isBoosted, isTrue);
+        game.update(0.2);
+        expect(ball.isBoosted, isFalse);
+        expect(ball.body.gravityScale, closeTo(1, 1e-6));
+      },
+    );
+  });
+
   group('boost components', () {
     for (final type in BoostType.values) {
       testWithGame(
@@ -370,6 +390,27 @@ void main() {
         game.intent.requestJump();
         game.update(1 / 60);
         expect(audio.played, [GameSound.jump]);
+      },
+    );
+
+    final mashAudio = RecordingAudioSink();
+    testWithGame(
+      'a jump cannot be repeated right after take-off',
+      () => testGame(images: images, audio: mashAudio),
+      (game) async {
+        final ball = game.level!.ball;
+        for (var i = 0; i < 120 && !ball.isOnGround; i++) {
+          game.update(1 / 60);
+        }
+        // Mash the button for half a second after jumping.
+        for (var i = 0; i < 30; i++) {
+          game.intent.requestJump();
+          game.update(1 / 60);
+        }
+        expect(
+          mashAudio.played.where((sound) => sound == GameSound.jump),
+          hasLength(1),
+        );
       },
     );
 
