@@ -46,7 +46,7 @@
 ## 10. Integration verification
 
 - [x] 10.1 Play early, mid and deep levels on the Android emulator and in Chrome with the author, and record feedback for curve tuning in the PR; verify no runtime errors in the logs
-- [ ] 10.2 Run the local CI checks for the app and every package (format, analyze, bloc lint, tests in random order, coverage, licenses, spell check), open the PR as a draft and mark it ready once green locally; verify the CI passes on the first full run
+- [x] 10.2 Run the local CI checks for the app and every package (format, analyze, bloc lint, tests in random order, coverage, licenses, spell check), open the PR as a draft and mark it ready once green locally; verify the CI passes on the first full run
 
 ## 11. First play-test feedback
 
