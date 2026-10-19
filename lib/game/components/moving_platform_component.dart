@@ -2,6 +2,7 @@ import 'dart:ui' show Picture, PictureRecorder;
 
 import 'package:flame_forge2d/flame_forge2d.dart';
 import 'package:flutter/painting.dart';
+import 'package:level_generator/level_generator.dart' show FloorSurface;
 import 'package:puzzle_ball_gklabs/game/components/ball_component.dart';
 import 'package:puzzle_ball_gklabs/game/components/ground_surface.dart';
 import 'package:puzzle_ball_gklabs/game/visuals/element_painter.dart';
@@ -66,6 +67,9 @@ class MovingPlatformComponent extends BodyComponent
 
   /// How much longer the current pause lasts, in seconds.
   double get pauseLeft => _paused > 0 ? _paused : 0;
+
+  @override
+  FloorSurface get floorSurface => FloorSurface.plain;
 
   @override
   bool supports(Vector2 center) {

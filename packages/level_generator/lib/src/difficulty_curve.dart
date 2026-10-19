@@ -122,12 +122,14 @@ class DifficultyCurve {
   /// The longest stretch between respawn points, in seconds.
   static const checkpointSeconds = 35.0;
 
-  /// The level at which each obstacle first appears: everything by level 8,
-  /// leaving level 10 on to later mechanics (design D3 of
-  /// raise-difficulty-and-pace).
+  /// The level at which each obstacle first appears: the new physics at
+  /// levels 9, 11 and 13, leaving levels 10, 12, 14 and on to later
+  /// mechanics (design D6 of add-curved-terrain-and-physics).
   static const Map<SectionKind, int> introductionLevel = {
     SectionKind.rampUp: 1,
     SectionKind.rampDown: 1,
+    SectionKind.hill: 1,
+    SectionKind.halfPipe: 1,
     SectionKind.gap: 1,
     SectionKind.drop: 1,
     SectionKind.stepUp: 1,
@@ -145,11 +147,19 @@ class DifficultyCurve {
     SectionKind.gravityBoost: 7,
     SectionKind.orbGap: 8,
     SectionKind.orbClimb: 8,
+    SectionKind.trampolineHops: 9,
+    SectionKind.conveyor: 11,
+    SectionKind.ice: 11,
+    SectionKind.mud: 11,
+    SectionKind.loop: 13,
   };
 
+  /// Straight ramps share their weight with curves, so slopes vary in shape.
   static const Map<SectionKind, double> _baseWeights = {
-    SectionKind.rampUp: 1.0,
-    SectionKind.rampDown: 1.0,
+    SectionKind.rampUp: 0.5,
+    SectionKind.rampDown: 0.5,
+    SectionKind.hill: 1.0,
+    SectionKind.halfPipe: 0.7,
     SectionKind.gap: 1.4,
     SectionKind.drop: 0.8,
     SectionKind.stepUp: 1.0,
@@ -167,6 +177,11 @@ class DifficultyCurve {
     SectionKind.orbClimb: 0.35,
     SectionKind.tower: 0.6,
     SectionKind.descent: 0.6,
+    SectionKind.trampolineHops: 1.0,
+    SectionKind.conveyor: 0.5,
+    SectionKind.ice: 0.5,
+    SectionKind.mud: 0.5,
+    SectionKind.loop: 0.4,
   };
 
   /// The parameters of [level] (from 1).

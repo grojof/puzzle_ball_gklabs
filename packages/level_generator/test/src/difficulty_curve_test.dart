@@ -71,12 +71,15 @@ void main() {
       );
     });
 
-    test('introduces every element by level 8', () {
+    test('introduces every element by level 13, leaving room for later '
+        'mechanics', () {
       expect(
         curve.parametersFor(1).weights.keys,
         unorderedEquals([
           SectionKind.rampUp,
           SectionKind.rampDown,
+          SectionKind.hill,
+          SectionKind.halfPipe,
           SectionKind.gap,
           SectionKind.drop,
           SectionKind.stepUp,
@@ -96,6 +99,9 @@ void main() {
         (6, {SectionKind.jumpBoost}),
         (7, {SectionKind.gravityBoost}),
         (8, {SectionKind.orbGap, SectionKind.orbClimb}),
+        (9, {SectionKind.trampolineHops}),
+        (11, {SectionKind.conveyor, SectionKind.ice, SectionKind.mud}),
+        (13, {SectionKind.loop}),
       ];
       for (final (level, kinds) in order) {
         expect(curve.parametersFor(level).introduces, kinds);
@@ -105,9 +111,12 @@ void main() {
         }
       }
       expect(curve.parametersFor(1).introduces, isEmpty);
-      expect(curve.parametersFor(9).introduces, isEmpty);
+      // Kept for the logic mechanics of the next change.
+      for (final level in [10, 12, 14]) {
+        expect(curve.parametersFor(level).introduces, isEmpty);
+      }
       expect(
-        curve.parametersFor(10).weights.keys,
+        curve.parametersFor(13).weights.keys,
         unorderedEquals(
           SectionKind.values.where((kind) => kind != SectionKind.flat),
         ),
@@ -136,8 +145,13 @@ void main() {
       expect(curve.parametersFor(8).weights[SectionKind.speedBoost], 0.5);
       expect(curve.parametersFor(2).weights[SectionKind.ferry], 1);
       expect(curve.parametersFor(7).weights[SectionKind.ferry], 0.5);
+      expect(curve.parametersFor(13).weights[SectionKind.loop], 0.8);
+      expect(curve.parametersFor(18).weights[SectionKind.loop], 0.4);
       expect(curve.parametersFor(1).weights[SectionKind.gap], 1.4);
       expect(curve.parametersFor(2).weights[SectionKind.spikes], 0.9);
+      // Straight ramps share their weight with curves.
+      expect(curve.parametersFor(1).weights[SectionKind.rampUp], 0.5);
+      expect(curve.parametersFor(1).weights[SectionKind.hill], 1);
       // Introductions are eased: level 10, which introduces nothing, is
       // clearly harder than level 8.
       expect(
@@ -146,8 +160,12 @@ void main() {
       );
       // A level that introduces nothing is not eased.
       expect(
+        curve.parametersFor(12).intensity,
+        greaterThan(curve.parametersFor(11).intensity),
+      );
+      expect(
         curve.parametersFor(11).intensity,
-        greaterThan(curve.parametersFor(10).intensity),
+        lessThan(curve.parametersFor(10).intensity),
       );
     });
 

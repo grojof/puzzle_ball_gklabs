@@ -732,7 +732,7 @@ void main() {
       ),
       (game) async {
         final level = game.level!;
-        expect(level.data.ramps, isNotEmpty);
+        expect(level.data.curves, isNotEmpty);
         expect(level.data.boosts, isNotEmpty);
         expect(level.data.checkpoints, isNotEmpty);
         expect(level.data.floors.any((run) => run.size.y > 1.5), isTrue);

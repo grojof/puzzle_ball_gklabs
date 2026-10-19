@@ -125,19 +125,23 @@ void main() {
 
     test('valleys go down and back up to the same height', () {
       final data = withSection(SectionKind.valley);
-      final downs = data.ramps.where((ramp) => !ramp.ascending);
-      final ups = data.ramps.where((ramp) => ramp.ascending);
+      final slopes = data.curves.where((c) => c.kind == CurveKind.slope);
+      final downs = slopes.where((slope) => !slope.rises);
+      final ups = slopes.where((slope) => slope.rises);
       expect(
         downs.any(
           (down) => ups.any(
             (up) =>
                 up.left > down.right &&
-                (up.size.y - down.size.y).abs() < 1e-9 &&
+                ((up.bottom - up.top) - (down.bottom - down.top)).abs() <
+                    1e-9 &&
                 (up.top - down.top).abs() < 1e-9,
           ),
         ),
         isTrue,
       );
+      // Slopes are rounded: no straight ramps any more.
+      expect(data.ramps, isEmpty);
     });
 
     test('island hops change height between platforms', () {
@@ -187,6 +191,8 @@ void main() {
         SectionKind.flat,
         SectionKind.rampUp,
         SectionKind.rampDown,
+        SectionKind.hill,
+        SectionKind.halfPipe,
         SectionKind.gap,
         SectionKind.drop,
         SectionKind.stepUp,
@@ -205,6 +211,12 @@ void main() {
           expect(data.boosts, isEmpty);
           expect(data.platforms, isEmpty);
           expect(data.floors.where((floor) => floor.crumbling), isEmpty);
+          expect(data.trampolines, isEmpty);
+          expect(data.loops, isEmpty);
+          expect(
+            data.floors.where((floor) => floor.surface != FloorSurface.plain),
+            isEmpty,
+          );
           seen.addAll(data.sections);
         }
       }
@@ -247,7 +259,7 @@ void main() {
           for (final boost in data.boosts) {
             counts[boost.type] = counts[boost.type]! + 1;
             final served = switch (boost.type) {
-              BoostType.speed => [SectionKind.speedBoost],
+              BoostType.speed => [SectionKind.speedBoost, SectionKind.loop],
               BoostType.jump => [SectionKind.jumpBoost],
               BoostType.gravity => [SectionKind.gravityBoost],
               BoostType.doubleJump => [
@@ -486,6 +498,9 @@ void main() {
             ramps: data.ramps,
             platforms: data.platforms,
             boosts: data.boosts,
+            curves: data.curves,
+            trampolines: data.trampolines,
+            loops: data.loops,
           );
           for (final laser in data.lasers) {
             final lowest = clearance.lowestEnd(laser.x)!;
@@ -532,6 +547,147 @@ void main() {
       expect(data.lowestPoint, greaterThan(first.top));
     });
   });
+
+  group('curved terrain and new physics', () {
+    /// Every level from [from] to [to] for every seed.
+    Iterable<(int, LevelData)> levels(int from, int to) sync* {
+      for (final seed in seeds) {
+        for (var n = from; n <= to; n++) {
+          yield (n, level(n, seed));
+        }
+      }
+    }
+
+    test('curves join their runs, gentle and smooth', () {
+      final kinds = <CurveKind>{};
+      var bumps = 0;
+      for (final (_, data) in levels(1, 40)) {
+        for (final curve in data.curves) {
+          kinds.add(curve.kind);
+          final ground = curve.points.first.y;
+          if (curve.kind != CurveKind.slope) {
+            expect(curve.points.last.y, ground);
+          }
+          expect(data.floors.any((floor) => floor.right == curve.left), isTrue);
+          expect(data.floors.any((floor) => floor.left == curve.right), isTrue);
+          for (var i = 1; i < curve.points.length; i++) {
+            final a = curve.points[i - 1];
+            final b = curve.points[i];
+            expect(b.x - a.x, inExclusiveRange(0, CurvedRun.step + 1e-9));
+            expect(
+              (b.y - a.y).abs(),
+              lessThanOrEqualTo(LevelValidator.maxSlope * (b.x - a.x)),
+            );
+          }
+          final extreme = curve.bottom - curve.top;
+          // Descents may go a little past 3 m.
+          expect(extreme, inInclusiveRange(0.5, 6.0));
+          if (curve.kind == CurveKind.hill) bumps++;
+        }
+      }
+      expect(kinds, CurveKind.values.toSet());
+      expect(bumps, greaterThan(0));
+    });
+
+    test('trampolines are islands across a pit, before a bounce', () {
+      var hops = 0;
+      for (final (_, data) in levels(9, 40)) {
+        for (final pad in data.trampolines) {
+          final i = data.floors.indexWhere(
+            (f) =>
+                f.top == pad.top && pad.left >= f.left && pad.right <= f.right,
+          );
+          expect(i, greaterThanOrEqualTo(0));
+          final floor = data.floors[i];
+          final next = data.floors[i + 1];
+          expect(floor.size.x, closeTo(2 * tileSize, 1e-9));
+          expect(pad.width, closeTo(floor.size.x, 1e-9));
+          expect(next.left, greaterThan(floor.right));
+          hops++;
+        }
+      }
+      expect(hops, greaterThan(0));
+    });
+
+    test('belts, ice and mud lie before gaps or climbs sized for them', () {
+      final surfaces = <FloorSurface>{};
+      for (final (n, data) in levels(11, 40)) {
+        final margin = curve.parametersFor(n).margin;
+        for (var i = 0; i < data.floors.length - 1; i++) {
+          final floor = data.floors[i];
+          if (floor.surface == FloorSurface.plain) continue;
+          surfaces.add(floor.surface);
+          final next = data.floors[i + 1];
+          final rise = floor.top - next.top;
+          final gap = next.left - floor.right;
+          final climbs = gap.abs() < 1e-9 && rise > 0;
+          expect(
+            gap > 0 || climbs,
+            isTrue,
+            reason: 'level $n at ${floor.left}',
+          );
+          if (climbs) {
+            expect(floor.surface, FloorSurface.mud);
+            expect(
+              rise,
+              lessThanOrEqualTo(
+                testEnvelope.maxClimb(margin, surface: FloorSurface.mud),
+              ),
+            );
+          }
+        }
+      }
+      expect(surfaces, {
+        FloorSurface.conveyorForward,
+        FloorSurface.conveyorBackward,
+        FloorSurface.ice,
+        FloorSurface.mud,
+      });
+    });
+
+    test('loops stand on their run with a speed boost just before', () {
+      var checked = 0;
+      for (final (_, data) in levels(13, 40)) {
+        for (final loop in data.loops) {
+          expect(loop.radius, loopRadius);
+          expect(
+            data.boosts.where(
+              (boost) =>
+                  boost.type == BoostType.speed &&
+                  (boost.position.x - (loop.left - loopBoostLead)).abs() < 1e-9,
+            ),
+            hasLength(1),
+          );
+          final run = data.floors.singleWhere(
+            (floor) => floor.left <= loop.left && floor.right >= loop.right,
+          );
+          expect(run.top, loop.foot.y);
+          expect(run.right, greaterThanOrEqualTo(loop.right + tileSize));
+          checked++;
+        }
+      }
+      expect(checked, greaterThan(0));
+    });
+
+    test('the levels that introduce the new physics feature it', () {
+      for (final seed in seeds) {
+        expect(level(9, seed).trampolines, isNotEmpty);
+        expect(
+          level(
+            11,
+            seed,
+          ).floors.where((floor) => floor.surface != FloorSurface.plain),
+          isNotEmpty,
+        );
+        expect(level(13, seed).loops, isNotEmpty);
+        for (final n in [3, 5, 8]) {
+          final early = level(n, seed);
+          expect(early.trampolines, isEmpty);
+          expect(early.loops, isEmpty);
+        }
+      }
+    });
+  });
 }
 
-const goldenDigests = [3799362494, 3325401801, 6255115];
+const goldenDigests = [2133736060, 2141593331, 1738403315];

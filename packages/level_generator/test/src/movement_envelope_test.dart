@@ -1,3 +1,4 @@
+import 'package:level_generator/level_generator.dart';
 import 'package:test/test.dart';
 
 import '../helpers/envelope.dart';
@@ -82,6 +83,104 @@ void main() {
       expect(testEnvelope.maxDoubleJumpClimb(0.5), 2.65);
       expect(testEnvelope.maxDoubleJumpGap(speed: 8.3, margin: 0.5), 11);
       expect(testEnvelope.maxDoubleJumpGap(speed: 4.15, margin: 0.5), 5.5);
+    });
+  });
+
+  group('MovementEnvelope on the new physics', () {
+    const envelope = testEnvelope;
+
+    test('each surface has its own speed curve', () {
+      final plain = envelope.speedAfter(6);
+      expect(envelope.speedOn(FloorSurface.plain, 6), plain);
+      expect(envelope.speedOn(FloorSurface.conveyorForward, 6), plain);
+      expect(
+        envelope.speedOn(FloorSurface.ice, 6),
+        envelope.speedAfter(6 * envelope.iceGrip),
+      );
+      expect(envelope.speedOn(FloorSurface.mud, 60), envelope.mudTopSpeed);
+      expect(
+        envelope.speedOn(FloorSurface.conveyorBackward, 60),
+        closeTo(envelope.speedCurve.last - envelope.beltSpeed, 1e-9),
+      );
+      expect(envelope.speedOn(FloorSurface.conveyorBackward, 0), 0);
+    });
+
+    test('mud weakens the jump', () {
+      expect(
+        envelope.maxClimb(1, surface: FloorSurface.mud),
+        envelope.mudJumpHeight,
+      );
+      expect(envelope.mudAirTime(0), closeTo(envelope.mudFlightTime, 1e-9));
+      expect(
+        envelope.maxGap(
+          speed: 3,
+          rise: 0,
+          margin: 1,
+          surface: FloorSurface.mud,
+        ),
+        closeTo(3 * envelope.mudFlightTime, 1e-9),
+      );
+      // Beyond the mud jump, nothing is reachable.
+      expect(
+        envelope.maxGap(
+          speed: 3,
+          rise: 2,
+          margin: 1,
+          surface: FloorSurface.mud,
+        ),
+        0,
+      );
+      // A margin past 1 lets the climb check pass a landing the arc misses.
+      expect(
+        envelope.maxGap(
+          speed: 3,
+          rise: 1.9,
+          margin: 1.2,
+          surface: FloorSurface.mud,
+        ),
+        0,
+      );
+    });
+
+    test('a trampoline throws to its height and as far as speed or push '
+        'carries', () {
+      expect(envelope.maxTrampolineClimb(0.5), envelope.trampolineHeight / 2);
+      expect(
+        envelope.trampolineAirTime(0),
+        closeTo(envelope.trampolineFlightTime, 1e-9),
+      );
+      // At rest, the push in the air carries it.
+      expect(
+        envelope.maxTrampolineGap(speed: 0, rise: 0, margin: 1),
+        closeTo(envelope.trampolineDistance, 1e-9),
+      );
+      // Landing higher shortens the air time, and the push's distance by
+      // its square; landing lower lengthens both in proportion.
+      final higher = envelope.trampolineAirTime(2)!;
+      expect(
+        envelope.maxTrampolineGap(speed: 0, rise: 2, margin: 1),
+        closeTo(
+          envelope.trampolineDistance *
+              (higher / envelope.trampolineFlightTime) *
+              (higher / envelope.trampolineFlightTime),
+          1e-9,
+        ),
+      );
+      final lower = envelope.trampolineAirTime(-2)!;
+      expect(
+        envelope.maxTrampolineGap(speed: 0, rise: -2, margin: 1),
+        closeTo(
+          envelope.trampolineDistance * lower / envelope.trampolineFlightTime,
+          1e-9,
+        ),
+      );
+      // Fast enough, the carried speed reaches farther.
+      expect(
+        envelope.maxTrampolineGap(speed: 8, rise: 0, margin: 1),
+        closeTo(8 * envelope.trampolineFlightTime, 1e-9),
+      );
+      expect(envelope.maxTrampolineGap(speed: 8, rise: 6, margin: 1), 0);
+      expect(envelope.maxTrampolineGap(speed: 8, rise: 5, margin: 1.2), 0);
     });
   });
 }

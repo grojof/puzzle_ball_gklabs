@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flame/components.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:level_generator/level_generator.dart';
@@ -179,6 +181,97 @@ void main() {
       expect(camera.surfaceAt(4), closeTo(3, 1e-9));
       expect(camera.surfaceAt(5.5), isNull);
       expect(camera.surfaceAt(7), 2);
+    });
+
+    test('finds surfaces on curves', () {
+      final camera = CameraController(metersToPixels: 40)
+        ..setLevel(
+          LevelData(
+            seed: 'camera',
+            level: 1,
+            ballStart: const Vec2(0.75, 3),
+            goal: const Vec2(20, 2.25),
+            floors: const [
+              FloorRun(position: Vec2(0, 4), size: Vec2(3, 1.5)),
+              FloorRun(position: Vec2(11, 4), size: Vec2(10, 1.5)),
+            ],
+            ramps: const [],
+            boosts: const [],
+            checkpoints: const [],
+            sections: const [],
+            estimatedDuration: 10,
+            curves: [
+              CurvedRun.bumps(
+                kind: CurveKind.hill,
+                left: 3,
+                ground: 4,
+                bumps: const [(8, 2)],
+              ),
+            ],
+          ),
+        );
+      expect(camera.surfaceAt(7), closeTo(2, 1e-9));
+      expect(camera.surfaceAt(12), 4);
+    });
+  });
+
+  group('loops', () {
+    test('keep the whole loop in view, steadily, while the ball rides it', () {
+      const loop = Loop(foot: Vec2(30, 4), radius: loopRadius);
+      final camera = _camera(
+        landscape,
+        const LevelData(
+          seed: 'camera',
+          level: 1,
+          ballStart: Vec2(0.75, 3),
+          goal: Vec2(299, 2.25),
+          floors: [FloorRun(position: Vec2(0, 4), size: Vec2(300, 1.5))],
+          ramps: [],
+          boosts: [],
+          checkpoints: [],
+          sections: [],
+          estimatedDuration: 10,
+          loops: [loop],
+        ),
+      )..reset(Vector2(0, 4 - _radius));
+      // Rolls in at speed, around the loop in about a second, and out.
+      const speed = 14.0;
+      const inner = loopRadius - _radius;
+      final c = loop.center;
+      final path = <(Vector2, Vector2)>[
+        for (var x = 0.0; x < 30; x += speed * _dt)
+          (Vector2(x, 4 - _radius), Vector2(speed, 0)),
+        for (var a = 0.0; a < 2 * math.pi; a += 6 * _dt)
+          (
+            Vector2(c.x + inner * math.sin(a), c.y + inner * math.cos(a)),
+            Vector2(math.cos(a), -math.sin(a)) * speed,
+          ),
+        for (var x = 30.0; x < 40; x += speed * _dt)
+          (Vector2(x, 4 - _radius), Vector2(speed, 0)),
+      ];
+      var last = camera.centre.clone();
+      var maxStep = 0.0;
+      var ridden = false;
+      for (final (ball, velocity) in path) {
+        camera.update(_dt, ball, velocity);
+        final (width, height) = _visible(camera);
+        final centre = camera.centre;
+        final riding =
+            ball.x >= loop.left && ball.x <= loop.right && ball.y < 4 - 1;
+        if (riding) {
+          ridden = true;
+          expect(centre.x - width / 2, lessThanOrEqualTo(loop.left));
+          expect(centre.x + width / 2, greaterThanOrEqualTo(loop.right));
+          expect(centre.y - height / 2, lessThanOrEqualTo(loop.top));
+          expect(centre.y + height / 2, greaterThanOrEqualTo(loop.foot.y));
+        }
+        if (riding) maxStep = math.max(maxStep, centre.distanceTo(last));
+        last = centre.clone();
+      }
+      expect(ridden, isTrue);
+      // The view glides while the ball turns: far less than the ball's own
+      // step each frame.
+      expect(maxStep, lessThan(speed * _dt * 0.75));
     });
   });
 

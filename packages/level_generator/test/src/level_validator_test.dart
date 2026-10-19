@@ -20,6 +20,9 @@ LevelData course({
   List<SpikeStrip> hazards = const [],
   List<MovingPlatform> platforms = const [],
   List<LaserBarrier> lasers = const [],
+  List<CurvedRun> curves = const [],
+  List<Trampoline> trampolines = const [],
+  List<Loop> loops = const [],
   Vec2 ballStart = const Vec2(0.75, 3),
   Vec2? goal,
 }) {
@@ -36,6 +39,9 @@ LevelData course({
     hazards: hazards,
     platforms: platforms,
     lasers: lasers,
+    curves: curves,
+    trampolines: trampolines,
+    loops: loops,
     sections: const [],
     estimatedDuration: 10,
   );
@@ -347,6 +353,298 @@ void main() {
       final violations = check(floating);
       expect(violations, contains(startsWith('boost at')));
       expect(violations, contains(startsWith('checkpoint at')));
+    });
+  });
+
+  group('LevelValidator on the new physics', () {
+    const validator = LevelValidator(envelope: testEnvelope);
+    List<String> check(LevelData level, {double margin = 0.9}) =>
+        validator.validate(level, margin: margin);
+
+    group('curves', () {
+      CurvedRun bump(double height, {double left = 4.5, double? width}) =>
+          CurvedRun.bumps(
+            kind: height > 0 ? CurveKind.hill : CurveKind.halfPipe,
+            left: left,
+            ground: 4,
+            bumps: [(width ?? 4.4 * height.abs(), height)],
+          );
+
+      test('accept hills and half-pipes that join their runs', () {
+        for (final height in [2.0, -2.0]) {
+          final curve = bump(height);
+          expect(
+            check(
+              course(
+                floors: [floor(0, 4), floor(curve.right, 4)],
+                curves: [curve],
+              ),
+            ),
+            isEmpty,
+          );
+        }
+      });
+
+      test('reject a curve with no run before it or none after it', () {
+        final curve = bump(2);
+        expect(
+          check(
+            course(
+              floors: [floor(0, 4), floor(curve.right + 1, 4)],
+              curves: [curve],
+            ),
+          ),
+          contains(endsWith('does not join its floors')),
+        );
+        expect(
+          check(
+            course(
+              floors: [floor(0, 4), floor(curve.right + 3, 4)],
+              curves: [bump(2, left: 5)],
+            ),
+          ),
+          contains(endsWith('does not join its floors')),
+        );
+      });
+
+      test('accept slopes up and down that join their runs', () {
+        final up = CurvedRun.slope(left: 4.5, from: 4, to: 2, width: 4.4);
+        expect(
+          check(
+            course(floors: [floor(0, 4), floor(up.right, 2)], curves: [up]),
+          ),
+          isEmpty,
+        );
+        final down = CurvedRun.slope(left: 4.5, from: 4, to: 6, width: 4.4);
+        expect(
+          check(
+            course(floors: [floor(0, 4), floor(down.right, 6)], curves: [down]),
+          ),
+          isEmpty,
+        );
+      });
+
+      test('reject a slope that turns back or ends level', () {
+        final wavy = CurvedRun(kind: CurveKind.slope, points: bump(2).points);
+        expect(
+          check(
+            course(floors: [floor(0, 4), floor(wavy.right, 4)], curves: [wavy]),
+          ),
+          contains(endsWith('is malformed')),
+        );
+        const turning = CurvedRun(
+          kind: CurveKind.slope,
+          points: [Vec2(4.5, 4), Vec2(5, 3.8), Vec2(5.5, 3.9)],
+        );
+        expect(
+          check(
+            course(floors: [floor(0, 4), floor(5.5, 3.9)], curves: [turning]),
+          ),
+          contains(endsWith('is malformed')),
+        );
+      });
+
+      test('reject a curve too steep or the wrong way up', () {
+        final steep = bump(2, width: 3);
+        expect(
+          check(
+            course(
+              floors: [floor(0, 4), floor(steep.right, 4)],
+              curves: [steep],
+            ),
+          ),
+          contains(endsWith('is malformed')),
+        );
+        final upsideDown = CurvedRun(
+          kind: CurveKind.hill,
+          points: bump(-2).points,
+        );
+        expect(
+          check(
+            course(
+              floors: [floor(0, 4), floor(upsideDown.right, 4)],
+              curves: [upsideDown],
+            ),
+          ),
+          contains(endsWith('is malformed')),
+        );
+        final pipeUp = CurvedRun(
+          kind: CurveKind.halfPipe,
+          points: bump(2).points,
+        );
+        expect(
+          check(
+            course(
+              floors: [floor(0, 4), floor(pipeUp.right, 4)],
+              curves: [pipeUp],
+            ),
+          ),
+          contains(endsWith('is malformed')),
+        );
+      });
+    });
+
+    group('trampolines', () {
+      const pad = Trampoline(position: Vec2(3, 4), width: 1.5);
+
+      test('reject one before a climb or level ground, not a pit', () {
+        for (final next in [floor(4.5, 0, fill: 4), floor(4.5, 4)]) {
+          expect(
+            check(
+              course(floors: [floor(0, 4), next], trampolines: const [pad]),
+            ),
+            contains(endsWith('serves no pit')),
+          );
+        }
+      });
+
+      test('allow a gap within the bounce from an island', () {
+        final runs = [
+          floor(0, 4),
+          floor(6, 4, tiles: 1),
+          floor(6 + 1.5 + 9, 4),
+        ];
+        expect(check(course(floors: runs)), contains(startsWith('gap of')));
+        expect(
+          check(
+            course(
+              floors: runs,
+              trampolines: const [Trampoline(position: Vec2(6, 4), width: 1.5)],
+            ),
+          ),
+          isEmpty,
+        );
+      });
+
+      test('must lie on a run', () {
+        expect(
+          check(
+            course(
+              trampolines: const [Trampoline(position: Vec2(3, 2), width: 1.5)],
+            ),
+          ),
+          contains(endsWith('does not lie on a run')),
+        );
+      });
+    });
+
+    group('loops', () {
+      const loop = Loop(foot: Vec2(10, 4), radius: loopRadius);
+      final boost = Boost(
+        position: Vec2(loop.left - loopBoostLead, 3.4),
+        type: BoostType.speed,
+      );
+      final runs = [floor(0, 4, tiles: 10)];
+
+      test('accept a loop with its boost on a long enough run', () {
+        expect(
+          check(course(floors: runs, loops: const [loop], boosts: [boost])),
+          isEmpty,
+        );
+      });
+
+      test('reject a loop off its run, without a boost, or blocked', () {
+        expect(
+          check(
+            course(
+              floors: [floor(0, 4, tiles: 8)],
+              loops: const [loop],
+              boosts: [boost],
+            ),
+          ),
+          contains(endsWith('does not stand on a run')),
+        );
+        expect(
+          check(course(floors: runs, loops: const [loop])),
+          contains(endsWith('has no speed boost')),
+        );
+        expect(
+          check(
+            course(
+              floors: runs,
+              loops: const [loop],
+              boosts: [boost],
+              checkpoints: const [Checkpoint(Vec2(10, 4))],
+            ),
+          ),
+          contains(startsWith('something blocks the loop')),
+        );
+      });
+    });
+
+    group('surfaces', () {
+      FloorRun surfaced(double left, FloorSurface surface) => FloorRun(
+        position: Vec2(left, 4),
+        size: const Vec2(3 * _tile, _tile),
+        surface: surface,
+      );
+
+      test('mud shortens the gaps and climbs after it', () {
+        final gap = [
+          floor(0, 4),
+          surfaced(4.5, FloorSurface.mud),
+          floor(13, 4),
+        ];
+        expect(check(course(floors: gap)), contains(startsWith('gap of')));
+        final plainGap = [
+          floor(0, 4),
+          surfaced(4.5, FloorSurface.plain),
+          floor(13, 4),
+        ];
+        expect(check(course(floors: plainGap)), isEmpty);
+        final climb = [
+          floor(0, 4),
+          surfaced(4.5, FloorSurface.mud),
+          floor(9, 2, fill: 2),
+        ];
+        expect(check(course(floors: climb)), contains(startsWith('climb of')));
+      });
+
+      test('gap shares read the reach from the surface', () {
+        final gap = [
+          floor(0, 4),
+          surfaced(4.5, FloorSurface.ice),
+          floor(11, 4),
+        ];
+        expect(validator.gapShares(course(floors: gap)), hasLength(1));
+      });
+
+      test('reject backward belts faster than the ball pushes', () {
+        const fast = LevelValidator(
+          envelope: MovementEnvelope(
+            jumpHeight: 2.65,
+            flightTime: 1.5,
+            topSpeed: 8.3,
+            speedCurve: [3, 8.3],
+            jumpBoostHeight: 6.4,
+            speedBoostJumpDistance: 21.5,
+            speedBoostGain: 15.5,
+            gravityBoostJumpDistance: 28,
+            doubleJumpHeight: 5.3,
+            doubleJumpDistance: 22,
+            curveExitSpeed: 4,
+            trampolineHeight: 4.8,
+            trampolineFlightTime: 2,
+            trampolineDistance: 14,
+            beltSpeed: 5,
+            iceGrip: 0.33,
+            mudTopSpeed: 3.3,
+            mudJumpHeight: 1.75,
+            mudFlightTime: 1.2,
+            loopEntrySpeed: 11,
+          ),
+        );
+        final belt = [
+          floor(0, 4),
+          surfaced(4.5, FloorSurface.conveyorBackward),
+          floor(9.5, 4),
+        ];
+        expect(
+          fast.validate(course(floors: belt), margin: 0.9),
+          contains(startsWith('backward belts')),
+        );
+        expect(check(course(floors: belt)), isEmpty);
+      });
     });
   });
 }

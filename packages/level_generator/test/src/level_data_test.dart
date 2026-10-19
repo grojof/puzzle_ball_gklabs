@@ -195,4 +195,146 @@ void main() {
       expect(text, contains('Platform'));
     });
   });
+
+  group('new physics elements', () {
+    final hill = CurvedRun.bumps(
+      kind: CurveKind.hill,
+      left: 10,
+      ground: 4,
+      bumps: const [(4, 1), (2, 0.5)],
+    );
+
+    test('surfaces show in a run and change it', () {
+      const plain = FloorRun(position: Vec2(0, 4), size: Vec2(3, 1.5));
+      const mud = FloorRun(
+        position: Vec2(0, 4),
+        size: Vec2(3, 1.5),
+        surface: FloorSurface.mud,
+      );
+      expect(mud, isNot(plain));
+      expect(mud.hashCode, isNot(plain.hashCode));
+      expect('$mud', endsWith('mud'));
+      expect('$plain', isNot(contains('plain')));
+    });
+
+    test('bumps start and end on the ground, every half meter at most', () {
+      expect(hill.left, 10);
+      expect(hill.right, 16);
+      expect(hill.points.first, const Vec2(10, 4));
+      expect(hill.points.last.y, 4);
+      expect(hill.top, closeTo(3, 1e-9));
+      expect(hill.bottom, 4);
+      expect(hill.points, hasLength(1 + 8 + 4));
+      // Halfway along the first bump, at its crest.
+      expect(hill.heightAt(12), closeTo(3, 1e-9));
+      // Between the points at 11 and 11.5.
+      expect(hill.heightAt(11.25), closeTo((3.4375 + 3.12109375) / 2, 1e-9));
+      expect(hill.heightAt(9), 4);
+      expect(hill.heightAt(17), 4);
+      final pipe = CurvedRun.bumps(
+        kind: CurveKind.halfPipe,
+        left: 0,
+        ground: 4,
+        bumps: const [(6, -2)],
+      );
+      expect(pipe.bottom, closeTo(6, 1e-9));
+      expect(pipe.top, 4);
+    });
+
+    test('slopes are rounded, flat at both ends', () {
+      final up = CurvedRun.slope(left: 2, from: 4, to: 1, width: 6.6);
+      expect(up.kind, CurveKind.slope);
+      expect(up.points.first, const Vec2(2, 4));
+      expect(up.points.last.x, closeTo(8.6, 1e-9));
+      expect(up.points.last.y, 1);
+      expect(up.rises, isTrue);
+      expect(up.heightAt(5.3), closeTo(2.5, 1e-9));
+      // Flat where it meets the runs: the first step barely rises.
+      expect(4 - up.points[1].y, lessThan(0.1));
+      final down = CurvedRun.slope(left: 0, from: 1, to: 4, width: 6.6);
+      expect(down.rises, isFalse);
+      expect(down.bottom, 4);
+    });
+
+    test('curves have value equality and readable text', () {
+      final same = CurvedRun.bumps(
+        kind: CurveKind.hill,
+        left: 10,
+        ground: 4,
+        bumps: const [(4, 1), (2, 0.5)],
+      );
+      expect(hill, same);
+      expect(hill.hashCode, same.hashCode);
+      expect(
+        hill,
+        isNot(CurvedRun(kind: CurveKind.halfPipe, points: hill.points)),
+      );
+      expect(
+        hill,
+        isNot(CurvedRun(kind: CurveKind.hill, points: hill.points.sublist(1))),
+      );
+      expect(
+        hill,
+        isNot(
+          CurvedRun(
+            kind: CurveKind.hill,
+            points: [...hill.points.sublist(1), const Vec2(99, 4)],
+          ),
+        ),
+      );
+      expect('$hill', startsWith('Curve.hill(10.000, 4.000)'));
+    });
+
+    test('trampolines and loops expose their edges, equality and text', () {
+      const pad = Trampoline(position: Vec2(3, 4), width: 1.5);
+      expect((pad.left, pad.right, pad.top), (3, 4.5, 4));
+      expect(pad, const Trampoline(position: Vec2(3, 4), width: 1.5));
+      expect(pad, isNot(const Trampoline(position: Vec2(3, 4), width: 1)));
+      expect(
+        pad.hashCode,
+        const Trampoline(position: Vec2(3, 4), width: 1.5).hashCode,
+      );
+      expect('$pad', 'Trampoline(3.000, 4.000)1.500');
+      const loop = Loop(foot: Vec2(20, 4), radius: 2.5);
+      expect(loop.center, const Vec2(20, 1.5));
+      expect((loop.left, loop.right, loop.top), (17.5, 22.5, -1));
+      expect(loop, const Loop(foot: Vec2(20, 4), radius: 2.5));
+      expect(loop, isNot(const Loop(foot: Vec2(20, 4), radius: 2)));
+      expect(
+        loop.hashCode,
+        const Loop(foot: Vec2(20, 4), radius: 2.5).hashCode,
+      );
+      expect('$loop', 'Loop(20.000, 4.000)2.500');
+    });
+
+    test('levels count curves in their lowest point and canonical form', () {
+      final data = LevelData(
+        seed: 's',
+        level: 1,
+        ballStart: const Vec2(0.75, 3),
+        goal: const Vec2(5, 2.25),
+        floors: const [FloorRun(position: Vec2(0, 4), size: Vec2(4.5, 1.5))],
+        ramps: const [],
+        boosts: const [],
+        checkpoints: const [],
+        sections: const [],
+        estimatedDuration: 10,
+        curves: [
+          CurvedRun.bumps(
+            kind: CurveKind.halfPipe,
+            left: 4.5,
+            ground: 4,
+            bumps: const [(12, -3)],
+          ),
+        ],
+        trampolines: const [Trampoline(position: Vec2(1, 4), width: 1.5)],
+        loops: const [Loop(foot: Vec2(2, 4), radius: 1)],
+      );
+      expect(data.lowestPoint, closeTo(7, 1e-9));
+      final text = data.canonical;
+      expect(text, contains('Curve.halfPipe'));
+      expect(text, contains('Trampoline'));
+      expect(text, contains('Loop'));
+    });
+  });
 }

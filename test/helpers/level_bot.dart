@@ -25,7 +25,10 @@ typedef Landing = ({double left, double right, double top});
 /// start of spikes when a gap, spikes or a step up follows, and steers in the
 /// air to land on the ground beyond. It rides ferries, uses an orb's charge
 /// when a flight falls short, never jumps before ramps or drops, and lets
-/// the boosts act on their own (design D9 of add-physical-mechanics).
+/// the boosts act on their own (design D9 of add-physical-mechanics). It
+/// keeps pushing over curves and through loops, and after a trampoline's
+/// bounce chooses the ground beyond it (design D9 of
+/// add-curved-terrain-and-physics).
 class LevelBot {
   new(this.data);
 
@@ -56,10 +59,16 @@ class LevelBot {
   /// The ferry the bot has set off to board, by index.
   int? _boarding;
 
+  /// The ball's vertical speed in the last frame, to notice a bounce.
+  double _lastVy = 0;
+
   /// The world y of the terrain surface at [x], or null over a gap.
   double? surfaceAt(double x) {
     for (final run in data.floors) {
       if (run.left <= x && x < run.right) return run.top;
+    }
+    for (final curve in data.curves) {
+      if (curve.left <= x && x < curve.right) return curve.heightAt(x);
     }
     for (final ramp in data.ramps) {
       if (ramp.left <= x && x < ramp.right) {
@@ -110,6 +119,20 @@ class LevelBot {
     final scale = ball.body.gravityScale;
     _lowGravity = scale < 1 ? _lowGravity + _dt : 0;
     _sinceJump += _dt;
+    // A trampoline just threw the ball up: it lands beyond the pad's run.
+    const bounce = TrampolineComponent.launchSpeed * 0.8;
+    if (v.y < -bounce && _lastVy > -bounce) {
+      for (final pad in data.trampolines) {
+        if (p.x < pad.left - 1 || p.x > pad.right + 1) continue;
+        _jumped = true;
+        _target = null;
+        _pending = null;
+        _launchEnd = data.floors
+            .firstWhere((run) => run.left <= pad.left && pad.right <= run.right)
+            .right;
+      }
+    }
+    _lastVy = v.y;
     final action = _decide(ball, p, v, bottom, scale);
     if (!action.jump) return action;
     if (_sinceJump < 0.3) return (push: action.push, jump: false);
@@ -124,6 +147,8 @@ class LevelBot {
     double bottom,
     double scale,
   ) {
+    // A loop carries the ball around on its own.
+    if (ball.isInLoop) return (push: 1, jump: false);
     final ferry = _ferry(ball, p, v, bottom);
     if (ferry != null) return ferry;
     if (ball.isOnGround) {
@@ -143,6 +168,11 @@ class LevelBot {
         for (final ramp in data.ramps) {
           if (ramp.left - 0.3 <= p.x && p.x <= ramp.right + 0.3) {
             _launchEnd = ramp.right;
+          }
+        }
+        for (final curve in data.curves) {
+          if (curve.left - 0.3 <= p.x && p.x <= curve.right + 0.3) {
+            _launchEnd = curve.right;
           }
         }
         return (push: 1, jump: false);
@@ -166,7 +196,15 @@ class LevelBot {
       // too tall to jump has a jump boost or an orb right before it: the
       // boost launches the ball on its own, and after the orb the ball
       // jumps at the riser and again at the apex.
-      final rise = climb > 0.05 ? _riseTime(ball, climb + 0.05) : null;
+      final rise = climb > 0.05
+          ? _riseTime(
+              ball,
+              climb + 0.05,
+              strength: run.surface == FloorSurface.mud
+                  ? BallComponent.mudJump
+                  : 1,
+            )
+          : null;
       // Before a step up onto a short tread, slows down so the jump lands
       // on it, as a player would.
       if (rise != null && run.right - p.x < 8 && v.x > _shortTreadSpeed) {
@@ -225,8 +263,24 @@ class LevelBot {
     final ferryAhead = data.platforms.any(
       (route) => (route.start.x - 0.15 - target.right).abs() < 1e-6,
     );
+    // On a loop's run, lands before its boost, which only acts on the
+    // ground.
+    final loopBoost = data.loops
+        .where((loop) => target.left <= loop.left && loop.left <= target.right)
+        .map((loop) => loop.left - loopBoostLead)
+        .where((boost) => boost > p.x)
+        .firstOrNull;
+    // On a trampoline island, lands on its far half to bounce on from there.
+    final island = data.trampolines.any(
+      (pad) =>
+          pad.left <= target.left + 1e-6 && target.right <= pad.right + 1e-6,
+    );
     final high = ferryAhead
         ? target.left + 0.6
+        : island
+        ? target.right - 0.6
+        : loopBoost != null
+        ? math.max(target.left + 0.6, loopBoost - 1.2)
         : math.max(
             target.left + 0.6,
             target.right - math.min(1.5, (target.right - target.left) / 2),
@@ -324,11 +378,15 @@ class LevelBot {
     return null;
   }
 
-  /// The time a jump takes to rise [height] meters, or null if it never
-  /// gets that high.
-  double? _riseTime(BallComponent ball, double height) {
+  /// The time a jump of [strength] takes to rise [height] meters, or null
+  /// if it never gets that high.
+  double? _riseTime(
+    BallComponent ball,
+    double height, {
+    required double strength,
+  }) {
     const damping = 1 / (1 + _dt * BallComponent.linearDamping);
-    var speed = BallComponent.jumpImpulse / ball.body.mass;
+    var speed = BallComponent.jumpImpulse * strength / ball.body.mass;
     var risen = 0.0;
     for (var time = _dt; speed > 0; time += _dt) {
       speed = (speed - _gravity * _dt) * damping;

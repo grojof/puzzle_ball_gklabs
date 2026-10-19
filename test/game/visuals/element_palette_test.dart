@@ -21,6 +21,11 @@ void main() {
         ElementPalette.portal,
         ElementPalette.orb,
         ElementPalette.hazard,
+        ElementPalette.trampoline,
+        ElementPalette.beltMark,
+        ElementPalette.ice,
+        ElementPalette.mud,
+        ElementPalette.track,
       ];
       for (final palette in BiomePalette.reference.values) {
         for (final background in palette.all) {

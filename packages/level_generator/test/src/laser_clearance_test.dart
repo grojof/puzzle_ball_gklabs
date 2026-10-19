@@ -10,12 +10,18 @@ void main() {
     List<Ramp> ramps = const [],
     List<MovingPlatform> platforms = const [],
     List<Boost> boosts = const [],
+    List<CurvedRun> curves = const [],
+    List<Trampoline> trampolines = const [],
+    List<Loop> loops = const [],
   }) => LaserClearance(
     envelope: testEnvelope,
     floors: floors,
     ramps: ramps,
     platforms: platforms,
     boosts: boosts,
+    curves: curves,
+    trampolines: trampolines,
+    loops: loops,
   );
 
   group('LaserClearance', () {
@@ -130,6 +136,60 @@ void main() {
       );
       expect(clearance.clearance(15), isNull);
       expect(clearance.lowestEnd(15), isNull);
+    });
+  });
+
+  group('LaserClearance with the new physics', () {
+    test("counts a hill's crest, and the flight off it", () {
+      final hill = CurvedRun.bumps(
+        kind: CurveKind.hill,
+        left: 10,
+        ground: 4,
+        bumps: const [(8, 2)],
+      );
+      final clearance = route(curves: [hill]);
+      expect(clearance.routeTop(14), closeTo(2, 1e-9));
+      // A ball flying off the crest passes past the hill's end.
+      expect(clearance.routeTop(19.5), closeTo(2, 1e-9));
+      expect(clearance.routeTop(28), 4);
+      final pipe = CurvedRun.bumps(
+        kind: CurveKind.halfPipe,
+        left: 10,
+        ground: 4,
+        bumps: const [(8, -2)],
+      );
+      expect(route(curves: [pipe]).routeTop(14), 4);
+    });
+
+    test('rises above a launch off a slope up, not off a slope down', () {
+      final up = CurvedRun.slope(left: 10, from: 4, to: 2, width: 4.4);
+      expect(route(curves: [up]).clearance(12), rampClearance);
+      final down = CurvedRun.slope(left: 10, from: 4, to: 6, width: 4.4);
+      expect(route(curves: [down]).clearance(12), testEnvelope.jumpHeight);
+    });
+
+    test('rises above a trampoline bounce, and none goes near a loop', () {
+      const pad = Trampoline(position: Vec2(5, 4), width: 1.5);
+      final bounced = route(trampolines: const [pad]);
+      expect(bounced.clearance(10), testEnvelope.trampolineHeight);
+      expect(route().clearance(10), testEnvelope.jumpHeight);
+      const loop = Loop(foot: Vec2(20, 4), radius: 2.5);
+      final looped = route(loops: const [loop]);
+      expect(looped.clearance(30), isNull);
+      expect(looped.lowestEnd(30), isNull);
+      expect(looped.clearance(20 + 2.5 + loopClearance + 1), isNotNull);
+    });
+
+    test('a trampoline extends the step from its run to the next', () {
+      const near = FloorRun(position: Vec2(0, 4), size: Vec2(6, tileSize));
+      const far = FloorRun(position: Vec2(40, 4), size: Vec2(6, tileSize));
+      final plain = route(floors: const [near, far]);
+      final bounced = route(
+        floors: const [near, far],
+        trampolines: const [Trampoline(position: Vec2(4.5, 4), width: 1.5)],
+      );
+      expect(plain.routeTop(25), isNull);
+      expect(bounced.routeTop(25), 4);
     });
   });
 }

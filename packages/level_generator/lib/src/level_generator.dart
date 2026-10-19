@@ -46,13 +46,19 @@ const _referenceSpeed = 5.0;
 /// Extra time an obstacle takes, in seconds.
 const _obstacleOverhead = 0.8;
 
-/// tan(35°): ramps are at most this steep.
-const _maxRampSlope = 0.7002075382097097;
+/// How wide a rounded slope is per meter of height: its steepest slope is
+/// 1.5 times its height over its width, so this keeps it as gentle as a
+/// ramp of 35°.
+const _slopeStretch = 2.2;
 
 /// How long a laser barrier hangs, and its rhythm, in meters and seconds.
 const _laserLength = 10.0;
 const _laserOn = 1.4;
 const _laserOff = 1.0;
+
+/// How wide a bump is per meter of height: its steepest slope is 3.08 times
+/// its height over its width, so this keeps it as gentle as a ramp.
+const _bumpStretch = 4.4;
 
 /// The least height a tower climbs, in meters.
 const _towerHeight = 8.0;
@@ -70,11 +76,11 @@ const _spikesTime = 3.0;
 const _ferryTime = 10.0;
 
 /// How often an obstacle is one of the level's featured kinds.
-const _featuredShare = 0.7;
+const _featuredShare = 0.75;
 
 /// How often an obstacle simply heads for the course's target height,
 /// whatever the level features.
-const _journeyShare = 0.15;
+const _journeyShare = 0.25;
 
 /// How far above and below its start a course may wander, in meters
 /// (design D4 of raise-difficulty-and-pace).
@@ -112,6 +118,9 @@ class _Builder {
   final checkpoints = <Checkpoint>[];
   final hazards = <SpikeStrip>[];
   final platforms = <MovingPlatform>[];
+  final curves = <CurvedRun>[];
+  final trampolines = <Trampoline>[];
+  final loops = <Loop>[];
   final sections = <SectionKind>[];
 
   /// Where laser barriers should hang, and for a tower's top, the height
@@ -133,6 +142,9 @@ class _Builder {
 
   /// Whether the current run crumbles.
   bool runCrumbling = false;
+
+  /// What the current run's top is made of.
+  FloorSurface runSurface = FloorSurface.plain;
 
   /// The height the course is heading for, in world y; null until chosen.
   /// Climbs or descents towards it are favored, so the course travels up
@@ -219,6 +231,9 @@ class _Builder {
     hazards: List.unmodifiable(hazards),
     platforms: List.unmodifiable(platforms),
     lasers: List.unmodifiable(_lasers()),
+    curves: List.unmodifiable(curves),
+    trampolines: List.unmodifiable(trampolines),
+    loops: List.unmodifiable(loops),
     sections: List.unmodifiable(sections),
     estimatedDuration: duration,
     featured: List.unmodifiable(featured),
@@ -234,6 +249,9 @@ class _Builder {
       ramps: ramps,
       platforms: platforms,
       boosts: boosts,
+      curves: curves,
+      trampolines: trampolines,
+      loops: loops,
     );
     final lasers = <LaserBarrier>[];
     for (final site in _laserSites) {
@@ -325,6 +343,24 @@ class _Builder {
         _tower();
       case SectionKind.descent:
         _descent();
+      case SectionKind.hill:
+        _hill();
+      case SectionKind.halfPipe:
+        _halfPipe();
+      case SectionKind.trampolineHops:
+        _trampolineHops();
+      case SectionKind.conveyor:
+        _surfaceGap(
+          random.chance(0.5)
+              ? FloorSurface.conveyorForward
+              : FloorSurface.conveyorBackward,
+        );
+      case SectionKind.ice:
+        _surfaceGap(FloorSurface.ice);
+      case SectionKind.mud:
+        _mud();
+      case SectionKind.loop:
+        _loop();
     }
     sections.add(kind);
     if (kind == SectionKind.flat) {
@@ -410,7 +446,8 @@ class _Builder {
   void _flat(int tiles) {
     final distance = tiles * tileSize;
     x += distance;
-    speed = envelope.speedAfter(
+    speed = envelope.speedOn(
+      runSurface,
       _landedLate ? tileSize : distance,
       startSpeed: speed,
     );
@@ -424,51 +461,37 @@ class _Builder {
         position: Vec2(runStart, y),
         size: Vec2(runLength, tileSize + runFill),
         crumbling: runCrumbling,
+        surface: runSurface,
       ),
     );
   }
 
-  void _openRun({double fill = 0}) {
+  void _openRun({double fill = 0, FloorSurface surface = FloorSurface.plain}) {
     runStart = x;
     runFill = fill;
     runCrumbling = false;
+    runSurface = surface;
   }
 
   double _rampHeight() => random.range(0.75, 0.75 + 2.25 * intensity);
 
+  /// A rounded slope up [height] meters: pushing climbs it, and leaves at
+  /// [MovementEnvelope.curveExitSpeed] or more (design D2 of
+  /// add-curved-terrain-and-physics).
   void _rampUp(double height) {
-    final width = math.max(height / _maxRampSlope, tileSize);
-    _closeRun();
-    ramps.add(
-      Ramp(
-        position: Vec2(x, y - height),
-        size: Vec2(width, height),
-        ascending: true,
-      ),
-    );
-    x += width;
-    y -= height;
-    _openRun();
-    speed *= 0.7;
-    _time(width, obstacle: true);
+    _slope(-height, math.max(height * _slopeStretch, tileSize));
+    speed = envelope.curveExitSpeed;
   }
 
-  /// A ramp down [height] meters. A player faster than the ramp's slope
+  /// A rounded slope down [height] meters. A player faster than the slope
   /// flies off its top as off a ledge, so the landing of [landingTiles]
   /// after it caps the speed as a drop does.
   void _rampDown(double height, {int? landingTiles}) {
     final width = math.max(
-      height / _maxRampSlope * random.range(1, 1.4),
+      height * _slopeStretch * random.range(1, 1.4),
       tileSize,
     );
-    _closeRun();
-    ramps.add(
-      Ramp(position: Vec2(x, y), size: Vec2(width, height), ascending: false),
-    );
-    x += width;
-    y += height;
-    _openRun();
-    _time(width, obstacle: true);
+    _slope(height, width);
     _land(
       envelope.fallTime(height),
       covered: width,
@@ -476,9 +499,24 @@ class _Builder {
     );
   }
 
+  /// A rounded slope from the cursor, [drop] meters lower (negative to
+  /// rise), [width] long.
+  void _slope(double drop, double width) {
+    _closeRun();
+    final curve = CurvedRun.slope(left: x, from: y, to: y + drop, width: width);
+    curves.add(curve);
+    _time(width, obstacle: true);
+    x = curve.right;
+    y += drop;
+    _openRun();
+  }
+
   double _gapRise() {
     if (random.chance(0.5)) return 0;
-    return random.range(-2.5, 0.6 * envelope.maxClimb(margin));
+    return random.range(
+      -2.5,
+      0.6 * envelope.maxClimb(margin, surface: runSurface),
+    );
   }
 
   /// A gap landing [rise] higher, using a share of the reach at the current
@@ -490,9 +528,10 @@ class _Builder {
     _jumpGap(math.min(width, reach * margin), rise, landingTiles: landingTiles);
   }
 
-  /// The full reach of a jump at the current speed, landing [rise] higher.
+  /// The full reach of a jump from the current run at the current speed,
+  /// landing [rise] higher.
   double _reach(double rise) =>
-      envelope.maxGap(speed: speed, rise: rise, margin: 1);
+      envelope.maxGap(speed: speed, rise: rise, margin: 1, surface: runSurface);
 
   /// A gap of [width] landing [rise] higher, flown in [time] seconds (a
   /// plain jump's air time by default) onto a landing of [landingTiles].
@@ -521,7 +560,8 @@ class _Builder {
     }
   }
 
-  double _stepHeight() => math.max(0.6, envelope.maxClimb(1) * _share());
+  double _stepHeight() =>
+      math.max(0.6, envelope.maxClimb(1, surface: runSurface) * _share());
 
   void _stepUp(double height) {
     _closeRun();
@@ -790,6 +830,111 @@ class _Builder {
       0,
       time: envelope.gravityBoostJumpDistance / envelope.topSpeed,
     );
+  }
+
+  /// A curve of [bumps] from the cursor, on level ground: pushing climbs
+  /// any of them, and leaves at [MovementEnvelope.curveExitSpeed] or more
+  /// (design D2 of add-curved-terrain-and-physics).
+  void _curve(CurveKind kind, List<(double, double)> bumps) {
+    _closeRun();
+    final curve = CurvedRun.bumps(kind: kind, left: x, ground: y, bumps: bumps);
+    curves.add(curve);
+    _time(curve.right - x, obstacle: true);
+    x = curve.right;
+    _openRun();
+    speed = envelope.curveExitSpeed;
+    _landedLate = false;
+  }
+
+  /// One to three bumps in a row, each as gentle as a ramp. A fast ball
+  /// takes off from a crest and comes down on the next slope or the
+  /// landing.
+  void _hill() {
+    final count = random.intIn(1, 3);
+    _curve(CurveKind.hill, [
+      for (var i = 0; i < count; i++) _bump(_rampHeight()),
+    ]);
+  }
+
+  /// A smooth dip 1.5–3 m deep, to roll through and climb out of.
+  void _halfPipe() {
+    final (width, depth) = _bump(random.range(1.5, 1.5 + 1.5 * intensity));
+    _curve(CurveKind.halfPipe, [(width, -depth)]);
+  }
+
+  /// A bump of [height] and the width that keeps it gentle.
+  (double, double) _bump(double height) =>
+      (math.max(tileSize, height * _bumpStretch), height);
+
+  /// One to three trampoline islands across a pit: a jump onto the first, then
+  /// bounces beyond a jump's reach onto the next island or the landing.
+  void _trampolineHops() {
+    const island = 2 * tileSize;
+    final islands = random.intIn(1, 3);
+    _gap(random.range(-2, 0), landingTiles: 2);
+    for (var i = 0; i < islands; i++) {
+      // The island is the pad: the ball bounces where it lands.
+      trampolines.add(Trampoline(position: Vec2(x, y), width: island));
+      x += island;
+      _time(island);
+      final last = i == islands - 1;
+      final rise = random.range(-1.5, 1.5);
+      // The ball bounces where it lands on the island: count from its middle.
+      final width = _boosted(
+        envelope.maxTrampolineGap(speed: speed, rise: rise, margin: 1) -
+            island / 2,
+        _reach(rise),
+      );
+      _jumpGap(
+        width,
+        rise,
+        time: envelope.trampolineAirTime(rise),
+        landingTiles: last ? null : 2,
+      );
+    }
+  }
+
+  /// A run of [surface] before a gap sized from the speed and jump it allows
+  /// (design D4 of add-curved-terrain-and-physics).
+  void _surfaceGap(FloorSurface surface) {
+    _surfaceRun(surface, tiles: random.intIn(3, 5));
+    _gap(_gapRise());
+  }
+
+  /// A run of mud before a gap or a climb within its weaker jump.
+  void _mud() {
+    _surfaceRun(FloorSurface.mud, tiles: random.intIn(2, 3));
+    if (random.chance(0.5)) {
+      _stepUp(_stepHeight());
+    } else {
+      _gap(_gapRise());
+    }
+  }
+
+  /// Starts a run of [surface] [tiles] long at the cursor, at the same
+  /// height.
+  void _surfaceRun(FloorSurface surface, {required int tiles}) {
+    _closeRun();
+    _openRun(surface: surface);
+    _flat(tiles);
+  }
+
+  /// A run-up, a speed boost just before a loop, and the loop, all on one
+  /// run: the boost's speed carries the ball around (design D5 of
+  /// add-curved-terrain-and-physics).
+  void _loop() {
+    _flat(2);
+    boosts.add(Boost(position: Vec2(x, y - 0.6), type: BoostType.speed));
+    final foot = x + loopBoostLead + loopRadius;
+    loops.add(Loop(foot: Vec2(foot, y), radius: loopRadius));
+    final end = foot + loopRadius + tileSize;
+    _time(end - x, obstacle: true);
+    x = end;
+    speed = envelope.curveExitSpeed;
+    _landedLate = false;
+    // The boost belongs to the loop's run alone.
+    _closeRun();
+    _openRun();
   }
 
   /// Places a checkpoint at the start of the current run once the time since

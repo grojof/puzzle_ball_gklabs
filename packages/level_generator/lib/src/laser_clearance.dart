@@ -28,6 +28,10 @@ const laserMargin = 1.0;
 /// up, jumping as it leaves: the clearance near one, in meters.
 const rampClearance = 4.5;
 
+/// How far either side of a loop no barrier hangs, in meters (design D7 of
+/// add-curved-terrain-and-physics).
+const loopClearance = 20.0;
+
 /// The route around a laser barrier: the ground and what launches the ball,
 /// so a barrier can hang above everything the intended route reaches
 /// (design D9 of raise-difficulty-and-pace).
@@ -39,6 +43,9 @@ class LaserClearance {
     required this.ramps,
     required this.platforms,
     required this.boosts,
+    this.curves = const [],
+    this.trampolines = const [],
+    this.loops = const [],
   });
 
   /// What the ball can do.
@@ -55,6 +62,15 @@ class LaserClearance {
 
   /// The route's boosts and orbs.
   final List<Boost> boosts;
+
+  /// The route's hills and half-pipes.
+  final List<CurvedRun> curves;
+
+  /// The route's trampolines.
+  final List<Trampoline> trampolines;
+
+  /// The route's loops.
+  final List<Loop> loops;
 
   bool _near(double left, double right, double x) =>
       right >= x - laserWindow && left <= x + laserWindow;
@@ -82,6 +98,16 @@ class LaserClearance {
     for (final ramp in ramps) {
       if (over(ramp.left, ramp.right)) see(ramp.top);
     }
+    for (final curve in curves) {
+      // A fast ball takes off from a crest and flies on past the curve.
+      final ground = curve.points.first.y;
+      final flight = curve.top < ground
+          ? rollOffSpeed *
+                envelope.topSpeed *
+                envelope.fallTime(ground - curve.top)
+          : 0.0;
+      if (over(curve.left, curve.right + flight)) see(curve.top);
+    }
     for (final platform in platforms) {
       final left = math.min(platform.start.x, platform.end.x);
       final right =
@@ -92,10 +118,23 @@ class LaserClearance {
   }
 
   /// How far a jump from [floor] towards [next] can carry, in meters: a
-  /// plain jump at top speed, or a speed boost's or an orb's on [floor].
+  /// plain jump at top speed, or a speed boost's, an orb's or a
+  /// trampoline's on [floor].
   double _jumpReach(FloorRun floor, FloorRun next) {
-    final time = envelope.airTime(floor.top - next.top) ?? envelope.flightTime;
+    final rise = floor.top - next.top;
+    final time = envelope.airTime(rise) ?? envelope.flightTime;
     var reach = envelope.topSpeed * time;
+    for (final pad in trampolines) {
+      if (pad.right < floor.left || pad.left > floor.right) continue;
+      reach = math.max(
+        reach,
+        envelope.maxTrampolineGap(
+          speed: envelope.topSpeed,
+          rise: rise,
+          margin: 1,
+        ),
+      );
+    }
     for (final boost in boosts) {
       if (boost.position.x < floor.left || boost.position.x > floor.right) {
         continue;
@@ -138,11 +177,21 @@ class LaserClearance {
   }
 
   /// How high the route's jumps may rise near [x], above its ground, in
-  /// meters: a plain jump's, a ramp launch's, an orb's double jump's or a
-  /// jump boost's. Null where a gravity boost serves, whose floaty jumps
-  /// rise too high for a barrier.
+  /// meters: a plain jump's, a ramp launch's, an orb's double jump's, a
+  /// trampoline's or a jump boost's. Null where a gravity boost serves,
+  /// whose floaty jumps rise too high for a barrier, and near a loop.
   double? clearance(double x) {
+    for (final loop in loops) {
+      if (loop.right >= x - loopClearance && loop.left <= x + loopClearance) {
+        return null;
+      }
+    }
     var clearance = envelope.jumpHeight;
+    for (final pad in trampolines) {
+      if (_near(pad.left, pad.right, x)) {
+        clearance = math.max(clearance, envelope.trampolineHeight);
+      }
+    }
     for (final boost in boosts) {
       if ((boost.position.x - x).abs() > laserWindow) continue;
       switch (boost.type) {
@@ -158,6 +207,11 @@ class LaserClearance {
     }
     for (final ramp in ramps) {
       if (ramp.ascending && _near(ramp.left, ramp.right, x)) {
+        clearance = math.max(clearance, rampClearance);
+      }
+    }
+    for (final curve in curves) {
+      if (curve.rises && _near(curve.left, curve.right, x)) {
         clearance = math.max(clearance, rampClearance);
       }
     }

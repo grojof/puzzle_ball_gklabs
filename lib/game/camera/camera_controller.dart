@@ -59,10 +59,22 @@ class CameraController {
   static const groundSmoothing = 0.35;
   static const lookSmoothing = 0.5;
   static const zoomSmoothing = 0.3;
+  static const loopSmoothing = 0.4;
+
+  /// How much room to leave around a loop, in meters (design D8 of
+  /// add-curved-terrain-and-physics).
+  static const loopMargin = 2.0;
 
   List<FloorRun> _floors = const [];
   List<Ramp> _ramps = const [];
+  List<CurvedRun> _curves = const [];
   List<Boost> _boosts = const [];
+  List<Loop> _loops = const [];
+
+  /// The loop last framed, and how far the view has moved onto it, from 0
+  /// to 1.
+  Loop? _loop;
+  final _Spring _loopBlend = _Spring(loopSmoothing);
   Vector2 _viewport = Vector2(800, 360);
 
   final _Spring _ground = _Spring(groundSmoothing);
@@ -82,6 +94,8 @@ class CameraController {
   void setLevel(LevelData level) {
     _floors = [...level.floors]..sort((a, b) => a.left.compareTo(b.left));
     _ramps = [...level.ramps]..sort((a, b) => a.left.compareTo(b.left));
+    _curves = [...level.curves]..sort((a, b) => a.left.compareTo(b.left));
+    _loops = level.loops;
     _boosts = [...level.boosts]
       ..sort((a, b) => a.position.x.compareTo(b.position.x));
   }
@@ -112,6 +126,8 @@ class CameraController {
     _ground.snap(_groundAround(ball, 0) ?? ball.y);
     _look.snap(0);
     _zoom.snap(restZoom);
+    _loopBlend.snap(0);
+    _loop = null;
     _sinceBoost = double.infinity;
     _frame(ball);
   }
@@ -125,17 +141,43 @@ class CameraController {
       -maxLookBehind,
       maxLookAhead,
     );
+    final loop = _loopAround(ball);
+    if (loop != null) _loop = loop;
+    _loopBlend.target = loop == null ? 0 : 1;
     _zoom.target =
         restZoom *
         [
           _boostFactor(dt, ball, velocity),
           _speedFactor(velocity),
           _altitudeFactor(ball),
+          if (loop != null) _loopFactor(loop),
         ].reduce(math.min);
     _ground.step(dt);
     _look.step(dt);
     _zoom.step(dt);
+    _loopBlend.step(dt);
     _frame(ball);
+  }
+
+  /// The loop the ball is riding through, if any.
+  Loop? _loopAround(Vector2 ball) {
+    for (final loop in _loops) {
+      if (ball.x >= loop.left &&
+          ball.x <= loop.right &&
+          ball.y <= loop.foot.y &&
+          ball.y >= loop.top - 1) {
+        return loop;
+      }
+    }
+    return null;
+  }
+
+  /// Zooms out, if needed, to fit [loop] and some room around it.
+  double _loopFactor(Loop loop) {
+    final pixelsPerMeter = restZoom * metersToPixels;
+    final visibleHeight = _viewport.y / pixelsPerMeter;
+    final needed = 2 * loop.radius + 2 * loopMargin;
+    return math.min(1, visibleHeight / needed);
   }
 
   /// Places the centre from the smoothed values, keeping the ball in view.
@@ -146,7 +188,16 @@ class CameraController {
     final lowest = ball.y - (maxBallFraction - 0.5) * visibleHeight;
     final highest = ball.y - (minBallFraction - 0.5) * visibleHeight;
     y = y.clamp(lowest, highest);
-    _centre.setValues(ball.x + _look.value, y);
+    var x = ball.x + _look.value;
+    // Over a loop, the view settles on its centre instead of following
+    // each turn of the ball.
+    final loop = _loop;
+    final blend = _loopBlend.value.clamp(0.0, 1.0);
+    if (loop != null && blend > 0) {
+      x += (loop.center.x - x) * blend;
+      y += (loop.center.y - y) * blend;
+    }
+    _centre.setValues(x, y);
   }
 
   /// The highest ground (smallest y) under the ball and up to [groundReach]
@@ -168,7 +219,9 @@ class CameraController {
     final run = _find(_floors, x, (r) => r.left, (r) => r.right);
     if (run != null) return run.top;
     final ramp = _find(_ramps, x, (r) => r.left, (r) => r.right);
-    if (ramp == null) return null;
+    if (ramp == null) {
+      return _find(_curves, x, (c) => c.left, (c) => c.right)?.heightAt(x);
+    }
     final t = (x - ramp.left) / (ramp.right - ramp.left);
     return ramp.ascending
         ? ramp.bottom + (ramp.top - ramp.bottom) * t
