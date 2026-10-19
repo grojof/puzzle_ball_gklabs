@@ -59,7 +59,7 @@ class CameraController {
   static const groundSmoothing = 0.35;
   static const lookSmoothing = 0.5;
   static const zoomSmoothing = 0.3;
-  static const loopSmoothing = 0.4;
+  static const loopSmoothing = 0.3;
 
   /// How much room to leave around a loop, in meters (design D8 of
   /// add-curved-terrain-and-physics).

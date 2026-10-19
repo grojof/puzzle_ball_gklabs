@@ -728,7 +728,7 @@ void main() {
       'draws a level with every element',
       () => testGame(
         images: images,
-        levelFor: (_) => levelGenerator.generate(seed: 'render', level: 45),
+        levelFor: (_) => levelGenerator.generate(seed: 'render0', level: 45),
       ),
       (game) async {
         final level = game.level!;
@@ -736,6 +736,9 @@ void main() {
         expect(level.data.boosts, isNotEmpty);
         expect(level.data.checkpoints, isNotEmpty);
         expect(level.data.floors.any((run) => run.size.y > 1.5), isTrue);
+        expect(level.data.trampolines, isNotEmpty);
+        expect(level.data.loops, isNotEmpty);
+        expect(level.data.adrenaline, isNotEmpty);
         // Move the camera along the level so every component is in view once.
         for (final run in level.data.floors) {
           game.camera.moveTo(Vector2(run.left + run.size.x / 2, run.top));

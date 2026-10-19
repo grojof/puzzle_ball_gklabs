@@ -5,6 +5,7 @@ import 'package:flame_forge2d/flame_forge2d.dart';
 import 'package:flame_test/flame_test.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:level_generator/level_generator.dart';
+import 'package:puzzle_ball_gklabs/game/ball_odyssey_game.dart';
 import 'package:puzzle_ball_gklabs/game/components/components.dart';
 import 'package:puzzle_ball_gklabs/game/components/level_component.dart';
 
@@ -13,7 +14,7 @@ import 'game_helpers.dart';
 const double _dt = 1 / 60;
 
 /// The world's gravity, in m/s².
-const double _gravity = 10;
+const double _gravity = BallOdysseyGame.gravity;
 
 /// The speed the bot slows to before a step up onto a short tread, in m/s.
 const double _shortTreadSpeed = 4.5;
@@ -61,6 +62,9 @@ class LevelBot {
 
   /// The ball's vertical speed in the last frame, to notice a bounce.
   double _lastVy = 0;
+
+  /// The boost running in the last frame, to notice a jump boost.
+  BoostType? _lastBoost;
 
   /// The world y of the terrain surface at [x], or null over a gap.
   double? surfaceAt(double x) {
@@ -133,6 +137,26 @@ class LevelBot {
       }
     }
     _lastVy = v.y;
+    // A jump boost just launched the ball, maybe in mid-air: it lands
+    // beyond the boost's run.
+    final boost = ball.activeBoost;
+    if (boost == BoostType.jump && _lastBoost != BoostType.jump) {
+      for (final run in data.floors) {
+        if (p.x < run.left - 1 || p.x > run.right + 0.5) continue;
+        final on = data.boosts.any(
+          (b) =>
+              b.type == BoostType.jump &&
+              b.position.x >= run.left &&
+              b.position.x <= run.right,
+        );
+        if (!on) continue;
+        _jumped = true;
+        _target = null;
+        _pending = null;
+        _launchEnd = run.right;
+      }
+    }
+    _lastBoost = boost;
     final action = _decide(ball, p, v, bottom, scale);
     if (!action.jump) return action;
     if (_sinceJump < 0.3) return (push: action.push, jump: false);
@@ -215,12 +239,29 @@ class LevelBot {
           return (push: -1, jump: false);
         }
       }
+      // Likewise before a drop onto a single tile, unless spikes below call
+      // for a jump over them.
+      if (climb < -0.05 &&
+          run.right - p.x < 6 &&
+          v.x > _shortTreadSpeed &&
+          _spikedLanding(run) == null) {
+        final tread = data.floors.where(
+          (floor) => (floor.left - run.right).abs() < 1e-6,
+        );
+        if (tread.isNotEmpty && tread.first.size.x <= tileSize + 1e-6) {
+          return (push: -1, jump: false);
+        }
+      }
       // Against a riser the ball stops a radius short of the edge.
       final lead = rise != null
           ? math.max(0.25, v.x * rise)
           : math.max(climb > 0.05 ? 0.3 : 0.15, v.x * 0.04);
       if (run.right - p.x > lead) return (push: 1, jump: false);
-      final jump = next == null || climb > 0.05;
+      // Off a ledge onto ground with spikes just past it, jumps clear of
+      // them, as a player would.
+      final spikedBelow = climb < -0.05 && _spikedLanding(run) != null;
+      final jump = next == null || climb > 0.05 || spikedBelow;
+      if (spikedBelow) _pending = _spikedLanding(run);
       if (jump) _jumped = true;
       return (push: 1, jump: jump);
     }
@@ -230,7 +271,11 @@ class LevelBot {
     // Commit to a landing at take-off, as a player does.
     final target = _target ??= _pending ?? _landingRun(p.x, bottom);
     if (target == null) return (push: 1, jump: false);
-    final force = BallComponent.moveForce / ball.body.mass;
+    // A rush pushes harder, in the air too.
+    final force =
+        BallComponent.moveForce *
+        (ball.isRushing ? BallComponent.rushGain : 1) /
+        ball.body.mass;
     double? landingWith(double push) => _landingX(
       p,
       v,
@@ -303,6 +348,19 @@ class LevelBot {
     return (push: low, jump: false);
   }
 
+  /// After a drop from [ledge] onto a run whose spikes start within 3.5 m, the
+  /// stretch clear of spikes beyond them; null otherwise.
+  Landing? _spikedLanding(FloorRun ledge) {
+    for (final below in data.floors) {
+      if ((below.left - ledge.right).abs() > 1e-6) continue;
+      final strips = _stripsOn(below);
+      if (strips.isEmpty || strips.first.left - below.left > 3.5) return null;
+      return _clear(below)
+          .firstWhere((stretch) => stretch.left >= strips.first.right - 1e-6);
+    }
+    return null;
+  }
+
   /// Waits for a ferry at the edge, boards it while it is docked, rides it
   /// and gets off at the far edge; null away from ferries.
   ({double push, bool jump})? _ferry(
@@ -316,7 +374,11 @@ class LevelBot {
     final ferries = level.children
         .whereType<MovingPlatformComponent>()
         .toList();
-    final force = BallComponent.moveForce / ball.body.mass;
+    // A rush pushes harder, in the air too.
+    final force =
+        BallComponent.moveForce *
+        (ball.isRushing ? BallComponent.rushGain : 1) /
+        ball.body.mass;
     for (var i = 0; i < ferries.length; i++) {
       final ferry = ferries[i];
       final route = data.platforms[i];

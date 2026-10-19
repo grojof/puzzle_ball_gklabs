@@ -47,7 +47,10 @@ class BallOdysseyGame extends Forge2DGame with HasKeyboardHandlerComponents {
     this.onSessionCompleted,
     this.accelerometer,
   }) : _levelNumber = startLevel,
-       super(gravity: Vector2(0, 10), metersToPixels: metersToPixelsScale) {
+       super(
+         gravity: Vector2(0, gravity),
+         metersToPixels: metersToPixelsScale,
+       ) {
     this.images = images;
     // The game screen pauses on background and shows the pause menu, so the
     // game stays paused on return (game-session spec).
@@ -56,6 +59,10 @@ class BallOdysseyGame extends Forge2DGame with HasKeyboardHandlerComponents {
 
   /// Pixels per meter of the physics world; camera zoom is relative to it.
   static const metersToPixelsScale = 40.0;
+
+  /// The world's gravity, in m/s²: a fifth above Earth's round 10, so the
+  /// ball feels heavy and leaves slopes less (design D1 of flow-and-pacing).
+  static const gravity = 12.0;
 
   /// The joystick's radius before it is scaled to the screen (design D7).
   static const _joystickRadius = 50.0;
@@ -215,8 +222,10 @@ class BallOdysseyGame extends Forge2DGame with HasKeyboardHandlerComponents {
         activeBoost: () => _activeBall?.activeBoost,
         boostLeft: () => _activeBall?.boostLeft ?? 0,
         charged: () => _level?.hasAirJump ?? false,
+        rushing: () => _activeBall?.isRushing ?? false,
         safeArea: safeArea,
       ),
+      AdrenalineGlowComponent(rushing: () => _activeBall?.isRushing ?? false),
     ]);
   }
 

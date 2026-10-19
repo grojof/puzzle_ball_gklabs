@@ -22,7 +22,6 @@ class FloorComponent extends BodyComponent
     required this.terrain,
     this.friction = 0.8,
     this.surface = FloorSurface.plain,
-    this.seamless = false,
   }) : super(renderBody: false);
 
   /// Top-left corner, in meters.
@@ -37,13 +36,10 @@ class FloorComponent extends BodyComponent
   /// What the top is made of.
   final FloorSurface surface;
 
-  /// Whether a run at the same height or a curve touches this one: then its
-  /// top is a chain whose ghost ends continue level, with the box just below
-  /// it, so a fast ball rolls across the seam instead of catching on the
-  /// next box's corner.
-  final bool seamless;
-
-  /// How far below a seamless run's top its box stops, in meters.
+  /// How far below the top the box stops, in meters: the top is a chain
+  /// whose ghost ends continue level, so a fast ball rolls across a seam
+  /// with the next run or a curve, and lands on an edge, without catching
+  /// on a box's corner.
   static const seamDepth = 0.03;
 
   /// How thick a surface's cover is, and how far apart a belt's marks are,
@@ -94,18 +90,7 @@ class FloorComponent extends BodyComponent
 
   @override
   Body createBody() {
-    final body = world.createBody(BodyDef(position: position + size / 2));
-    if (!seamless) {
-      return body..createShape(
-        Polygon.box(size.x / 2, size.y / 2),
-        ShapeDef(
-          material: SurfaceMaterial(friction: friction),
-          enableContactEvents: true,
-          userData: this,
-        ),
-      );
-    }
-    body
+    final body = world.createBody(BodyDef(position: position + size / 2))
       ..userData = this
       ..createShape(
         Polygon.offsetBox(

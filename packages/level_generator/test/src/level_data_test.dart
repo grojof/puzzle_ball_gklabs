@@ -337,4 +337,31 @@ void main() {
       expect(text, contains('Loop'));
     });
   });
+
+  group('adrenaline zones', () {
+    test('cover their span, with value equality and text', () {
+      const zone = AdrenalineZone(left: 2, right: 8);
+      expect(zone.covers(2), isTrue);
+      expect(zone.covers(8), isTrue);
+      expect(zone.covers(9), isFalse);
+      expect(zone, const AdrenalineZone(left: 2, right: 8));
+      expect(zone, isNot(const AdrenalineZone(left: 2, right: 9)));
+      expect(zone.hashCode, const AdrenalineZone(left: 2, right: 8).hashCode);
+      expect('$zone', 'Adrenaline(2.000..8.000)');
+      const data = LevelData(
+        seed: 's',
+        level: 5,
+        ballStart: Vec2(0.75, 3),
+        goal: Vec2(5, 2.25),
+        floors: [FloorRun(position: Vec2(0, 4), size: Vec2(9, 1.5))],
+        ramps: [],
+        boosts: [],
+        checkpoints: [],
+        sections: [],
+        estimatedDuration: 10,
+        adrenaline: [zone],
+      );
+      expect(data.canonical, contains('Adrenaline'));
+    });
+  });
 }

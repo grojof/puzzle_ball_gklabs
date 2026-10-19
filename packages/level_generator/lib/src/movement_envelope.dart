@@ -31,6 +31,7 @@ class MovementEnvelope {
     required this.mudJumpHeight,
     required this.mudFlightTime,
     required this.loopEntrySpeed,
+    required this.rushGain,
   });
 
   /// Height of a standing jump, in meters.
@@ -106,6 +107,10 @@ class MovementEnvelope {
   /// m/s.
   final double loopEntrySpeed;
 
+  /// How much stronger the push is during an adrenaline rush, with the same
+  /// damping: speeds scale by it (design D7 of flow-and-pacing).
+  final double rushGain;
+
   /// Speed reached after pushing over [distance] meters, starting at
   /// [startSpeed]: read on [speedCurve] from where it reaches [startSpeed].
   /// Only exact operations, so it is the same on every platform.
@@ -122,6 +127,14 @@ class MovementEnvelope {
     final upper = speedCurve[index];
     return lower + (upper - lower) * (position - index);
   }
+
+  /// Speed reached after pushing over [distance] meters during an adrenaline
+  /// rush, starting at [startSpeed]. A push [rushGain] times stronger against
+  /// the same damping reaches [rushGain] times the speed over [rushGain]
+  /// times the distance, so the plain curve is read scaled.
+  double rushSpeedAfter(double distance, {double startSpeed = 0}) =>
+      rushGain *
+      speedAfter(distance / rushGain, startSpeed: startSpeed / rushGain);
 
   /// Speed reached after pushing over [distance] meters of [surface],
   /// starting at [startSpeed] (design D4 of add-curved-terrain-and-physics):

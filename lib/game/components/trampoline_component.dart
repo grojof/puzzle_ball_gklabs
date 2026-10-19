@@ -24,7 +24,7 @@ class TrampolineComponent extends BodyComponent with ContactCallbacks {
   final double width;
 
   /// The upward speed a bounce gives, in m/s: about 5 m high.
-  static const launchSpeed = 15.5;
+  static const launchSpeed = 17.0;
 
   /// The height of the pad's sensor above the ground, in meters.
   static const padHeight = 0.35;

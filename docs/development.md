@@ -96,6 +96,8 @@ tool/audio/process.sh /tmp/audio-src/assets/audio
 ```
 
 - Effects: mono, 44.1 kHz, normalized to −16 LUFS (true peak −1.5 dBTP), MP3 128 kbps.
+- The adrenaline rush's heartbeat has no master: `tool/audio/heartbeat.sh` synthesizes it with ffmpeg and normalizes
+  it like the other effects (`process.sh` runs it too).
 - Background music: stereo, normalized to −20 LUFS so effects sit on top, MP3 128 kbps (about 4.7 MB; the
   web download must stay under 5 MB).
 

@@ -13,6 +13,7 @@ void main() {
     List<CurvedRun> curves = const [],
     List<Trampoline> trampolines = const [],
     List<Loop> loops = const [],
+    List<AdrenalineZone> adrenaline = const [],
   }) => LaserClearance(
     envelope: testEnvelope,
     floors: floors,
@@ -22,6 +23,7 @@ void main() {
     curves: curves,
     trampolines: trampolines,
     loops: loops,
+    adrenaline: adrenaline,
   );
 
   group('LaserClearance', () {
@@ -190,6 +192,39 @@ void main() {
       );
       expect(plain.routeTop(25), isNull);
       expect(bounced.routeTop(25), 4);
+    });
+  });
+
+  group('LaserClearance in adrenaline zones', () {
+    test('count the rush: steps and roll-offs reach farther', () {
+      const near = FloorRun(position: Vec2(0, 4), size: Vec2(6, tileSize));
+      const far = FloorRun(position: Vec2(40, 4), size: Vec2(6, tileSize));
+      // Plain, a step from the near run reaches about 13 m.
+      final plain = route(floors: const [near, far]);
+      final rushed = route(
+        floors: const [near, far],
+        adrenaline: const [AdrenalineZone(left: 0, right: 46)],
+      );
+      final x =
+          6 +
+          rollOffSpeed * testEnvelope.topSpeed * testEnvelope.flightTime +
+          2 * routeSlack +
+          0.5;
+      expect(plain.routeTop(x), isNull);
+      expect(rushed.routeTop(x), 4);
+      const ledge = FloorRun(position: Vec2(0, 4), size: Vec2(6, tileSize));
+      const low = FloorRun(position: Vec2(6, 9), size: Vec2(40, tileSize));
+      final rolled = route(
+        floors: const [ledge, low],
+        adrenaline: const [AdrenalineZone(left: 0, right: 46)],
+      );
+      final calm = route(floors: const [ledge, low]);
+      final reach =
+          rollOffSpeed * testEnvelope.topSpeed * testEnvelope.fallTime(5) +
+          routeSlack +
+          6;
+      expect(calm.rollOffTop(reach + 0.5), isNull);
+      expect(rolled.rollOffTop(reach + 0.5), 4);
     });
   });
 }

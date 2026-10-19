@@ -11,14 +11,16 @@ import 'package:puzzle_ball_gklabs/game/visuals/element_painter.dart';
 import 'package:puzzle_ball_gklabs/game/visuals/element_palette.dart';
 
 /// The boost tray: a short column under the sound button with the running
-/// boost's icon, ringed by its remaining time, and the orb's icon while its
-/// charge is held (game-hud spec).
+/// boost's icon, ringed by its remaining time, the orb's icon while its
+/// charge is held, and a beating heart during an adrenaline rush (game-hud
+/// spec).
 class BoostTrayComponent extends PositionComponent {
   new({
     required this.activeBoost,
     required this.boostLeft,
     required this.charged,
     required this.safeArea,
+    this.rushing,
   }) : super(anchor: Anchor.topRight);
 
   /// The system's safe area, which the tray keeps inside.
@@ -32,6 +34,18 @@ class BoostTrayComponent extends PositionComponent {
 
   /// Whether the orb's charge is held.
   final bool Function() charged;
+
+  /// Whether an adrenaline rush is on.
+  final bool Function()? rushing;
+
+  /// How often the heart beats, in cycles per second.
+  static const beatRate = 1.2;
+
+  double _time = 0;
+  Picture? _heart;
+
+  /// Whether the heart shows.
+  bool get showsHeart => rushing?.call() ?? false;
 
   double _icon = HudLayout.minControlSize;
   Vector2 _screen = Vector2.zero();
@@ -74,6 +88,21 @@ class BoostTrayComponent extends PositionComponent {
 
   void _place() => position = HudLayout.trayOrigin(_screen, safeArea.value);
 
+  @override
+  void update(double dt) {
+    super.update(dt);
+    _time += dt;
+  }
+
+  Picture _recordHeart() {
+    final recorder = PictureRecorder();
+    final canvas = Canvas(recorder);
+    final r = _icon / 2 * 0.8;
+    ElementPainter.orb(canvas, r, ElementPalette.rush);
+    ElementPainter.heartIcon(canvas, r);
+    return recorder.endRecording();
+  }
+
   Picture _record(BoostType type) {
     final recorder = PictureRecorder();
     final canvas = Canvas(recorder);
@@ -86,8 +115,18 @@ class BoostTrayComponent extends PositionComponent {
   @override
   void render(Canvas canvas) {
     final icons = shown;
-    if (icons.isEmpty) return;
     final step = _icon * 1.2;
+    if (showsHeart) {
+      final phase = (_time * beatRate) % 1;
+      final beat = 1 + 0.12 * math.exp(-30 * phase * phase);
+      canvas
+        ..save()
+        ..translate(_icon / 2, _icon / 2 + icons.length * step)
+        ..scale(beat)
+        ..drawPicture(_heart ??= _recordHeart())
+        ..restore();
+    }
+    if (icons.isEmpty) return;
     for (var i = 0; i < icons.length; i++) {
       final type = icons[i];
       final center = Offset(_icon / 2, _icon / 2 + i * step);
@@ -116,6 +155,8 @@ class BoostTrayComponent extends PositionComponent {
       picture.dispose();
     }
     _art.clear();
+    _heart?.dispose();
+    _heart = null;
   }
 
   @override

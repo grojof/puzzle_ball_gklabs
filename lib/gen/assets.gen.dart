@@ -26,6 +26,9 @@ class $AssetsAudioGen {
   /// File path: assets/audio/boost_speed.mp3
   String get boostSpeed => 'assets/audio/boost_speed.mp3';
 
+  /// File path: assets/audio/heartbeat.mp3
+  String get heartbeat => 'assets/audio/heartbeat.mp3';
+
   /// File path: assets/audio/jump.mp3
   String get jump => 'assets/audio/jump.mp3';
 
@@ -35,6 +38,7 @@ class $AssetsAudioGen {
     boostGravity,
     boostJump,
     boostSpeed,
+    heartbeat,
     jump,
   ];
 }

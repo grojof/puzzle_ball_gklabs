@@ -20,7 +20,7 @@ class BoostComponent extends BodyComponent with ContactCallbacks {
   final VoidCallback? onCollected;
 
   /// The upward impulse of a jump boost.
-  static const jumpImpulse = 120.0;
+  static const jumpImpulse = 126.0;
 
   /// The forward impulse of a speed boost.
   static const speedImpulse = 100.0;

@@ -76,16 +76,18 @@ generator for, with the savegame's seed. It holds terrain, sensors, the goal and
 - **Terrain:** one static body per floor run, painted with the world's generated textures (see Visuals); ramps,
   boosts and orbs (one `BoostComponent` per type), checkpoints and the goal are their own components.
   `CurvedTerrainComponent` makes each hill, half-pipe or rounded slope one static chain with ghost vertices, so the
-  ball never catches on a seam. A floor run that touches another at its height, or a curve, gets a chain along its top
-  too, with its box just below, so a fast ball rolls across the seam instead of hopping off the next box's corner. A chain reports a contact
-  per segment, so the ball counts the shapes it touches per surface.
+  ball never catches on a seam. Every floor run's top is a chain whose ghost ends continue level, with its box just
+  below, so a fast ball rolls across a seam with the next run or a curve, and lands on an edge, without catching on a
+  box's corner. A chain reports a contact per segment, so the ball counts the shapes it touches per surface.
 - **Mechanics:** `SpikeComponent` is a sensor inset by the ball's radius, so a strip is as wide to clear as a gap.
   `MovingPlatformComponent` is a kinematic body. It hands its changes of velocity to the ball on its deck, and the
   ball's damping acts relative to the deck, so the ball rests and rolls on it as on the ground. `CrumblingPlatformComponent` is a floor that stops supporting the ball when it collapses. Grounding
   goes through `GroundSurface`, which every floor, ramp and curve implements, and which also tells the ball what the
   surface is made of: on ice its push and damping are weaker, mud damps it harder and weakens the jump, and a belt
   damps it relative to the belt's speed. `TrampolineComponent` is a sensor that sets the ball's upward speed to a
-  fixed value. `LoopComponent` is two one-sided, frictionless arcs that take turns through their collision filters,
+  fixed value. `AdrenalineZoneComponent` is a sensor over a tense stretch: while the ball is in it, its push is
+  stronger; `RushTrailComponent` draws its trail and `AdrenalineGlowComponent`, in the viewport, the red pulse at the
+  screen's edges. `LoopComponent` is two one-sided, frictionless arcs that take turns through their collision filters,
   so the way in and the way out can cross at the foot; inside, the ball's push and damping are suspended.
 - **Restart and advance:** replace that component in place. Body components destroy their bodies when removed.
 - **Falling:** a fall is detected once no ground is left below the ball that it could still reach: `LevelComponent`
@@ -114,6 +116,9 @@ Input writes a `MovementIntent` (horizontal push and jump requests) that the bal
 - `applyConfig` swaps the two when the setting changes.
 
 Boosts end on a game-time `Timer` owned by the ball, so they pause with the game and vanish with the level.
+
+The world's gravity is 12 m/s² (`BallOdysseyGame.gravity`), with the launches compensated so jumps keep their heights.
+The ball allows fast rotation, since Box2D otherwise caps a rolling ball near 9.3 m/s, and never sleeps.
 
 ## Visuals
 
@@ -151,10 +156,12 @@ and copies the centre and zoom it returns into the viewfinder.
 `packages/level_generator` turns a seed and a level number into `LevelData`, the same on every platform
 ([ADR-0009](decisions/0009-level-generator-and-movement-envelope.md)):
 
-1. `DifficultyCurve` maps the level number to `LevelParameters`: stage, breather, intensity, precision, obstacle
-   share, target duration, checkpoint spacing and section weights, with each element introduced at its level.
-2. `LevelGenerator` walks a cursor from the start platform to the goal and appends sections until the estimated
-   duration reaches the target. Each gap, climb, spike strip and boosted section is a share of the reach from the
+1. `DifficultyCurve` maps the level number to `LevelParameters`: stage, breather, intensity, depth, precision,
+   obstacle share, target duration, checkpoint spacing, section weights scaled by depth, and the chances of break
+   points and adrenaline rushes, with each element introduced at its level.
+2. `LevelGenerator` walks a cursor from the start platform to the goal and appends phrases until the estimated
+   duration reaches the target: rests, flow phrases of sections taken without stopping that may end in a break point,
+   and challenge phrases, some of them adrenaline zones. Each gap, climb, spike strip and boosted section is a share of the reach from the
    precision interval. The reach comes from the speed the player can have there, read on the measured speed curve.
    The speed estimate stays honest:
    - landings cap it, since a player braking in the air to land comes down slower;
@@ -162,6 +169,7 @@ and copies the centre and zoom it returns into the viewfinder.
    - speed boosts add their measured gain to it;
    - each surface reads its own speed curve, and gaps and climbs from mud use the mud jump;
    - after a curve or a loop it is the speed a pushing ball is measured to leave at;
+   - in an adrenaline zone it reads the plain curve scaled by the rush's gain;
    - a checkpoint resets it to what a player builds after a respawn.
    Curves are exact polynomials, sampled every half meter at most, so they are the same on every platform.
    Checkpoints go at the start of a floor run once enough time has passed since the last respawn point.
@@ -172,7 +180,8 @@ The game's `ballEnvelope` (`lib/game/ball_envelope.dart`) holds the numbers meas
 speed curve included. Two game tests keep them honest: `movement_envelope_test.dart` drives the real ball and fails if
 the physics stops reaching them, and `level_playthrough_test.dart` has a bot (`test/helpers/level_bot.dart`) play one
 level per introduction plus deep levels. The bot takes off near edges, holds a steady push in the air, rides ferries,
-uses orbs, keeps pushing over curves and through loops, and steers after a trampoline's bounce. Before tuning the
+uses orbs, keeps pushing over curves and through loops, steers after a trampoline's bounce or a jump boost, pushes
+harder in a rush, and jumps off a ledge over spikes just below. Before tuning the
 curve, run a local stress run of a few hundred levels with the same bot. Box2D allows only so many worlds in one test
 process, so keep each stress file under about 120 levels.
 

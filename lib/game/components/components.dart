@@ -1,3 +1,4 @@
+export 'adrenaline_zone_component.dart';
 export 'ball_component.dart';
 export 'boost_component.dart';
 export 'boost_tray_component.dart';

@@ -39,19 +39,45 @@ void main() {
       }
     });
 
-    test('starts as demanding as the old level 50, never trivial', () {
+    test('starts a little above the old level 50, never trivial', () {
       final first = curve.parametersFor(1);
-      expect(first.intensity, 0.76);
+      expect(first.intensity, 0.8);
       final (low, high) = first.precision;
-      expect(low, closeTo(0.82, 0.01));
-      expect(high, closeTo(0.89, 0.01));
+      expect(low, closeTo(0.83, 0.01));
+      expect(high, closeTo(0.904, 0.01));
       expect(first.margin, high);
+      // Most sections are obstacles, more than before (0.69).
+      expect(first.obstacleShare, closeTo(0.81, 1e-6));
       // Level 4 is a breather: easier, but its gaps still need well over
       // half of the reach.
       final breather = curve.parametersFor(4);
       expect(breather.isBreather, isTrue);
-      expect(breather.intensity, closeTo(0.67, 0.01));
+      expect(breather.intensity, closeTo(0.71, 0.01));
       expect(breather.precision.$1, greaterThan(0.75));
+    });
+
+    test('depth grows from 0 at the start to 1 deep', () {
+      expect(curve.parametersFor(1).depth, 0);
+      expect(curve.parametersFor(4).depth, 0);
+      expect(curve.parametersFor(60).depth, inExclusiveRange(0.3, 0.6));
+      expect(curve.parametersFor(10000).depth, closeTo(1, 0.01));
+      expect(curve.parametersFor(1).breakChance, closeTo(0.2, 1e-9));
+      expect(curve.parametersFor(10000).breakChance, closeTo(0.8, 0.01));
+    });
+
+    test('the adrenaline rush starts at level 5 and grows with depth', () {
+      for (final level in [1, 2, 3, 4]) {
+        expect(curve.parametersFor(level).rushChance, 0);
+        expect(curve.parametersFor(level).introducesRush, isFalse);
+      }
+      final first = curve.parametersFor(DifficultyCurve.adrenalineLevel);
+      expect(first.introducesRush, isTrue);
+      expect(first.rushChance, greaterThanOrEqualTo(0.3));
+      expect(curve.parametersFor(6).introducesRush, isFalse);
+      expect(
+        curve.parametersFor(300).rushChance,
+        greaterThan(curve.parametersFor(6).rushChance),
+      );
     });
 
     test('precision rises towards 90-95 %', () {
@@ -118,7 +144,10 @@ void main() {
       expect(
         curve.parametersFor(13).weights.keys,
         unorderedEquals(
-          SectionKind.values.where((kind) => kind != SectionKind.flat),
+          SectionKind.values.where(
+            (kind) =>
+                kind != SectionKind.flat && kind != SectionKind.breakPoint,
+          ),
         ),
       );
       for (var level = 1; level <= 60; level++) {
@@ -139,19 +168,43 @@ void main() {
     });
 
     test('the five levels from an introduction feature the element', () {
-      final intro = curve.parametersFor(3);
-      expect(intro.weights[SectionKind.speedBoost], 1);
-      expect(curve.parametersFor(7).weights[SectionKind.speedBoost], 1);
-      expect(curve.parametersFor(8).weights[SectionKind.speedBoost], 0.5);
-      expect(curve.parametersFor(2).weights[SectionKind.ferry], 1);
-      expect(curve.parametersFor(7).weights[SectionKind.ferry], 0.5);
-      expect(curve.parametersFor(13).weights[SectionKind.loop], 0.8);
-      expect(curve.parametersFor(18).weights[SectionKind.loop], 0.4);
+      // Rich kinds grow with depth, and double while featured.
+      double rich(int level, double base, {bool featuring = false}) {
+        final p = curve.parametersFor(level);
+        return (featuring ? 2 * base : base) * (1 + p.depth);
+      }
+
+      expect(
+        curve.parametersFor(3).weights[SectionKind.speedBoost],
+        closeTo(rich(3, 0.5, featuring: true), 1e-5),
+      );
+      expect(
+        curve.parametersFor(7).weights[SectionKind.speedBoost],
+        closeTo(rich(7, 0.5, featuring: true), 1e-5),
+      );
+      expect(
+        curve.parametersFor(8).weights[SectionKind.speedBoost],
+        closeTo(rich(8, 0.5), 1e-5),
+      );
+      expect(
+        curve.parametersFor(13).weights[SectionKind.loop],
+        closeTo(rich(13, 0.4, featuring: true), 1e-5),
+      );
+      expect(
+        curve.parametersFor(18).weights[SectionKind.loop],
+        closeTo(rich(18, 0.4), 1e-5),
+      );
+      // At level 1, plain kinds keep their weights.
       expect(curve.parametersFor(1).weights[SectionKind.gap], 1.4);
       expect(curve.parametersFor(2).weights[SectionKind.spikes], 0.9);
       // Straight ramps share their weight with curves.
       expect(curve.parametersFor(1).weights[SectionKind.rampUp], 0.5);
       expect(curve.parametersFor(1).weights[SectionKind.hill], 1);
+      // Deep, plain gaps and plain climbs grow rarer.
+      final deep = curve.parametersFor(10000);
+      expect(deep.weights[SectionKind.gap], closeTo(1.4 * 0.6, 0.01));
+      expect(deep.weights[SectionKind.stepUp], closeTo(0.5, 0.01));
+      expect(deep.weights[SectionKind.loop], closeTo(0.8, 0.01));
       // Introductions are eased: level 10, which introduces nothing, is
       // clearly harder than level 8.
       expect(

@@ -46,6 +46,17 @@ void main() {
       ]);
     });
 
+    testWidgets('beats softly twice for an adrenaline rush', (tester) async {
+      DeviceHaptics(enabled: () => true).play(Haptic.heartbeat);
+      await tester.pump();
+      expect(vibrations, ['HapticFeedbackType.lightImpact']);
+      await tester.pump(DeviceHaptics.heartbeatGap);
+      expect(vibrations, [
+        'HapticFeedbackType.lightImpact',
+        'HapticFeedbackType.lightImpact',
+      ]);
+    });
+
     testWidgets('stays still while the setting is off', (tester) async {
       var enabled = false;
       final haptics = DeviceHaptics(enabled: () => enabled)..play(Haptic.jump);

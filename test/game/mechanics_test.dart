@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'dart:ui';
 
 import 'package:flame/cache.dart';
@@ -6,9 +7,11 @@ import 'package:flame_forge2d/flame_forge2d.dart';
 import 'package:flame_test/flame_test.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:level_generator/level_generator.dart';
+import 'package:puzzle_ball_gklabs/audio/audio_service.dart';
 import 'package:puzzle_ball_gklabs/game/ball_odyssey_game.dart';
 import 'package:puzzle_ball_gklabs/game/components/components.dart';
 import 'package:puzzle_ball_gklabs/game/components/level_component.dart';
+import 'package:puzzle_ball_gklabs/haptics/haptics.dart';
 
 import '../helpers/game_helpers.dart';
 
@@ -55,6 +58,7 @@ LevelData _course({
   List<Trampoline> trampolines = const [],
   List<Loop> loops = const [],
   List<double> checkpoints = const [],
+  List<AdrenalineZone> adrenaline = const [],
   bool safety = true,
 }) => LevelData(
   seed: 'test',
@@ -78,6 +82,7 @@ LevelData _course({
   curves: curves,
   trampolines: trampolines,
   loops: loops,
+  adrenaline: adrenaline,
 );
 
 /// Puts the ball of [game] at ([x], [y]) moving at [velocity], with input
@@ -115,6 +120,8 @@ void _settle(BallOdysseyGame game) {
 }
 
 void main() {
+  final audio = RecordingAudioSink();
+  final haptics = RecordingHaptics();
   late Images images;
   setUpAll(() async => images = await testImages());
 
@@ -294,6 +301,8 @@ void main() {
         game.update(_dt);
         ball.body.setTransform(Vector2(15.5, _top - 0.3), const Rot.identity());
         _settle(game);
+        // The platform notices on its next update.
+        game.update(_dt);
         expect(platform.isShaking, isTrue);
         _run(game, CrumblingPlatformComponent.delay - 0.2);
         expect(platform.isCollapsed, isFalse);
@@ -961,6 +970,95 @@ void main() {
         }
         expect(pad.isSquashed, isTrue);
         pad.render(canvas);
+      },
+    );
+  });
+
+  group('adrenaline rush', () {
+    const zone = AdrenalineZone(left: 20, right: 60);
+    LevelData rushy() => _course(
+      floors: const [(0, 190, FloorSurface.plain)],
+      adrenaline: const [zone],
+      checkpoints: [5],
+    );
+
+    testWithGame(
+      'pushes harder inside a zone, and plays a heartbeat',
+      () => testGame(
+        images: images,
+        levelFor: (_) => rushy(),
+        audio: audio,
+        haptics: haptics,
+      ),
+      (game) async {
+        final ball = _place(game, 2);
+        game.intent.horizontal = 1;
+        var fastest = 0.0;
+        while (ball.body.position.x < 58) {
+          game.update(_dt);
+          if (ball.body.position.x > 21) {
+            expect(ball.isRushing, isTrue);
+            fastest = math.max(fastest, ball.body.linearVelocity.x);
+          }
+        }
+        expect(fastest, greaterThan(9.5));
+        expect(audio.played, contains(GameSound.heartbeat));
+        expect(haptics.played, contains(Haptic.heartbeat));
+        while (ball.body.position.x < 75) {
+          game.update(_dt);
+        }
+        expect(ball.isRushing, isFalse);
+        _run(game, 2);
+        expect(ball.body.linearVelocity.x, lessThan(8.8));
+      },
+    );
+
+    testWithGame('ends on a respawn', () => gameOn(rushy()), (game) async {
+      final level = game.level!;
+      final ball = _place(game, 5);
+      _run(game, 0.2);
+      _place(game, 30);
+      _run(game, 0.1);
+      expect(ball.isRushing, isTrue);
+      level.sendBack();
+      _run(game, 0.1);
+      expect(ball.isRushing, isFalse);
+    });
+
+    testWithGame(
+      'draws the zone, the trail, the glow and the heart',
+      () => gameOn(rushy()),
+      (game) async {
+        final level = game.level!;
+        final ball = _place(game, 30);
+        _run(game, 0.5);
+        expect(ball.isRushing, isTrue);
+        final glow = game.camera.viewport.children
+            .whereType<AdrenalineGlowComponent>()
+            .single;
+        final tray = game.camera.viewport.children
+            .whereType<BoostTrayComponent>()
+            .single;
+        final trail = level.children.whereType<RushTrailComponent>().single;
+        final zoneArt = level.children
+            .whereType<AdrenalineZoneComponent>()
+            .single;
+        expect(glow.level, 1);
+        expect(tray.showsHeart, isTrue);
+        expect(trail.points, isNotEmpty);
+        final canvas = Canvas(PictureRecorder());
+        zoneArt.render(canvas);
+        trail.render(canvas);
+        glow.render(canvas);
+        tray.render(canvas);
+        // Out of the zone, it all fades within half a second.
+        _place(game, 100);
+        _run(game, 0.55);
+        expect(glow.level, 0);
+        expect(tray.showsHeart, isFalse);
+        _run(game, 0.3);
+        expect(trail.points, isEmpty);
+        glow.render(canvas);
       },
     );
   });
