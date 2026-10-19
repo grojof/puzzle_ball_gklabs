@@ -30,9 +30,9 @@
 
 - [x] 5.1 Update `docs/product.md`, `docs/glossary.md` and `docs/architecture.md`; verify `docs-check` and the spell check
 - [x] 5.2 Play on the author's phone: curves from level 1, trampolines at 9, surfaces at 11, the loop at 13; measure frame time; verify the feedback is noted for the PR
-- [ ] 5.3 Run the local CI checks, open the PR as ready, and squash merge when CI passes; verify CI passes
+- [x] 5.3 Run the local CI checks, open the PR as ready, and squash merge when CI passes; verify CI passes
 
 ## Workflow follow-up
 
 - After merge, archive the change.
-- Next: the logic and memory mechanics at levels 10, 12, 14 and beyond.
+- Next: a flow and pacing change (heavier ball, denser deep levels, break points, the adrenaline rush), then the logic and memory mechanics at levels 10, 12, 14 and beyond.
