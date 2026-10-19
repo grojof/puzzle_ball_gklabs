@@ -202,6 +202,7 @@ void main() {
         SectionKind.spikes,
         SectionKind.tower,
         SectionKind.descent,
+        SectionKind.breakPoint,
       };
       final seen = <SectionKind>{};
       for (final seed in [...seeds, ...seeds.map((s) => '$s+')]) {
@@ -260,7 +261,12 @@ void main() {
             counts[boost.type] = counts[boost.type]! + 1;
             final served = switch (boost.type) {
               BoostType.speed => [SectionKind.speedBoost, SectionKind.loop],
-              BoostType.jump => [SectionKind.jumpBoost],
+              // Break points and deep towers climb with jump boosts too.
+              BoostType.jump => [
+                SectionKind.jumpBoost,
+                SectionKind.breakPoint,
+                SectionKind.tower,
+              ],
               BoostType.gravity => [SectionKind.gravityBoost],
               BoostType.doubleJump => [
                 SectionKind.orbGap,
@@ -316,11 +322,15 @@ void main() {
             expect(strip.left - run.left, greaterThanOrEqualTo(tileSize));
             expect(run.right - strip.right, greaterThanOrEqualTo(tileSize));
             expect(strip.width, greaterThanOrEqualTo(1));
+            // In an adrenaline zone the ball runs faster.
+            final rush = data.adrenaline.any((z) => z.covers(strip.left));
             expect(
               strip.width,
               lessThanOrEqualTo(
                 testEnvelope.maxGap(
-                  speed: testEnvelope.topSpeed,
+                  speed:
+                      testEnvelope.topSpeed *
+                      (rush ? testEnvelope.rushGain : 1),
                   rise: 0,
                   margin: margin,
                 ),
@@ -688,6 +698,177 @@ void main() {
       }
     });
   });
+  group('flow and pacing', () {
+    Iterable<(int, LevelData)> levels(int from, int to) sync* {
+      for (final seed in seeds) {
+        for (var n = from; n <= to; n++) {
+          yield (n, level(n, seed));
+        }
+      }
+    }
+
+    /// The share of a level's obstacles that are break points.
+    double breaks(int from, int to) {
+      var breakPoints = 0;
+      var obstacles = 0;
+      for (final (_, data) in levels(from, to)) {
+        for (final kind in data.sections) {
+          if (kind == SectionKind.flat) continue;
+          obstacles++;
+          if (kind == SectionKind.breakPoint) breakPoints++;
+        }
+      }
+      return breakPoints / obstacles;
+    }
+
+    test('break points come more often deep', () {
+      expect(breaks(1, 5), greaterThan(0));
+      expect(breaks(300, 305), greaterThan(breaks(1, 5) * 1.5));
+    });
+
+    test('break points take three shapes, each close to its hazard', () {
+      var treads = 0;
+      var spiked = 0;
+      var crests = 0;
+      for (final (_, data) in levels(1, 60)) {
+        final floors = data.floors;
+        for (var i = 1; i + 1 < floors.length; i++) {
+          final run = floors[i];
+          final next = floors[i + 1];
+          final single = (run.size.x - tileSize).abs() < 1e-9;
+          final gapBefore = run.left - floors[i - 1].right > 1e-9;
+          if (single && gapBefore && (next.left - run.right).abs() < 1e-9) {
+            if (run.top - next.top > 0) treads++;
+          }
+          if (data.hazards.any(
+            (strip) => (strip.left - run.left - 2 * tileSize).abs() < 1e-9,
+          )) {
+            spiked++;
+          }
+          final crest = data.curves.any(
+            (curve) =>
+                curve.kind == CurveKind.hill &&
+                (curve.right - run.left).abs() < 1e-9,
+          );
+          if (crest && single && next.left - run.right > 1e-9) crests++;
+        }
+      }
+      expect(treads, greaterThan(0));
+      expect(spiked, greaterThan(0));
+      expect(crests, greaterThan(0));
+    });
+
+    test('flow phrases and challenge phrases share every long level', () {
+      const flow = {
+        SectionKind.hill,
+        SectionKind.halfPipe,
+        SectionKind.rampDown,
+        SectionKind.gap,
+        SectionKind.drop,
+        SectionKind.cascade,
+      };
+      for (final (_, data) in levels(40, 45)) {
+        final kinds = data.sections.toSet();
+        expect(kinds.intersection(flow), isNotEmpty);
+        expect(
+          kinds.difference(flow).difference({SectionKind.flat}),
+          isNotEmpty,
+        );
+      }
+    });
+
+    test('no plain climb follows another', () {
+      for (final (n, data) in levels(1, 80)) {
+        final obstacles = data.sections.where((k) => k != SectionKind.flat);
+        SectionKind? last;
+        for (final kind in obstacles) {
+          final plain = DifficultyCurve.plainClimbs.contains(kind);
+          if (plain) {
+            expect(
+              DifficultyCurve.plainClimbs.contains(last),
+              isFalse,
+              reason: 'level $n: $last then $kind',
+            );
+          }
+          last = kind;
+        }
+      }
+    });
+
+    test('deep towers mix in jump-boost steps', () {
+      var boosted = 0;
+      for (final (_, data) in levels(150, 200)) {
+        final floors = data.floors;
+        for (var i = 1; i < floors.length; i++) {
+          final tread = floors[i];
+          // A one-tile tread reached by a step, with a jump boost on it.
+          final stepped =
+              (tread.left - floors[i - 1].right).abs() < 1e-9 &&
+              floors[i - 1].top > tread.top;
+          final single = (tread.size.x - tileSize).abs() < 1e-9;
+          final boost = data.boosts.any(
+            (b) =>
+                b.type == BoostType.jump &&
+                b.position.x >= tread.left &&
+                b.position.x <= tread.right,
+          );
+          if (stepped && single && boost) boosted++;
+        }
+      }
+      expect(boosted, greaterThan(0));
+    });
+
+    test('deep levels are fuller of rich sections', () {
+      double rich(int from, int to) {
+        var richCount = 0;
+        var obstacles = 0;
+        for (final (_, data) in levels(from, to)) {
+          for (final kind in data.sections) {
+            if (kind == SectionKind.flat) continue;
+            obstacles++;
+            if (DifficultyCurve.richKinds.contains(kind)) richCount++;
+          }
+        }
+        return richCount / obstacles;
+      }
+
+      expect(rich(60, 64), greaterThan(rich(15, 19)));
+    });
+
+    test('adrenaline zones start at level 5 and size gaps for the rush', () {
+      for (final (n, data) in levels(1, 4)) {
+        expect(data.adrenaline, isEmpty, reason: 'level $n');
+      }
+      for (final seed in seeds) {
+        expect(level(5, seed).adrenaline, isNotEmpty, reason: seed);
+      }
+      var beyondPlain = 0;
+      for (final (n, data) in levels(5, 80)) {
+        final margin = curve.parametersFor(n).margin;
+        for (final zone in data.adrenaline) {
+          expect(zone.right, greaterThan(zone.left));
+          expect(
+            data.checkpoints.where((c) => zone.covers(c.position.x)),
+            isEmpty,
+          );
+        }
+        final floors = data.floors;
+        for (var i = 0; i + 1 < floors.length; i++) {
+          final gap = floors[i + 1].left - floors[i].right;
+          if (gap <= 0) continue;
+          if (!data.adrenaline.any((z) => z.covers(floors[i].right))) continue;
+          final rise = floors[i].top - floors[i + 1].top;
+          final plain = testEnvelope.maxGap(
+            speed: testEnvelope.topSpeed,
+            rise: rise,
+            margin: margin,
+          );
+          if (gap > plain) beyondPlain++;
+        }
+      }
+      expect(beyondPlain, greaterThan(0));
+    });
+  });
 }
 
-const goldenDigests = [2133736060, 2141593331, 1738403315];
+const goldenDigests = [2751000118, 4153120212, 1316809374];

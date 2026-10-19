@@ -26,6 +26,7 @@ void main() {
         ElementPalette.ice,
         ElementPalette.mud,
         ElementPalette.track,
+        ElementPalette.rush,
       ];
       for (final palette in BiomePalette.reference.values) {
         for (final background in palette.all) {

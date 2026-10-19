@@ -41,8 +41,8 @@ class BallComponent extends BodyComponent with ContactCallbacks {
   /// Force for a full push.
   static const moveForce = 80.0;
 
-  /// Upward impulse of a jump.
-  static const jumpImpulse = 65.5;
+  /// Upward impulse of a jump: about 2.75 m high under the world's gravity.
+  static const jumpImpulse = 69.0;
 
   /// How long after leaving the ground a jump still works (player-controls).
   static const coyoteTime = 0.15;
@@ -63,6 +63,27 @@ class BallComponent extends BodyComponent with ContactCallbacks {
   /// How much harder mud damps, and how much of the jump it leaves.
   static const mudDamping = 2.5;
   static const mudJump = 0.8;
+
+  /// How much stronger the push is during an adrenaline rush.
+  static const rushGain = 1.25;
+
+  /// The adrenaline zones the ball is in: a rush lasts while it is in one.
+  int _rushes = 0;
+
+  /// Whether an adrenaline rush is on (level-mechanics spec).
+  bool get isRushing => _rushes > 0;
+
+  /// The ball entered an adrenaline zone.
+  void enterRush() {
+    if (_rushes++ > 0) return;
+    audio.play(GameSound.heartbeat);
+    haptics.play(Haptic.heartbeat);
+  }
+
+  /// The ball left an adrenaline zone.
+  void leaveRush() {
+    if (_rushes > 0) _rushes--;
+  }
 
   final MovementIntent intent;
   final AudioSink audio;
@@ -144,6 +165,12 @@ class BallComponent extends BodyComponent with ContactCallbacks {
         type: BodyType.dynamic,
         position: initialPosition,
         linearDamping: linearDamping,
+        // A rolling ball spins fast: without this, Box2D caps its rotation
+        // per step, which caps its rolling speed at about 9.3 m/s.
+        allowFastRotation: true,
+        // The ball is the only moving body: it never sleeps, so whatever
+        // moves it acts at once.
+        enableSleep: false,
       ),
     )..createShape(
       Circle(radius: radius),
@@ -198,7 +225,9 @@ class BallComponent extends BodyComponent with ContactCallbacks {
         };
     _setDamping(damping);
     if (intent.horizontal != 0) {
-      final grip = surface == FloorSurface.ice ? iceGrip : 1.0;
+      final grip =
+          (surface == FloorSurface.ice ? iceGrip : 1.0) *
+          (isRushing ? rushGain : 1.0);
       body.applyForce(Vector2(intent.horizontal * moveForce * grip, 0));
     }
     final belt = switch (surface) {
@@ -260,8 +289,12 @@ class BallComponent extends BodyComponent with ContactCallbacks {
   /// Whether an air jump is charged.
   bool get hasAirJump => _airJumps > 0;
 
+  /// Throws the ball up: a fall into the boost is stopped first, so it
+  /// rises at least as high as from the ground, and a jump into it adds up.
   void applyJumpBoost(double impulse) {
     _startBoost(BoostType.jump, GameSound.boostJump);
+    final velocity = body.linearVelocity;
+    if (velocity.y > 0) body.linearVelocity = Vector2(velocity.x, 0);
     body.applyLinearImpulse(Vector2(0, -impulse));
   }
 
@@ -317,6 +350,7 @@ class BallComponent extends BodyComponent with ContactCallbacks {
     _sinceGround = double.infinity;
     _airJumps = 0;
     _arcs.clear();
+    _rushes = 0;
     body
       ..setTransform(position, const Rot.identity())
       ..linearVelocity = Vector2.zero()

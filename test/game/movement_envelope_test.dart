@@ -355,6 +355,68 @@ void main() {
     );
 
     testWithGame(
+      'a trampoline bounce taken at rest carries a pushing ball its distance',
+      () => testGame(
+        images: images,
+        levelFor: (_) => _course(
+          floors: const [(0, 200, FloorSurface.plain)],
+          trampolines: const [Trampoline(position: Vec2(30, 4), width: 1.5)],
+        ),
+      ),
+      (game) async {
+        final ball = await placed(game, 20);
+        ball.body
+          ..setTransform(Vector2(30.4, 3), const Rot.identity())
+          ..linearVelocity = Vector2.zero();
+        game.intent.horizontal = 1;
+        double? from;
+        for (var i = 0; i < 600; i++) {
+          game.update(_dt);
+          final p = ball.body.position;
+          if (from == null && ball.body.linearVelocity.y < -5) from = p.x;
+          if (from != null && p.x > from + 2 && p.y >= 3.79) break;
+        }
+        expect(
+          ball.body.position.x - from!,
+          greaterThanOrEqualTo(
+            ballEnvelope.maxTrampolineGap(speed: 0, rise: 0, margin: 1),
+          ),
+        );
+      },
+    );
+
+    testWithGame(
+      'an adrenaline rush reaches its scaled speed curve',
+      () => testGame(
+        images: images,
+        levelFor: (_) => _course(floors: const [(0, 200, FloorSurface.plain)]),
+      ),
+      (game) async {
+        final ball = await placed(game, 5)
+          ..enterRush();
+        final x0 = ball.body.position.x;
+        game.intent.horizontal = 1;
+        var fastest = 0.0;
+        for (var i = 0; i < 600; i++) {
+          game.update(_dt);
+          final distance = ball.body.position.x - x0;
+          if (distance > 150) break;
+          final v = ball.body.linearVelocity.x;
+          if (v > fastest) fastest = v;
+          expect(
+            v,
+            greaterThanOrEqualTo(ballEnvelope.rushSpeedAfter(distance)),
+            reason: 'at $distance m',
+          );
+        }
+        expect(
+          fastest,
+          greaterThanOrEqualTo(ballEnvelope.rushGain * ballEnvelope.topSpeed),
+        );
+      },
+    );
+
+    testWithGame(
       'a forward belt carries a resting ball',
       () => testGame(
         images: images,

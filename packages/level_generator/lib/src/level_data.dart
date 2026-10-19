@@ -260,7 +260,7 @@ class Trampoline {
 }
 
 /// The radius of a loop's track, in meters.
-const loopRadius = 2.0;
+const loopRadius = 1.75;
 
 /// How far before a loop's left side its speed boost stands, in meters:
 /// close enough for the boost's speed to carry the ball around.
@@ -484,6 +484,34 @@ class LaserBarrier {
       '${off.toStringAsFixed(3)}+${phase.toStringAsFixed(3)}';
 }
 
+/// A stretch of the course, from [left] to [right], where the ball has an
+/// adrenaline rush: its push is stronger (level-mechanics spec).
+@immutable
+class AdrenalineZone {
+  /// A zone from [left] to [right].
+  const new({required this.left, required this.right});
+
+  /// Where the zone starts, in meters.
+  final double left;
+
+  /// Where the zone ends, in meters.
+  final double right;
+
+  /// Whether [x] lies in the zone.
+  bool covers(double x) => x >= left && x <= right;
+
+  @override
+  bool operator ==(Object other) =>
+      other is AdrenalineZone && other.left == left && other.right == right;
+
+  @override
+  int get hashCode => Object.hash(left, right);
+
+  @override
+  String toString() =>
+      'Adrenaline(${left.toStringAsFixed(3)}..${right.toStringAsFixed(3)})';
+}
+
 /// The kinds of boost.
 enum BoostType {
   /// Throws the ball upwards.
@@ -624,6 +652,11 @@ enum SectionKind {
 
   /// A speed boost and a vertical loop.
   loop,
+
+  /// The end of a flow phrase where carrying its speed fails: a short tread
+  /// before a riser, spikes just past a landing, or a gap right after a
+  /// crest (design D3 of flow-and-pacing).
+  breakPoint,
 }
 
 /// One generated level.
@@ -647,6 +680,7 @@ class LevelData {
     this.curves = const [],
     this.trampolines = const [],
     this.loops = const [],
+    this.adrenaline = const [],
     this.featured = const [],
   });
 
@@ -692,6 +726,9 @@ class LevelData {
   /// Loops, left to right.
   final List<Loop> loops;
 
+  /// Adrenaline zones, left to right.
+  final List<AdrenalineZone> adrenaline;
+
   /// The sections the level was built from, in order.
   final List<SectionKind> sections;
 
@@ -731,5 +768,6 @@ class LevelData {
     ...curves.map((e) => '$e'),
     ...trampolines.map((e) => '$e'),
     ...loops.map((e) => '$e'),
+    ...adrenaline.map((e) => '$e'),
   ].join('\n');
 }

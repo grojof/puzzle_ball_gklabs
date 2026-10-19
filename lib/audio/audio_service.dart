@@ -8,13 +8,15 @@ enum GameSound {
   jump,
   boostJump,
   boostSpeed,
-  boostGravity;
+  boostGravity,
+  heartbeat;
 
   String get asset => switch (this) {
     jump => Assets.audio.jump,
     boostJump => Assets.audio.boostJump,
     boostSpeed => Assets.audio.boostSpeed,
     boostGravity => Assets.audio.boostGravity,
+    heartbeat => Assets.audio.heartbeat,
   };
 }
 

@@ -46,6 +46,7 @@ class LaserClearance {
     this.curves = const [],
     this.trampolines = const [],
     this.loops = const [],
+    this.adrenaline = const [],
   });
 
   /// What the ball can do.
@@ -71,6 +72,16 @@ class LaserClearance {
 
   /// The route's loops.
   final List<Loop> loops;
+
+  /// The route's adrenaline zones, where the ball runs faster.
+  final List<AdrenalineZone> adrenaline;
+
+  /// The fastest the ball runs between [left] and [right]: faster in an
+  /// adrenaline zone (design D8 of flow-and-pacing).
+  double _topSpeed(double left, double right) =>
+      adrenaline.any((zone) => zone.right >= left && zone.left <= right)
+      ? envelope.rushGain * envelope.topSpeed
+      : envelope.topSpeed;
 
   bool _near(double left, double right, double x) =>
       right >= x - laserWindow && left <= x + laserWindow;
@@ -123,7 +134,7 @@ class LaserClearance {
   double _jumpReach(FloorRun floor, FloorRun next) {
     final rise = floor.top - next.top;
     final time = envelope.airTime(rise) ?? envelope.flightTime;
-    var reach = envelope.topSpeed * time;
+    var reach = _topSpeed(floor.left, floor.right) * time;
     for (final pad in trampolines) {
       if (pad.right < floor.left || pad.left > floor.right) continue;
       reach = math.max(
@@ -166,7 +177,7 @@ class LaserClearance {
       }
       final flight =
           rollOffSpeed *
-              envelope.topSpeed *
+              _topSpeed(ledge.left, ledge.right) *
               envelope.fallTime(lowest - ledge.top) +
           routeSlack;
       if (x <= ledge.right + flight) {

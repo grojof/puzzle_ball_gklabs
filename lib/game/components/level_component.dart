@@ -188,17 +188,8 @@ class LevelComponent extends Component with HasGameReference<Forge2DGame> {
           },
         ),
     ];
-    final floors = data.floors;
-    bool level(FloorRun a, FloorRun b) =>
-        (a.right - b.left).abs() < 1e-6 && (a.top - b.top).abs() < 1e-6;
-    // A curve ends flat at its runs' height, so they join it seamlessly too.
-    bool curved(FloorRun run) => data.curves.any(
-      (curve) =>
-          (curve.left - run.right).abs() < 1e-6 ||
-          (curve.right - run.left).abs() < 1e-6,
-    );
     await addAll([
-      for (final (i, run) in floors.indexed)
+      for (final run in data.floors)
         if (run.crumbling)
           CrumblingPlatformComponent(
             position: _vector(run.position),
@@ -211,10 +202,6 @@ class LevelComponent extends Component with HasGameReference<Forge2DGame> {
             size: _vector(run.size),
             terrain: terrain,
             surface: run.surface,
-            seamless:
-                curved(run) ||
-                (i > 0 && level(floors[i - 1], run)) ||
-                (i + 1 < floors.length && level(run, floors[i + 1])),
           ),
       for (final curve in data.curves)
         CurvedTerrainComponent(
@@ -229,6 +216,8 @@ class LevelComponent extends Component with HasGameReference<Forge2DGame> {
           width: trampoline.width,
         ),
       for (final loop in data.loops) LoopComponent(loop: loop, ball: ball),
+      for (final zone in data.adrenaline) _zone(zone),
+      RushTrailComponent(ball: ball),
       for (final platform in data.platforms)
         MovingPlatformComponent(
           start: _vector(platform.start),
@@ -267,6 +256,29 @@ class LevelComponent extends Component with HasGameReference<Forge2DGame> {
       GoalComponent(position: _vector(data.goal), size: Vector2(1, 3.5)),
       ball,
     ]);
+  }
+
+  /// An adrenaline zone's sensor, reaching well above and a little below
+  /// the ground it covers, and the stretches of that ground to tint.
+  AdrenalineZoneComponent _zone(AdrenalineZone zone) {
+    final grounds = [
+      for (final floor in data.floors)
+        if (floor.right > zone.left && floor.left < zone.right)
+          (
+            math.max(floor.left, zone.left),
+            math.min(floor.right, zone.right),
+            floor.top,
+          ),
+    ];
+    final tops = grounds.map((ground) => ground.$3);
+    final highest = tops.isEmpty ? 0.0 : tops.reduce(math.min);
+    final lowest = tops.isEmpty ? 0.0 : tops.reduce(math.max);
+    return AdrenalineZoneComponent(
+      zone: zone,
+      top: highest - 12,
+      bottom: lowest + 3,
+      grounds: grounds,
+    );
   }
 
   @override

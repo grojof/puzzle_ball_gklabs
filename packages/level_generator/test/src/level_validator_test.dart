@@ -23,6 +23,7 @@ LevelData course({
   List<CurvedRun> curves = const [],
   List<Trampoline> trampolines = const [],
   List<Loop> loops = const [],
+  List<AdrenalineZone> adrenaline = const [],
   Vec2 ballStart = const Vec2(0.75, 3),
   Vec2? goal,
 }) {
@@ -42,6 +43,7 @@ LevelData course({
     curves: curves,
     trampolines: trampolines,
     loops: loops,
+    adrenaline: adrenaline,
     sections: const [],
     estimatedDuration: 10,
   );
@@ -632,6 +634,7 @@ void main() {
             mudJumpHeight: 1.75,
             mudFlightTime: 1.2,
             loopEntrySpeed: 11,
+            rushGain: 1.25,
           ),
         );
         final belt = [
@@ -645,6 +648,53 @@ void main() {
         );
         expect(check(course(floors: belt)), isEmpty);
       });
+    });
+  });
+
+  group('LevelValidator on adrenaline zones', () {
+    const validator = LevelValidator(envelope: testEnvelope);
+    List<String> check(LevelData level) =>
+        validator.validate(level, margin: 0.9);
+
+    test('a rush allows a wider gap', () {
+      final runs = [floor(0, 4, tiles: 8), floor(12 + 11.2, 4)];
+      expect(check(course(floors: runs)), contains(startsWith('gap of')));
+      expect(
+        check(
+          course(
+            floors: runs,
+            adrenaline: const [AdrenalineZone(left: 1, right: 27)],
+          ),
+        ),
+        isEmpty,
+      );
+    });
+
+    test('zones are well formed and hold no checkpoint', () {
+      expect(
+        check(course(adrenaline: const [AdrenalineZone(left: 5, right: 2)])),
+        contains(endsWith('is malformed')),
+      );
+      expect(
+        check(
+          course(
+            adrenaline: const [
+              AdrenalineZone(left: 1, right: 4),
+              AdrenalineZone(left: 3, right: 6),
+            ],
+          ),
+        ),
+        contains(endsWith('is malformed')),
+      );
+      expect(
+        check(
+          course(
+            adrenaline: const [AdrenalineZone(left: 1, right: 4)],
+            checkpoints: const [Checkpoint(Vec2(2, 4))],
+          ),
+        ),
+        contains(endsWith('holds a checkpoint')),
+      );
     });
   });
 }

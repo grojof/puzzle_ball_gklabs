@@ -6,10 +6,10 @@ import '../helpers/envelope.dart';
 void main() {
   group('MovementEnvelope', () {
     test('reproduces the measured running jump within tolerance', () {
-      // Measured: 13.03 m at 8.54 m/s, 2.75 m high, about 1.55 s of air.
+      // Measured: 11.77 m at 8.48 m/s, 2.69 m high, about 1.39 s of air.
       expect(
-        testEnvelope.maxGap(speed: 8.54, rise: 0, margin: 1),
-        closeTo(13.03, 0.4),
+        testEnvelope.maxGap(speed: 8.48, rise: 0, margin: 1),
+        closeTo(11.77, 0.4),
       );
     });
 
@@ -72,17 +72,17 @@ void main() {
     test('climbs and boosted limits follow the margin', () {
       expect(testEnvelope.maxClimb(0.5), 1.325);
       expect(testEnvelope.maxBoostedClimb(0.5), 3.2);
-      expect(testEnvelope.maxSpeedBoostGap(speed: 8.3, margin: 0.5), 10.75);
+      expect(testEnvelope.maxSpeedBoostGap(speed: 8.3, margin: 0.5), 10);
       expect(
         testEnvelope.maxSpeedBoostGap(speed: 0, margin: 0.5),
-        closeTo(10.75 * 15.5 / 23.8, 1e-9),
+        closeTo(10 * 15.5 / 23.8, 1e-9),
       );
-      expect(testEnvelope.maxSpeedBoostGap(speed: 20, margin: 0.5), 10.75);
-      expect(testEnvelope.maxGravityBoostGap(speed: 8.3, margin: 0.5), 14);
-      expect(testEnvelope.maxGravityBoostGap(speed: 4.15, margin: 0.5), 7);
+      expect(testEnvelope.maxSpeedBoostGap(speed: 20, margin: 0.5), 10);
+      expect(testEnvelope.maxGravityBoostGap(speed: 8.3, margin: 0.5), 13.75);
+      expect(testEnvelope.maxGravityBoostGap(speed: 4.15, margin: 0.5), 6.875);
       expect(testEnvelope.maxDoubleJumpClimb(0.5), 2.65);
-      expect(testEnvelope.maxDoubleJumpGap(speed: 8.3, margin: 0.5), 11);
-      expect(testEnvelope.maxDoubleJumpGap(speed: 4.15, margin: 0.5), 5.5);
+      expect(testEnvelope.maxDoubleJumpGap(speed: 8.3, margin: 0.5), 10);
+      expect(testEnvelope.maxDoubleJumpGap(speed: 4.15, margin: 0.5), 5);
     });
   });
 
@@ -103,6 +103,21 @@ void main() {
         closeTo(envelope.speedCurve.last - envelope.beltSpeed, 1e-9),
       );
       expect(envelope.speedOn(FloorSurface.conveyorBackward, 0), 0);
+    });
+
+    test('a rush scales the speed curve', () {
+      expect(envelope.rushSpeedAfter(0), 0);
+      expect(
+        envelope.rushSpeedAfter(10),
+        closeTo(
+          envelope.rushGain * envelope.speedAfter(10 / envelope.rushGain),
+          1e-12,
+        ),
+      );
+      expect(
+        envelope.rushSpeedAfter(500, startSpeed: 2),
+        closeTo(envelope.rushGain * envelope.speedCurve.last, 1e-9),
+      );
     });
 
     test('mud weakens the jump', () {

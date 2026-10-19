@@ -37,6 +37,9 @@ abstract final class ElementPalette {
   /// A loop's steel track.
   static const track = Color(0xFFE8ECF2);
 
+  /// The adrenaline rush: a heart's crimson.
+  static const rush = Color(0xFFE8124F);
+
   /// Reserved for the next change's elements.
   static const logicA = Color(0xFF29D3F5);
   static const logicB = Color(0xFFF54BD8);

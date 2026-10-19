@@ -38,6 +38,7 @@ class LevelValidator {
     _checkTrampolines(level, violations);
     _checkLoops(level, violations);
     _checkSurfaces(level, violations);
+    _checkAdrenaline(level, violations);
     _walk(level, margin, violations);
     return violations;
   }
@@ -65,6 +66,13 @@ class LevelValidator {
     var speed = 0.0;
     for (var i = 0; i < floors.length; i++) {
       final floor = floors[i];
+      // In an adrenaline zone the ball pushes harder.
+      final rushing = level.adrenaline.any(
+        (zone) => floor.right > zone.left && floor.left < zone.right,
+      );
+      double along(double distance, double start) => rushing
+          ? envelope.rushSpeedAfter(distance, startSpeed: start)
+          : envelope.speedOn(floor.surface, distance, startSpeed: start);
       if (floor.crumbling && floor.size.x < tileSize - _epsilon) {
         violations.add('crumbling island at x=${floor.left} is too short');
       } else if (floor.size.x < tileSize - _epsilon) {
@@ -72,10 +80,7 @@ class LevelValidator {
       }
       for (final strip in level.hazards) {
         if (strip.left < floor.left || strip.left > floor.right) continue;
-        final before = envelope.speedAfter(
-          strip.left - floor.left,
-          startSpeed: speed,
-        );
+        final before = along(strip.left - floor.left, speed);
         final limit = envelope.maxGap(speed: before, rise: 0, margin: margin);
         if (strip.width > limit * (1 + _epsilon) + _epsilon) {
           violations.add(
@@ -83,7 +88,7 @@ class LevelValidator {
           );
         }
       }
-      speed = envelope.speedOn(floor.surface, floor.size.x, startSpeed: speed);
+      speed = along(floor.size.x, speed);
       if (i == floors.length - 1) break;
       final next = floors[i + 1];
       if (next.left < floor.right - _epsilon) {
@@ -340,6 +345,27 @@ class LevelValidator {
     }
   }
 
+  /// Adrenaline zones lie over the course, apart from each other, and hold
+  /// no checkpoint, since a respawn ends the rush (design D8 of
+  /// flow-and-pacing).
+  void _checkAdrenaline(LevelData level, List<String> violations) {
+    final start = level.floors.first.left;
+    final end = level.floors.last.right;
+    var last = double.negativeInfinity;
+    for (final zone in level.adrenaline) {
+      if (zone.left >= zone.right ||
+          zone.left < start - _epsilon ||
+          zone.right > end + _epsilon ||
+          zone.left < last) {
+        violations.add('adrenaline zone at x=${zone.left} is malformed');
+      }
+      last = zone.right;
+      if (level.checkpoints.any((point) => zone.covers(point.position.x))) {
+        violations.add('adrenaline zone at x=${zone.left} holds a checkpoint');
+      }
+    }
+  }
+
   /// A backward belt never runs so fast that pushing cannot beat it.
   void _checkSurfaces(LevelData level, List<String> violations) {
     final backward = level.floors.any(
@@ -362,6 +388,7 @@ class LevelValidator {
       curves: level.curves,
       trampolines: level.trampolines,
       loops: level.loops,
+      adrenaline: level.adrenaline,
     );
     for (final laser in level.lasers) {
       final lowest = clearance.lowestEnd(laser.x);

@@ -114,6 +114,23 @@ abstract final class ElementPainter {
       ..drawPath(path, stroke..color = _white);
   }
 
+  /// A heart, white with a soft shadow, fitting a circle of [radius]: the
+  /// adrenaline rush.
+  static void heartIcon(Canvas canvas, double radius) {
+    final r = radius * 0.5;
+    final heart = Path()
+      ..moveTo(0, r * 0.85)
+      ..cubicTo(-r * 1.3, -r * 0.05, -r * 0.6, -r * 1.05, 0, -r * 0.4)
+      ..cubicTo(r * 0.6, -r * 1.05, r * 1.3, -r * 0.05, 0, r * 0.85)
+      ..close();
+    canvas
+      ..drawPath(
+        heart.shift(Offset(radius * 0.04, radius * 0.06)),
+        Paint()..color = const Color(0x66000000),
+      )
+      ..drawPath(heart, Paint()..color = _white);
+  }
+
   /// Two chevrons pointing up or right.
   static Path _chevrons(double radius, {required bool up}) {
     final size = radius * 0.32;

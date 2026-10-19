@@ -12,6 +12,9 @@ enum Haptic {
 
   /// A checkpoint activated.
   checkpoint,
+
+  /// An adrenaline rush started.
+  heartbeat,
 }
 
 /// Where the game sends its vibration events; the game knows nothing else
@@ -39,6 +42,9 @@ class DeviceHaptics implements HapticsSink {
   /// The gap between the two pulses of a checkpoint.
   static const checkpointGap = Duration(milliseconds: 120);
 
+  /// The gap between the two soft pulses of a heartbeat.
+  static const heartbeatGap = Duration(milliseconds: 280);
+
   @override
   void play(Haptic haptic) {
     if (!enabled()) return;
@@ -49,7 +55,15 @@ class DeviceHaptics implements HapticsSink {
         unawaited(HapticFeedback.heavyImpact());
       case Haptic.checkpoint:
         unawaited(_doublePulse());
+      case Haptic.heartbeat:
+        unawaited(_heartbeat());
     }
+  }
+
+  static Future<void> _heartbeat() async {
+    await HapticFeedback.lightImpact();
+    await Future<void>.delayed(heartbeatGap);
+    await HapticFeedback.lightImpact();
   }
 
   static Future<void> _doublePulse() async {

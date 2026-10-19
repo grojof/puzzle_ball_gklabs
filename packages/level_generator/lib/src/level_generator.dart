@@ -64,7 +64,7 @@ const _bumpStretch = 4.4;
 const _towerHeight = 8.0;
 
 /// How much more often climbs or descents towards the heading come.
-const _headingBias = 2.5;
+const _headingBias = 3.0;
 
 /// The most a tower climbs or a descent drops, in meters.
 const _bigSection = 16.0;
@@ -74,6 +74,33 @@ const _spikesTime = 3.0;
 
 /// About how long a ferry crossing takes, in seconds.
 const _ferryTime = 10.0;
+
+/// Sections a player takes one after another without stopping: what flow
+/// phrases are made of (design D2 of flow-and-pacing).
+const Set<SectionKind> _flowKinds = {
+  SectionKind.hill,
+  SectionKind.halfPipe,
+  SectionKind.rampDown,
+  SectionKind.gap,
+  SectionKind.drop,
+  SectionKind.cascade,
+  SectionKind.speedBoost,
+  SectionKind.loop,
+  SectionKind.trampolineHops,
+  SectionKind.conveyor,
+};
+
+/// Tense sections, which an adrenaline zone may cover (design D7 of
+/// flow-and-pacing).
+const Set<SectionKind> _tenseKinds = {
+  SectionKind.spikes,
+  SectionKind.crumblingHops,
+  SectionKind.chainedGaps,
+  SectionKind.descent,
+};
+
+/// The least estimated play time between two adrenaline zones, in seconds.
+const _rushSpacing = 40.0;
 
 /// How often an obstacle is one of the level's featured kinds.
 const _featuredShare = 0.75;
@@ -121,7 +148,27 @@ class _Builder {
   final curves = <CurvedRun>[];
   final trampolines = <Trampoline>[];
   final loops = <Loop>[];
+  final adrenaline = <AdrenalineZone>[];
   final sections = <SectionKind>[];
+
+  /// The last obstacle appended, to keep plain climbs apart.
+  SectionKind? _lastKind;
+
+  /// Whether a flow phrase is being built: belts then run forwards.
+  bool _inFlow = false;
+
+  /// Where the adrenaline zone being built starts, while one is.
+  double? _rushLeft;
+
+  /// The estimated play time when the last adrenaline zone ended.
+  double _lastRush = -_rushSpacing;
+
+  /// Whether the level must still have its first adrenaline zone.
+  bool _rushPending = false;
+
+  /// Whether an adrenaline zone is being built: the speed model reads the
+  /// rush's curve.
+  bool get _rushing => _rushLeft != null;
 
   /// Where laser barriers should hang, and for a tower's top, the height
   /// the route must fall below after it for the barrier to be worth it.
@@ -204,7 +251,17 @@ class _Builder {
       for (var i = random.intIn(2, 3) - introduced.length; i > 0; i--)
         _take(pool),
     ];
+    // At least one featured kind fits a flow phrase, so flow phrases share
+    // the level's character (design D2 of flow-and-pacing).
+    final flowPool = Map.of(pool)
+      ..removeWhere((kind, _) => !_flowKinds.contains(kind));
+    if (!featured.any(_flowKinds.contains) &&
+        flowPool.isNotEmpty &&
+        featured.length > introduced.length) {
+      featured[featured.length - 1] = _take(flowPool);
+    }
     _toIntroduce.addAll(introduced);
+    _rushPending = parameters.introducesRush;
     _flat(3);
     ballStart = Vec2(tileSize / 2, y - 1);
   }
@@ -234,6 +291,7 @@ class _Builder {
     curves: List.unmodifiable(curves),
     trampolines: List.unmodifiable(trampolines),
     loops: List.unmodifiable(loops),
+    adrenaline: List.unmodifiable(adrenaline),
     sections: List.unmodifiable(sections),
     estimatedDuration: duration,
     featured: List.unmodifiable(featured),
@@ -252,6 +310,7 @@ class _Builder {
       curves: curves,
       trampolines: trampolines,
       loops: loops,
+      adrenaline: adrenaline,
     );
     final lasers = <LaserBarrier>[];
     for (final site in _laserSites) {
@@ -286,16 +345,62 @@ class _Builder {
     return kind;
   }
 
-  /// Appends a rest stretch, or an action phrase of back-to-back obstacles
-  /// (design D10).
+  /// Appends a rest stretch, or an action phrase of back-to-back obstacles:
+  /// a flow phrase or a challenge phrase, half and half (design D2 of
+  /// flow-and-pacing).
   void phrase() {
     if (!random.chance(parameters.obstacleShare)) {
       _section(SectionKind.flat);
       return;
     }
-    final count = random.intIn(2, 2 + (3 * intensity).floor());
-    for (var i = 0; i < count && duration < parameters.targetDuration; i++) {
-      _section(_chooseKind());
+    // Elements still to introduce come in challenge phrases.
+    if (_toIntroduce.isEmpty && random.chance(0.5)) {
+      _flowPhrase();
+    } else {
+      _challengePhrase();
+    }
+  }
+
+  bool get _timeLeft => duration < parameters.targetDuration;
+
+  /// Three to six sections taken without stopping, each sized for the speed
+  /// a player who keeps pushing carries, and maybe a break point to end
+  /// them (design D3 of flow-and-pacing).
+  void _flowPhrase() {
+    _inFlow = true;
+    final count = random.intIn(3, 6);
+    for (var i = 0; i < count && _timeLeft; i++) {
+      _section(_chooseKind(only: _flowKinds));
+    }
+    _inFlow = false;
+    if (_timeLeft && random.chance(parameters.breakChance)) {
+      _section(SectionKind.breakPoint);
+    }
+  }
+
+  /// Back-to-back obstacles of any kind; a tense phrase may become an
+  /// adrenaline zone (design D7 of flow-and-pacing).
+  void _challengePhrase() {
+    final count = random.intIn(2, 3 + (3 * intensity).floor());
+    final rush =
+        parameters.rushChance > 0 &&
+        duration - _lastRush >= _rushSpacing &&
+        (_rushPending || random.chance(parameters.rushChance));
+    if (rush) {
+      // From the last tile before the phrase: past a checkpoint, which only
+      // stands half a tile into a run of two tiles or more.
+      _rushLeft = math.max(runStart, x - tileSize);
+      _rushPending = false;
+    }
+    for (var i = 0; i < count && _timeLeft; i++) {
+      _section(_chooseKind(only: rush ? _tenseKinds : null));
+    }
+    if (rush) {
+      adrenaline.add(AdrenalineZone(left: _rushLeft!, right: x));
+      _rushLeft = null;
+      _lastRush = duration;
+      // Out of the zone, the ball slows back to its usual speeds.
+      speed = math.min(speed, envelope.speedCurve.last);
     }
   }
 
@@ -304,7 +409,7 @@ class _Builder {
   void _section(SectionKind kind) {
     switch (kind) {
       case SectionKind.flat:
-        _flat(random.intIn(3, parameters.isBreather ? 7 : 5));
+        _rest();
       case SectionKind.rampUp:
         _rampUp(_rampHeight());
       case SectionKind.rampDown:
@@ -350,8 +455,9 @@ class _Builder {
       case SectionKind.trampolineHops:
         _trampolineHops();
       case SectionKind.conveyor:
+        // A flow phrase's belt carries the ball on.
         _surfaceGap(
-          random.chance(0.5)
+          _inFlow || random.chance(0.5)
               ? FloorSurface.conveyorForward
               : FloorSurface.conveyorBackward,
         );
@@ -361,11 +467,14 @@ class _Builder {
         _mud();
       case SectionKind.loop:
         _loop();
+      case SectionKind.breakPoint:
+        _breakPoint();
     }
     sections.add(kind);
     if (kind == SectionKind.flat) {
       _maybeCheckpoint(threshold: 1);
     } else {
+      _lastKind = kind;
       _flat(_landingTiles);
       _maybeCheckpoint(threshold: 0.75);
     }
@@ -383,10 +492,22 @@ class _Builder {
     _capSpeed((covered + landing) / time);
   }
 
+  /// A rest stretch: 3–5 tiles at first, 2–3 deep, and up to 6 on a
+  /// breather (design D4 of flow-and-pacing).
+  void _rest() {
+    final depth = parameters.depth;
+    final low = depth >= 0.5 ? 2 : 3;
+    final high = parameters.isBreather
+        ? 6
+        : math.max(low, 5 - (2 * depth).floor());
+    _flat(random.intIn(low, high));
+  }
+
   /// An obstacle kind: usually one of the featured kinds, otherwise any
-  /// other available one.
-  SectionKind _chooseKind() {
-    final weights = Map.of(parameters.weights);
+  /// other available one; only of the kinds in [only] when given and any
+  /// is available.
+  SectionKind _chooseKind({Set<SectionKind>? only}) {
+    var weights = Map.of(parameters.weights);
     // Keep the course within a vertical band, so it reads as a journey
     // rather than a tower or a pit.
     if (y < _startHeight - _maxRise) {
@@ -416,9 +537,23 @@ class _Builder {
       weights.remove(SectionKind.spikes);
     }
     if (left < _ferryTime) weights.remove(SectionKind.ferry);
+    // A flow or tense phrase draws from its kinds, when any is available.
+    if (only != null) {
+      final allowed = Map.of(weights)
+        ..removeWhere((kind, _) => !only.contains(kind));
+      if (allowed.isNotEmpty) weights = allowed;
+    }
+    // Two plain climbs never follow each other (design D5 of
+    // flow-and-pacing).
+    if (DifficultyCurve.plainClimbs.contains(_lastKind)) {
+      final other = Map.of(weights)
+        ..removeWhere((kind, _) => DifficultyCurve.plainClimbs.contains(kind));
+      if (other.isNotEmpty) weights = other;
+    }
     // An element first appears in its introduction level, at the first
     // obstacle that allows it.
     for (final kind in _toIntroduce) {
+      if (only != null && !only.contains(kind)) continue;
       if (weights.containsKey(kind)) {
         _toIntroduce.remove(kind);
         return kind;
@@ -432,7 +567,8 @@ class _Builder {
     final mine = Map.of(weights)
       ..removeWhere((kind, _) => !featured.contains(kind));
     final others = weights..removeWhere((kind, _) => featured.contains(kind));
-    final useFeatured = mine.isNotEmpty && random.chance(_featuredShare);
+    final useFeatured =
+        others.isEmpty || (mine.isNotEmpty && random.chance(_featuredShare));
     return random.weighted(useFeatured ? mine : others);
   }
 
@@ -446,11 +582,14 @@ class _Builder {
   void _flat(int tiles) {
     final distance = tiles * tileSize;
     x += distance;
-    speed = envelope.speedOn(
-      runSurface,
-      _landedLate ? tileSize : distance,
-      startSpeed: speed,
-    );
+    // Landing late, a player has the last tile left to speed up, or half
+    // of a single tile, landing in its middle.
+    final pushed = _landedLate
+        ? (tiles == 1 ? tileSize / 2 : tileSize)
+        : distance;
+    speed = _rushing
+        ? envelope.rushSpeedAfter(pushed, startSpeed: speed)
+        : envelope.speedOn(runSurface, pushed, startSpeed: speed);
     _landedLate = false;
     _time(distance);
   }
@@ -619,6 +758,9 @@ class _Builder {
       if (clears) cap = math.max(cap, flight);
     }
     _capSpeed(cap);
+    // A player who steps down the treads comes off the last ledge braking
+    // for the landing, as off a single drop.
+    _land(envelope.fallTime(heights.last));
   }
 
   /// A strip of spikes on the run, a tile after the section starts, as wide
@@ -713,7 +855,17 @@ class _Builder {
     var climbed = 0.0;
     while (steps < 4 || (climbed < _towerHeight && steps < 6)) {
       final height = _stepHeight();
-      if (steps > 0 && random.chance(0.2 + 0.3 * intensity)) {
+      if (steps > 0 && _boostedStep()) {
+        // A step climbed with the jump boost on the tread before it (design
+        // D5 of flow-and-pacing).
+        _boostApproach(BoostType.jump, tiles: 1, inset: tileSize * 0.4);
+        final height = _boosted(
+          envelope.maxBoostedClimb(1),
+          envelope.maxClimb(1),
+        );
+        _stepUp(height);
+        climbed += height;
+      } else if (steps > 0 && random.chance(0.2 + 0.3 * intensity)) {
         // A gap that rises onto the next tread, lower than a step, taken
         // from a tread of its own.
         final rise = height * 0.6;
@@ -759,6 +911,60 @@ class _Builder {
       final along = count == 1 ? 0.7 : 0.6 + 0.25 * i;
       _laserSites.add((x: start + (x - start) * along, above: null));
     }
+  }
+
+  /// Whether a deep tower's next step needs the jump boost.
+  bool _boostedStep() =>
+      parameters.depth > 0.4 &&
+      parameters.weights.containsKey(SectionKind.jumpBoost) &&
+      random.chance(0.3 * parameters.depth);
+
+  /// The end of a flow phrase where carrying its speed fails (design D3 of
+  /// flow-and-pacing).
+  void _breakPoint() {
+    switch (random.intIn(0, 2)) {
+      case 0:
+        _shortTread();
+      case 1:
+        _spikedLanding();
+      default:
+        _gapAfterCrest();
+    }
+  }
+
+  /// A gap onto a single tile, then at once a step up: beyond a jump with
+  /// the jump boost on the tile once boosts are known. A fast player
+  /// overshoots the tile into the riser.
+  void _shortTread() {
+    _gap(_gapRise(), landingTiles: 1);
+    if (!parameters.weights.containsKey(SectionKind.jumpBoost)) {
+      _flat(1);
+      _stepUp(_stepHeight());
+      return;
+    }
+    _boostApproach(BoostType.jump, tiles: 1, inset: tileSize * 0.4);
+    _stepUp(_boosted(envelope.maxBoostedClimb(1), envelope.maxClimb(1)));
+  }
+
+  /// A drop or a gap whose landing has spikes starting two tiles in: a fast
+  /// player lands on them, a careful one lands short and has a tile to run
+  /// up to them.
+  void _spikedLanding() {
+    if (random.chance(0.5)) {
+      _drop(random.range(1.5, 1.5 + 2 * intensity), landingTiles: 2);
+    } else {
+      _gap(_gapRise(), landingTiles: 2);
+    }
+    _flat(1);
+    _spikes();
+  }
+
+  /// A hill whose bump ends a tile before a gap: a fast ball takes off from
+  /// the crest and must come down right.
+  void _gapAfterCrest() {
+    _curve(CurveKind.hill, [_bump(_rampHeight())]);
+    _flat(1);
+    _gap(_gapRise());
   }
 
   /// A height to head for, inside the band, at least 10 m from here.
@@ -940,6 +1146,10 @@ class _Builder {
   /// Places a checkpoint at the start of the current run once the time since
   /// the last respawn point passes [threshold] times the stage's spacing.
   void _maybeCheckpoint({required double threshold}) {
+    // A respawn ends the rush: none inside an adrenaline zone.
+    if (_rushing) return;
+    final point = runStart + tileSize / 2;
+    if (adrenaline.isNotEmpty && adrenaline.last.covers(point)) return;
     if (sinceRespawn < parameters.checkpointSpacing * threshold) return;
     if (runLength < 2 * tileSize) return;
     checkpoints.add(Checkpoint(Vec2(runStart + tileSize / 2, y)));

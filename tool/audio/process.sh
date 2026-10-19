@@ -41,6 +41,8 @@ for effect in jump boost_jump boost_speed boost_gravity; do
   normalize "$src/$effect.mp3" "$effects_lufs" "$out/$effect.mp3" -ac 1
 done
 normalize "$src/background.mp3" "$music_lufs" "$out/background.mp3" -ac 2
+# The heartbeat has no master: it is synthesized.
+"$(dirname "$0")/heartbeat.sh" "$out" >/dev/null
 
 for f in "$out"/*.mp3; do
   lufs="$(ffmpeg -hide_banner -nostats -i "$f" -af ebur128 -f null - 2>&1 |

@@ -20,6 +20,9 @@ class LevelParameters {
     required this.checkpointSpacing,
     required this.weights,
     this.introduces = const {},
+    this.depth = 0,
+    this.rushChance = 0,
+    this.introducesRush = false,
   });
 
   /// The level number, from 1.
@@ -62,6 +65,21 @@ class LevelParameters {
   /// The sections that first appear in this level: each is featured and
   /// used at least once.
   final Set<SectionKind> introduces;
+
+  /// How deep the level is, from 0 at the start to 1 deep: what fills deep
+  /// levels with richer sections and break points (design D4 of
+  /// flow-and-pacing).
+  final double depth;
+
+  /// The probability that a tense challenge phrase becomes an adrenaline
+  /// zone; zero before the rush is introduced.
+  final double rushChance;
+
+  /// Whether this level introduces the adrenaline rush: it has at least one.
+  final bool introducesRush;
+
+  /// The probability that a flow phrase ends in a break point.
+  double get breakChance => 0.2 + 0.6 * depth;
 }
 
 /// Maps a level number to [LevelParameters]: a demanding start with the
@@ -82,15 +100,17 @@ class DifficultyCurve {
   /// raise-difficulty-and-pace).
   static const breatherFactor = 0.88;
 
-  /// How much easier a level that introduces an element is.
-  static const introFactor = 0.92;
+  /// How much easier a level that introduces an element is (design D6 of
+  /// flow-and-pacing).
+  static const introFactor = 0.95;
 
   /// How many levels feature an element from its introduction.
   static const featureLength = 5;
 
-  /// The intensity of the very first level: as demanding as level 50 was
-  /// before raise-difficulty-and-pace.
-  static const startIntensity = 0.76;
+  /// The intensity of the very first level: a little more demanding than
+  /// level 50 was before raise-difficulty-and-pace (design D6 of
+  /// flow-and-pacing).
+  static const startIntensity = 0.8;
 
   /// The share of the reach that gaps and climbs use, at intensity 0 and
   /// how much it grows with intensity, for the interval's low and high ends
@@ -139,6 +159,7 @@ class DifficultyCurve {
     SectionKind.spikes: 1,
     SectionKind.tower: 1,
     SectionKind.descent: 1,
+    SectionKind.breakPoint: 1,
     SectionKind.ferry: 2,
     SectionKind.speedBoost: 3,
     SectionKind.crumblingHops: 4,
@@ -155,6 +176,41 @@ class DifficultyCurve {
   };
 
   /// Straight ramps share their weight with curves, so slopes vary in shape.
+  /// The level at which the adrenaline rush first appears.
+  static const adrenalineLevel = 5;
+
+  /// Sections that grow more common with depth (design D4 of
+  /// flow-and-pacing).
+  static const Set<SectionKind> richKinds = {
+    SectionKind.speedBoost,
+    SectionKind.jumpBoost,
+    SectionKind.gravityBoost,
+    SectionKind.orbGap,
+    SectionKind.orbClimb,
+    SectionKind.trampolineHops,
+    SectionKind.loop,
+    SectionKind.conveyor,
+    SectionKind.ice,
+    SectionKind.mud,
+    SectionKind.ferry,
+    SectionKind.crumblingHops,
+  };
+
+  /// Plain sections, which grow rarer with depth.
+  static const Set<SectionKind> plainKinds = {
+    SectionKind.gap,
+    SectionKind.rampUp,
+    SectionKind.rampDown,
+  };
+
+  /// Plain climbs, which grow rarer with depth and never follow each other
+  /// (design D5 of flow-and-pacing).
+  static const Set<SectionKind> plainClimbs = {
+    SectionKind.stepUp,
+    SectionKind.staircase,
+    SectionKind.tower,
+  };
+
   static const Map<SectionKind, double> _baseWeights = {
     SectionKind.rampUp: 0.5,
     SectionKind.rampDown: 0.5,
@@ -200,20 +256,33 @@ class DifficultyCurve {
     };
     final factor = isBreather
         ? breatherFactor
-        : introduces.isNotEmpty
+        : introduces.isNotEmpty || level == adrenalineLevel
         ? introFactor
         : 1.0;
     final base =
         startIntensity +
         (1 - startIntensity) * (1 - math.exp(-(level - 1) / intensityScale));
     final intensity = _quantize(base * factor);
+    final depth = _quantize(
+      ((intensity - startIntensity) / (1 - startIntensity)).clamp(0.0, 1.0),
+    );
+    double scale(SectionKind kind) => richKinds.contains(kind)
+        ? 1 + depth
+        : plainKinds.contains(kind)
+        ? 1 - 0.4 * depth
+        : plainClimbs.contains(kind)
+        ? 1 - 0.5 * depth
+        : 1;
     final weights = {
       for (final MapEntry(key: kind, value: weight) in _baseWeights.entries)
         if (introductionLevel[kind]! <= level)
           // The levels right after an element's introduction feature it.
-          kind: _featuring(introductionLevel[kind]!, level)
-              ? weight * 2
-              : weight,
+          kind: _quantize(
+            (_featuring(introductionLevel[kind]!, level)
+                    ? weight * 2
+                    : weight) *
+                scale(kind),
+          ),
     };
     return LevelParameters(
       level: level,
@@ -226,7 +295,7 @@ class DifficultyCurve {
         _quantize(precisionHighBase + precisionHighGrowth * intensity),
       ),
       margin: _quantize(precisionHighBase + precisionHighGrowth * intensity),
-      obstacleShare: _quantize(0.35 + 0.45 * intensity),
+      obstacleShare: _quantize(math.min(0.95, 0.45 + 0.45 * intensity)),
       targetDuration: _quantize(
         startDuration +
             durationGrowth * (1 - math.exp(-(level - 1) / durationScale)),
@@ -234,6 +303,9 @@ class DifficultyCurve {
       checkpointSpacing: checkpointSeconds,
       weights: weights,
       introduces: introduces,
+      depth: depth,
+      rushChance: level < adrenalineLevel ? 0 : _quantize(0.3 + 0.3 * depth),
+      introducesRush: level == adrenalineLevel,
     );
   }
 

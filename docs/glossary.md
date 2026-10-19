@@ -13,7 +13,7 @@ audience: maintainer
 | **Level** | One generated course from the ball start to the goal. |
 | **Seed** | The value that makes level generation deterministic: same seed and level number, same level. |
 | **Difficulty curve** | The function from level number to generation parameters: intensity, precision, obstacle share, target duration, checkpoint spacing and which sections may appear. |
-| **Stage** | Five consecutive levels, for pacing: each has one breather. Elements are introduced by level: hills, half-pipes, spikes and the set pieces at level 1, ferries at 2, speed boosts at 3, crumbling islands at 4, island hops at 5, jump boosts at 6, gravity boosts at 7, orbs at 8, trampolines at 9, conveyor belts, ice and mud at 11 and loops at 13. |
+| **Stage** | Five consecutive levels, for pacing: each has one breather. Elements are introduced by level: hills, half-pipes, spikes and the set pieces at level 1, ferries at 2, speed boosts at 3, crumbling islands at 4, island hops and the adrenaline rush at 5, jump boosts at 6, gravity boosts at 7, orbs at 8, trampolines at 9, conveyor belts, ice and mud at 11 and loops at 13. |
 | **Breather** | The gentler fourth level of each stage, so difficulty rises in a sawtooth rather than a straight line. |
 | **Movement envelope** | What the ball can do, as numbers measured with the real physics: jump height, flight time, top speed, the reach of each boost and trampoline, the speed and jump on each surface, and the speed a loop needs. The generator keeps every obstacle within it. |
 | **Precision** | The share of the reach each gap and climb uses, drawn from an interval that grows with the level: about 82–89 % on the first level, towards 90–95 % deep. Its high end is the most any gap may use, which the validator checks. |
@@ -21,7 +21,10 @@ audience: maintainer
 | **Section** | One piece of a generated level: a flat, a ramp, a gap, a drop, a step up, a set piece or a boost setup, followed by a landing. |
 | **Set piece** | A section composed of several elements: a staircase (steps up), a cascade (drops), a valley (ramp down, gap, ramp up), island hops (gaps between platforms at changing heights), a tower (a climb of 8–14 m by tall steps) or a descent (a drop of 8–16 m by drops, ramps and gaps). |
 | **Featured sections** | The two or three sections and set pieces a level uses most, which give it its own character. |
-| **Phrase** | A group of back-to-back obstacles, or a rest stretch of flat ground; levels alternate them for rhythm. |
+| **Phrase** | A group of back-to-back obstacles, or a rest stretch of flat ground; levels alternate them for rhythm. A **flow phrase** is taken without stopping, each obstacle sized for the speed carried; a **challenge phrase** mixes any obstacles. |
+| **Break point** | The end of a flow phrase where carrying its speed fails: a short tread before a riser, spikes just past a landing, or a gap right after a crest. A player who brakes in time gets through. |
+| **Adrenaline rush** | A tense stretch marked in red where the ball's push is a quarter stronger, so it runs faster; gaps there are sized from that speed. Leaving it or a respawn ends it. |
+| **Depth** | How far a level has climbed the difficulty curve, from 0 at the start to 1 deep; richer sections, break points and rushes grow with it. |
 | **Run** | A playthrough of consecutive levels from one seed. |
 | **World** | Ten consecutive levels sharing one biome; the first level of a world announces its number and biome. |
 | **Biome** | The look of a world: a palette, a terrain material, a backdrop and ambient particles (night forest, desert dusk, snowy peaks, crystal caves, volcano). |

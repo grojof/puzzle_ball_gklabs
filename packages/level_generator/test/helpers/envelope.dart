@@ -4,7 +4,7 @@ import 'package:level_generator/level_generator.dart';
 /// add-physical-mechanics): a 2.75 m jump and the measured speed curve.
 const testEnvelope = MovementEnvelope(
   jumpHeight: 2.65,
-  flightTime: 1.5,
+  flightTime: 1.4,
   topSpeed: 8.3,
   speedCurve: [
     3.03, 4.06, 4.71, 5.21, 5.60, 5.93, 6.19, 6.43, 6.64, 6.80, //
@@ -13,19 +13,20 @@ const testEnvelope = MovementEnvelope(
     8.15, 8.16, 8.18, 8.20, 8.21, 8.23, 8.24, 8.25, 8.26, 8.27, //
   ],
   jumpBoostHeight: 6.4,
-  speedBoostJumpDistance: 21.5,
+  speedBoostJumpDistance: 20,
   speedBoostGain: 15.5,
-  gravityBoostJumpDistance: 28,
+  gravityBoostJumpDistance: 27.5,
   doubleJumpHeight: 5.3,
-  doubleJumpDistance: 22,
+  doubleJumpDistance: 20,
   curveExitSpeed: 3.8,
   trampolineHeight: 4.8,
-  trampolineFlightTime: 2,
-  trampolineDistance: 14,
+  trampolineFlightTime: 1.95,
+  trampolineDistance: 13.5,
   beltSpeed: 2.5,
   iceGrip: 0.33,
   mudTopSpeed: 3.3,
-  mudJumpHeight: 1.75,
-  mudFlightTime: 1.2,
+  mudJumpHeight: 1.7,
+  mudFlightTime: 1.1,
   loopEntrySpeed: 12,
+  rushGain: 1.24,
 );
