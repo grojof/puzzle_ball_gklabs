@@ -75,18 +75,26 @@ generator for, with the savegame's seed. It holds terrain, sensors, the goal and
 
 - **Terrain:** one static body per floor run, painted with the world's generated textures (see Visuals); ramps,
   boosts and orbs (one `BoostComponent` per type), checkpoints and the goal are their own components.
+  `CurvedTerrainComponent` makes each hill, half-pipe or rounded slope one static chain with ghost vertices, so the
+  ball never catches on a seam. A floor run that touches another at its height, or a curve, gets a chain along its top
+  too, with its box just below, so a fast ball rolls across the seam instead of hopping off the next box's corner. A chain reports a contact
+  per segment, so the ball counts the shapes it touches per surface.
 - **Mechanics:** `SpikeComponent` is a sensor inset by the ball's radius, so a strip is as wide to clear as a gap.
   `MovingPlatformComponent` is a kinematic body. It hands its changes of velocity to the ball on its deck, and the
   ball's damping acts relative to the deck, so the ball rests and rolls on it as on the ground. `CrumblingPlatformComponent` is a floor that stops supporting the ball when it collapses. Grounding
-  goes through `GroundSurface`, which all three floors implement.
+  goes through `GroundSurface`, which every floor, ramp and curve implements, and which also tells the ball what the
+  surface is made of: on ice its push and damping are weaker, mud damps it harder and weakens the jump, and a belt
+  damps it relative to the belt's speed. `TrampolineComponent` is a sensor that sets the ball's upward speed to a
+  fixed value. `LoopComponent` is two one-sided, frictionless arcs that take turns through their collision filters,
+  so the way in and the way out can cross at the foot; inside, the ball's push and damping are suspended.
 - **Restart and advance:** replace that component in place. Body components destroy their bodies when removed.
 - **Falling:** a fall is detected once no ground is left below the ball that it could still reach: `LevelComponent`
-  keeps the lowest ground of every 2 m column and checks, while the ball is in the air, whether any lies within the
+  keeps the lowest ground of every 2 m column, curves included, and checks, while the ball is in the air, whether any lies within the
   sideways reach of its fall ([ADR-0013](decisions/0013-demanding-pacing.md)). The level's lowest point is a backstop.
   Laser barriers (`LaserBarrierComponent`) light and darken on their own clock. A fall, spikes and a lit laser
   share `LevelComponent.sendBack()`: the ball respawns at rest above the last checkpoint it passed, with any
-  boost and orb charge cancelled, and crumbled islands and collected orbs come back; with no checkpoint, the level
-  restarts.
+  boost and orb charge cancelled, and crumbled islands, collected orbs and loops' tracks come back; with no
+  checkpoint, the level restarts.
 - **The goal:** plays its flash-and-fade sequence on the camera viewport and then completes the level.
 
 The HUD lives in the camera viewport ([ADR-0011](decisions/0011-hud-layout.md)). `CheckpointTrackComponent` and
@@ -132,6 +140,8 @@ and copies the centre and zoom it returns into the viewfinder.
   the sorted terrain, not the ball's bounces, and keeps the ball between 15 % and 85 % of the screen height.
 - **Anticipated zoom:** it zooms out about 1.2 s before the ball reaches a boost, at high speed, and while the ball
   is far above the ground, so the ground stays in view.
+- **Loops:** while the ball rides through a loop, the view blends onto the loop's centre, so it does not follow each
+  turn.
 - **Smoothing:** every value moves with a critically damped spring solved exactly, so the view never overshoots and
   behaves the same at any frame rate.
 - **Snapping:** a new level, a respawn or a screen rotation re-frames at once.
@@ -150,16 +160,21 @@ and copies the centre and zoom it returns into the viewfinder.
    - landings cap it, since a player braking in the air to land comes down slower;
    - ramps down and cascades cap it like drops;
    - speed boosts add their measured gain to it;
+   - each surface reads its own speed curve, and gaps and climbs from mud use the mud jump;
+   - after a curve or a loop it is the speed a pushing ball is measured to leave at;
    - a checkpoint resets it to what a player builds after a respawn.
+   Curves are exact polynomials, sampled every half meter at most, so they are the same on every platform.
    Checkpoints go at the start of a floor run once enough time has passed since the last respawn point.
-3. `LevelValidator` re-checks a level independently: geometry, ramp joins, spikes, ferries, crumbling islands, orbs,
-   and every gap and climb against the envelope.
+3. `LevelValidator` re-checks a level independently: geometry, ramp and curve joins, spikes, ferries, crumbling
+   islands, orbs, trampolines, surfaces, loops, and every gap and climb against the envelope.
 
 The game's `ballEnvelope` (`lib/game/ball_envelope.dart`) holds the numbers measured with the real physics, the
 speed curve included. Two game tests keep them honest: `movement_envelope_test.dart` drives the real ball and fails if
 the physics stops reaching them, and `level_playthrough_test.dart` has a bot (`test/helpers/level_bot.dart`) play one
-level per introduction plus deep levels. The bot takes off near edges, holds a steady push in the air, rides ferries
-and uses orbs. Before tuning the curve, run a local stress run of a few hundred levels with the same bot.
+level per introduction plus deep levels. The bot takes off near edges, holds a steady push in the air, rides ferries,
+uses orbs, keeps pushing over curves and through loops, and steers after a trampoline's bounce. Before tuning the
+curve, run a local stress run of a few hundred levels with the same bot. Box2D allows only so many worlds in one test
+process, so keep each stress file under about 120 levels.
 
 ## Audio
 

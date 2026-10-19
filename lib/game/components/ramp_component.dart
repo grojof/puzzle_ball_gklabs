@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flame_forge2d/flame_forge2d.dart';
 import 'package:flutter/painting.dart';
+import 'package:level_generator/level_generator.dart' show FloorSurface;
 import 'package:puzzle_ball_gklabs/game/components/ground_surface.dart';
 import 'package:puzzle_ball_gklabs/game/visuals/terrain_paint.dart';
 
@@ -71,6 +72,9 @@ class RampComponent extends BodyComponent
     TerrainPaint.surfaceHeight,
   );
   late final Paint _surface = terrain.surface(left: 0, top: _strip.top);
+
+  @override
+  FloorSurface get floorSurface => FloorSurface.plain;
 
   @override
   bool supports(Vector2 center) {

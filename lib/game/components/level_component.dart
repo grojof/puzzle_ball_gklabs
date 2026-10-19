@@ -102,6 +102,9 @@ class LevelComponent extends Component with HasGameReference<Forge2DGame> {
     for (final ramp in data.ramps) {
       see(ramp.left, ramp.right, ramp.bottom);
     }
+    for (final curve in data.curves) {
+      see(curve.left, curve.right, curve.bottom);
+    }
     for (final platform in data.platforms) {
       see(
         math.min(platform.start.x, platform.end.x),
@@ -185,8 +188,17 @@ class LevelComponent extends Component with HasGameReference<Forge2DGame> {
           },
         ),
     ];
+    final floors = data.floors;
+    bool level(FloorRun a, FloorRun b) =>
+        (a.right - b.left).abs() < 1e-6 && (a.top - b.top).abs() < 1e-6;
+    // A curve ends flat at its runs' height, so they join it seamlessly too.
+    bool curved(FloorRun run) => data.curves.any(
+      (curve) =>
+          (curve.left - run.right).abs() < 1e-6 ||
+          (curve.right - run.left).abs() < 1e-6,
+    );
     await addAll([
-      for (final run in data.floors)
+      for (final (i, run) in floors.indexed)
         if (run.crumbling)
           CrumblingPlatformComponent(
             position: _vector(run.position),
@@ -198,7 +210,25 @@ class LevelComponent extends Component with HasGameReference<Forge2DGame> {
             position: _vector(run.position),
             size: _vector(run.size),
             terrain: terrain,
+            surface: run.surface,
+            seamless:
+                curved(run) ||
+                (i > 0 && level(floors[i - 1], run)) ||
+                (i + 1 < floors.length && level(run, floors[i + 1])),
           ),
+      for (final curve in data.curves)
+        CurvedTerrainComponent(
+          curve: curve,
+          bottom: curve.bottom + tileSize,
+          terrain: terrain,
+        ),
+      for (final trampoline in data.trampolines)
+        TrampolineComponent(
+          left: trampoline.left,
+          ground: trampoline.top,
+          width: trampoline.width,
+        ),
+      for (final loop in data.loops) LoopComponent(loop: loop, ball: ball),
       for (final platform in data.platforms)
         MovingPlatformComponent(
           start: _vector(platform.start),
@@ -260,6 +290,7 @@ class LevelComponent extends Component with HasGameReference<Forge2DGame> {
       for (final child in children) {
         if (child is CrumblingPlatformComponent) child.restore();
         if (child is BoostComponent) child.restore();
+        if (child is LoopComponent) child.restore();
       }
       onRespawned?.call();
       return;

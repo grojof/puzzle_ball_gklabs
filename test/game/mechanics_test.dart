@@ -1,12 +1,14 @@
 import 'dart:ui';
 
 import 'package:flame/cache.dart';
+import 'package:flame/components.dart' show Component;
 import 'package:flame_forge2d/flame_forge2d.dart';
 import 'package:flame_test/flame_test.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:level_generator/level_generator.dart';
 import 'package:puzzle_ball_gklabs/game/ball_odyssey_game.dart';
 import 'package:puzzle_ball_gklabs/game/components/components.dart';
+import 'package:puzzle_ball_gklabs/game/components/level_component.dart';
 
 import '../helpers/game_helpers.dart';
 
@@ -43,6 +45,59 @@ LevelData _level({
     sections: const [],
     estimatedDuration: 10,
   );
+}
+
+/// A course on level ground at [_top]: [floors] spans with their surfaces,
+/// and a deep floor far below so leaving them is never a fall.
+LevelData _course({
+  List<(double, double, FloorSurface)> floors = const [],
+  List<CurvedRun> curves = const [],
+  List<Trampoline> trampolines = const [],
+  List<Loop> loops = const [],
+  List<double> checkpoints = const [],
+  bool safety = true,
+}) => LevelData(
+  seed: 'test',
+  level: 1,
+  ballStart: const Vec2(tileSize / 2, _top - 1),
+  goal: const Vec2(199, _top - 1.75),
+  floors: [
+    for (final (left, right, surface) in floors)
+      FloorRun(
+        position: Vec2(left, _top),
+        size: Vec2(right - left, tileSize),
+        surface: surface,
+      ),
+    if (safety) const FloorRun(position: Vec2(0, 40), size: Vec2(200, 1.5)),
+  ],
+  ramps: const [],
+  boosts: const [],
+  checkpoints: [for (final x in checkpoints) Checkpoint(Vec2(x, _top))],
+  sections: const [],
+  estimatedDuration: 10,
+  curves: curves,
+  trampolines: trampolines,
+  loops: loops,
+);
+
+/// Puts the ball of [game] at ([x], [y]) moving at [velocity], with input
+/// removed.
+BallComponent _place(
+  BallOdysseyGame game,
+  double x, {
+  double y = _top - 0.21,
+  Vector2? velocity,
+}) {
+  game
+    ..input?.removeFromParent()
+    // Removing the input resets the push in the next update.
+    ..update(0);
+  final ball = game.level!.ball;
+  ball.body
+    ..setTransform(Vector2(x, y), const Rot.identity())
+    ..linearVelocity = velocity ?? Vector2.zero()
+    ..angularVelocity = (velocity?.x ?? 0) / LevelComponent.ballRadius;
+  return ball;
 }
 
 void _run(BallOdysseyGame game, double seconds) {
@@ -526,6 +581,386 @@ void main() {
         level.sendBack();
         expect(component.isCollected, isFalse);
         expect(ball.hasAirJump, isFalse);
+      },
+    );
+  });
+
+  group('curved terrain', () {
+    final hill = CurvedRun.bumps(
+      kind: CurveKind.hill,
+      left: 12,
+      ground: _top,
+      bumps: const [(4.4 * 2, 2), (4.4, 1)],
+    );
+    final pipe = CurvedRun.bumps(
+      kind: CurveKind.halfPipe,
+      left: hill.right + 6,
+      ground: _top,
+      bumps: const [(4.4 * 2.5, -2.5)],
+    );
+    LevelData curvy() => _course(
+      floors: [
+        (0, 12, FloorSurface.plain),
+        (hill.right, pipe.left, FloorSurface.plain),
+        (pipe.right, 190, FloorSurface.plain),
+      ],
+      curves: [hill, pipe],
+    );
+
+    testWithGame(
+      'the ball rolls over a hill and through a half-pipe without catching',
+      () => gameOn(curvy()),
+      (game) async {
+        final ball = _place(game, 8);
+        game.intent.horizontal = 1;
+        var groundedOnCurve = false;
+        var slowest = double.infinity;
+        for (var i = 0; i < 900 && ball.body.position.x < pipe.right + 1; i++) {
+          game.update(_dt);
+          final x = ball.body.position.x;
+          final onCurve =
+              (x > hill.left && x < hill.right) ||
+              (x > pipe.left && x < pipe.right);
+          if (onCurve) {
+            groundedOnCurve |= ball.isOnGround;
+            slowest = slowest < ball.body.linearVelocity.x
+                ? slowest
+                : ball.body.linearVelocity.x;
+          }
+        }
+        expect(ball.body.position.x, greaterThan(pipe.right + 1));
+        expect(groundedOnCurve, isTrue);
+        expect(slowest, greaterThan(1));
+      },
+    );
+
+    testWithGame(
+      'a ball deep in a half-pipe has not fallen',
+      () => gameOn(
+        _course(
+          floors: [
+            (0, 12, FloorSurface.plain),
+            (hill.right, pipe.left, FloorSurface.plain),
+            (pipe.right, 190, FloorSurface.plain),
+          ],
+          curves: [hill, pipe],
+          safety: false,
+        ),
+      ),
+      (game) async {
+        final level = game.level!;
+        _place(game, (pipe.left + pipe.right) / 2, y: pipe.bottom - 0.5);
+        _run(game, 0.5);
+        expect(game.level, same(level));
+        expect(level.ball.isMounted, isTrue);
+      },
+    );
+  });
+
+  group('trampolines', () {
+    const pad = Trampoline(position: Vec2(20, _top), width: 1.5);
+    LevelData bouncy() => _course(
+      floors: const [(0, 190, FloorSurface.plain)],
+      trampolines: const [pad],
+    );
+
+    /// The highest the ball rises after its first bounce.
+    double bounceHeight(BallOdysseyGame game) {
+      final ball = game.level!.ball;
+      var bounced = false;
+      var peak = _top;
+      for (var i = 0; i < 400; i++) {
+        game.update(_dt);
+        final v = ball.body.linearVelocity;
+        if (!bounced && v.y < -TrampolineComponent.launchSpeed * 0.8) {
+          bounced = true;
+        }
+        if (bounced && ball.body.position.y < peak) {
+          peak = ball.body.position.y;
+        }
+        if (bounced && v.y > 0) break;
+      }
+      expect(bounced, isTrue);
+      return _top - peak;
+    }
+
+    testWithGame(
+      'two different falls bounce to the same height',
+      () => gameOn(bouncy()),
+      (game) async {
+        _place(game, 20.75, y: _top - 1);
+        final low = bounceHeight(game);
+        _run(game, 2);
+        _place(game, 20.75, y: _top - 7);
+        final high = bounceHeight(game);
+        expect(low, greaterThan(4.5));
+        expect(high, closeTo(low, 0.15));
+      },
+    );
+
+    testWithGame(
+      'keep the horizontal speed and squash',
+      () => gameOn(bouncy()),
+      (game) async {
+        final ball = _place(game, 19.4, y: _top - 0.6, velocity: Vector2(3, 0));
+        final component = game.level!.children
+            .whereType<TrampolineComponent>()
+            .single;
+        var before = 0.0;
+        for (var i = 0; i < 60; i++) {
+          before = ball.body.linearVelocity.x;
+          game.update(_dt);
+          if (ball.body.linearVelocity.y < -10) break;
+        }
+        expect(ball.body.linearVelocity.y, lessThan(-10));
+        expect(ball.body.linearVelocity.x, closeTo(before, 0.2));
+        expect(component.isSquashed, isTrue);
+        _run(game, TrampolineComponent.squashTime);
+        expect(component.isSquashed, isFalse);
+      },
+    );
+  });
+
+  group('surfaces', () {
+    testWithGame(
+      'a belt carries a resting ball forwards, or backwards',
+      () => gameOn(
+        _course(
+          floors: const [
+            (0, 40, FloorSurface.conveyorForward),
+            (40, 80, FloorSurface.conveyorBackward),
+          ],
+        ),
+      ),
+      (game) async {
+        final ball = _place(game, 10);
+        _run(game, 2);
+        expect(ball.body.position.x, greaterThan(12.5));
+        _place(game, 60);
+        _run(game, 2);
+        expect(ball.body.position.x, lessThan(57.5));
+      },
+    );
+
+    testWithGame(
+      'ice is slow to speed up and slow to stop',
+      () => gameOn(
+        _course(
+          floors: const [
+            (0, 60, FloorSurface.plain),
+            (60, 140, FloorSurface.ice),
+          ],
+        ),
+      ),
+      (game) async {
+        final ball = _place(game, 5);
+        game.intent.horizontal = 1;
+        _run(game, 1);
+        final plain = ball.body.linearVelocity.x;
+        _place(game, 70);
+        game.intent.horizontal = 1;
+        _run(game, 1);
+        final ice = ball.body.linearVelocity.x;
+        expect(ice, lessThan(plain * 0.6));
+        _run(game, 4);
+        final fast = ball.body.linearVelocity.x;
+        game.intent.horizontal = 0;
+        _run(game, 1);
+        // Plain ground would take most of the speed in a second.
+        expect(ball.body.linearVelocity.x, greaterThan(fast / 2));
+      },
+    );
+
+    testWithGame(
+      'mud holds the ball slow and weakens its jump, until it leaves',
+      () => gameOn(
+        _course(
+          floors: const [
+            (0, 40, FloorSurface.mud),
+            (40, 120, FloorSurface.plain),
+          ],
+        ),
+      ),
+      (game) async {
+        final ball = _place(game, 5);
+        game.intent.horizontal = 1;
+        _run(game, 3);
+        expect(ball.body.linearVelocity.x, lessThan(3.6));
+        game.intent.horizontal = 0;
+        _run(game, 2);
+        final ground = ball.body.position.y;
+        game.intent.requestJump();
+        var peak = ground;
+        for (var i = 0; i < 90; i++) {
+          game.update(_dt);
+          if (ball.body.position.y < peak) peak = ball.body.position.y;
+        }
+        expect(ground - peak, lessThan(2.1));
+        expect(ground - peak, greaterThan(1.5));
+        _place(game, 45);
+        game.intent.horizontal = 1;
+        _run(game, 3);
+        expect(ball.body.linearVelocity.x, greaterThan(6));
+      },
+    );
+  });
+
+  group('loops', () {
+    const loop = Loop(foot: Vec2(30, _top), radius: loopRadius);
+    LevelData loopy({List<double> checkpoints = const []}) => _course(
+      floors: const [(0, 190, FloorSurface.plain)],
+      loops: const [loop],
+      checkpoints: checkpoints,
+    );
+    LoopComponent track(BallOdysseyGame game) =>
+        game.level!.children.whereType<LoopComponent>().single;
+
+    testWithGame(
+      'carry a fast ball around and out along the run after it',
+      () => gameOn(loopy()),
+      (game) async {
+        final ball = _place(game, 29.4, velocity: Vector2(15, 0));
+        var top = _top;
+        var rode = false;
+        var flashed = false;
+        for (var i = 0; i < 300 && ball.body.position.x < loop.right + 2; i++) {
+          game.update(_dt);
+          rode |= ball.isInLoop;
+          flashed |= track(game).isFlashing;
+          if (ball.body.position.y < top) top = ball.body.position.y;
+        }
+        expect(rode, isTrue);
+        expect(flashed, isTrue);
+        expect(top, lessThan(loop.top + 0.5));
+        expect(ball.body.position.x, greaterThan(loop.right + 2));
+        // The track resets once the ball has left.
+        _run(game, 0.2);
+        expect(track(game).rising.isActive, isTrue);
+        expect(track(game).falling.isActive, isFalse);
+      },
+    );
+
+    testWithGame(
+      'a slow ball rolls back out of the entry',
+      () => gameOn(loopy()),
+      (game) async {
+        final ball = _place(game, 29.4, velocity: Vector2(6, 0));
+        var top = _top;
+        for (var i = 0; i < 180; i++) {
+          game.update(_dt);
+          if (ball.body.position.y < top) top = ball.body.position.y;
+        }
+        // It came back down short of the top, behind the foot, on the floor.
+        expect(top, greaterThan(loop.center.y));
+        expect(ball.body.position.x, lessThan(loop.foot.x));
+        expect(ball.isOnGround, isTrue);
+        game.intent.horizontal = -1;
+        for (var i = 0; i < 300 && ball.body.position.x > loop.left - 1; i++) {
+          game.update(_dt);
+        }
+        expect(ball.body.position.x, lessThan(loop.left - 1));
+      },
+    );
+
+    testWithGame(
+      'a ball falling in from above is never trapped',
+      () => gameOn(loopy()),
+      (game) async {
+        // Wherever it lands inside, heading back takes it out of the entry,
+        // to try again with the boost.
+        for (final x in [loop.foot.x + 0.3, loop.foot.x - 0.3]) {
+          final ball = _place(game, x, y: loop.center.y - 0.5);
+          game.intent.horizontal = -1;
+          bool inside() =>
+              ball.body.position.x > loop.left - 1 &&
+              ball.body.position.x < loop.right + 1;
+          for (var i = 0; i < 600 && inside(); i++) {
+            game.update(_dt);
+          }
+          expect(inside(), isFalse, reason: 'dropped at $x');
+          expect(ball.body.position.x, lessThan(loop.left));
+          _run(game, 0.5);
+        }
+      },
+    );
+
+    testWithGame(
+      'a respawn puts the track back',
+      () => gameOn(loopy(checkpoints: [5])),
+      (game) async {
+        final level = game.level!;
+        final ball = _place(game, 5);
+        _run(game, 0.2);
+        expect(level.activeCheckpoint, isNotNull);
+        _place(game, 29.4, velocity: Vector2(15, 0));
+        for (var i = 0; i < 120 && !track(game).falling.isActive; i++) {
+          game.update(_dt);
+        }
+        expect(track(game).falling.isActive, isTrue);
+        level.sendBack();
+        expect(track(game).rising.isActive, isTrue);
+        expect(track(game).falling.isActive, isFalse);
+        expect(ball.isInLoop, isFalse);
+      },
+    );
+  });
+
+  group('new physics visuals', () {
+    final hill = CurvedRun.bumps(
+      kind: CurveKind.hill,
+      left: 6,
+      ground: _top,
+      bumps: const [(4.4, 1)],
+    );
+    LevelData showcase() => _course(
+      floors: [
+        (0, 6, FloorSurface.plain),
+        (hill.right, 16, FloorSurface.conveyorForward),
+        (16, 22, FloorSurface.conveyorBackward),
+        (22, 28, FloorSurface.ice),
+        (28, 34, FloorSurface.mud),
+        (34, 80, FloorSurface.plain),
+      ],
+      curves: [hill],
+      trampolines: const [Trampoline(position: Vec2(40, _top), width: 3)],
+      loops: const [Loop(foot: Vec2(55, _top), radius: loopRadius)],
+    );
+
+    testWithGame(
+      'draw every new element when on screen',
+      () => gameOn(showcase()),
+      (game) async {
+        final level = game.level!;
+        final ball = level.ball;
+        final canvas = Canvas(PictureRecorder());
+        final elements = <(double, Component)>[
+          for (final floor in level.children.whereType<FloorComponent>())
+            (floor.position.x + 2, floor),
+          for (final curve
+              in level.children.whereType<CurvedTerrainComponent>())
+            (curve.curve.left + 2, curve),
+          for (final pad in level.children.whereType<TrampolineComponent>())
+            (pad.left, pad),
+          for (final loop in level.children.whereType<LoopComponent>())
+            (loop.loop.foot.x, loop),
+        ];
+        for (final (x, element) in elements) {
+          ball.body
+            ..setTransform(Vector2(x, _top - 3), const Rot.identity())
+            ..linearVelocity = Vector2.zero();
+          _run(game, 0.6);
+          element.render(canvas);
+        }
+        // A pad squashed by a bounce.
+        final pad = level.children.whereType<TrampolineComponent>().single;
+        ball.body
+          ..setTransform(Vector2(pad.left + 1, _top - 1), const Rot.identity())
+          ..linearVelocity = Vector2.zero();
+        for (var i = 0; i < 60 && !pad.isSquashed; i++) {
+          game.update(_dt);
+        }
+        expect(pad.isSquashed, isTrue);
+        pad.render(canvas);
       },
     );
   });

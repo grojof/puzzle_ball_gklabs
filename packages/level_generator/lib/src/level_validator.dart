@@ -23,6 +23,9 @@ class LevelValidator {
   /// The slowest and fastest ferry, in m/s.
   static const ferrySpeeds = (1.5, 3.0);
 
+  /// tan(35°): curves are at most this steep, as ramps.
+  static const maxSlope = 0.7002075382097097;
+
   /// The rules [level] breaks with [margin]; empty when it is valid.
   List<String> validate(LevelData level, {required double margin}) {
     if (level.floors.isEmpty) return ['the level has no floor'];
@@ -31,6 +34,10 @@ class LevelValidator {
     _checkElementsAboveGround(level, violations);
     _checkSpikePlacement(level, violations);
     _checkLasers(level, violations);
+    _checkCurves(level, violations);
+    _checkTrampolines(level, violations);
+    _checkLoops(level, violations);
+    _checkSurfaces(level, violations);
     _walk(level, margin, violations);
     return violations;
   }
@@ -54,6 +61,7 @@ class LevelValidator {
     final floors = level.floors;
 
     final rampsByLeft = {for (final ramp in level.ramps) ramp.left: ramp};
+    final curvesByLeft = {for (final curve in level.curves) curve.left: curve};
     var speed = 0.0;
     for (var i = 0; i < floors.length; i++) {
       final floor = floors[i];
@@ -75,7 +83,7 @@ class LevelValidator {
           );
         }
       }
-      speed = envelope.speedAfter(floor.size.x, startSpeed: speed);
+      speed = envelope.speedOn(floor.surface, floor.size.x, startSpeed: speed);
       if (i == floors.length - 1) break;
       final next = floors[i + 1];
       if (next.left < floor.right - _epsilon) {
@@ -95,6 +103,16 @@ class LevelValidator {
         if (ramp.ascending) speed *= 0.7;
         continue;
       }
+      final curve = curvesByLeft[floor.right];
+      if (curve != null) {
+        _checkCurveJoins(curve, floor, next, violations);
+        // Pushing climbs out of any curve at this speed or more; a slope
+        // down only adds.
+        final down = curve.kind == CurveKind.slope && !curve.rises;
+        if (!down) speed = envelope.curveExitSpeed;
+        continue;
+      }
+      final pad = _padOn(level, floor);
       final rise = floor.top - next.top;
       final gap = next.left - floor.right;
       if (gap < _epsilon) {
@@ -102,7 +120,7 @@ class LevelValidator {
           final limit = switch (boost) {
             BoostType.jump => envelope.maxBoostedClimb(margin),
             BoostType.doubleJump => envelope.maxDoubleJumpClimb(margin),
-            _ => envelope.maxClimb(margin),
+            _ => envelope.maxClimb(margin, surface: floor.surface),
           };
           if (rise > limit + _epsilon) {
             violations.add('climb of $rise at x=${next.left} exceeds $limit');
@@ -116,9 +134,18 @@ class LevelValidator {
           }
           speed *= 0.5;
         }
+        // A trampoline only ever stands before a pit.
+        if (pad != null) {
+          violations.add('trampoline at x=${pad.left} serves no pit');
+        }
         continue;
       }
-      final plain = envelope.maxGap(speed: speed, rise: rise, margin: margin);
+      final plain = envelope.maxGap(
+        speed: speed,
+        rise: rise,
+        margin: margin,
+        surface: floor.surface,
+      );
       var limit = plain;
       if (boost == BoostType.doubleJump) {
         limit = envelope.maxDoubleJumpGap(speed: speed, margin: margin);
@@ -134,11 +161,25 @@ class LevelValidator {
         );
         if (boosted > limit) limit = boosted;
       }
+      if (pad != null) {
+        // The ball bounces where it lands on the pad: counted from its middle.
+        final bounced =
+            margin *
+            (envelope.maxTrampolineGap(speed: speed, rise: rise, margin: 1) -
+                pad.width / 2);
+        if (bounced > limit) limit = bounced;
+      }
       if (gap > limit * (1 + _epsilon) + _epsilon) {
         violations.add('gap of $gap at x=${floor.right} exceeds $limit');
       }
-      if (boost == null) {
-        shares?.add(gap / envelope.maxGap(speed: speed, rise: rise, margin: 1));
+      if (boost == null && pad == null) {
+        final reach = envelope.maxGap(
+          speed: speed,
+          rise: rise,
+          margin: 1,
+          surface: floor.surface,
+        );
+        shares?.add(gap / reach);
       }
       if (boost == BoostType.speed) speed = envelope.topSpeed;
     }
@@ -189,6 +230,126 @@ class LevelValidator {
     }
   }
 
+  /// Curves join two floor runs, smoothly and no steeper than a ramp: hills
+  /// rise above the ground and half-pipes dip below it, both ending at their
+  /// starting height, and slopes climb or fall steadily to the next run
+  /// (level-generation spec).
+  void _checkCurves(LevelData level, List<String> violations) {
+    for (final curve in level.curves) {
+      final ground = curve.points.first.y;
+      final joined = level.floors.any(
+        (floor) =>
+            (floor.right - curve.left).abs() < _epsilon &&
+            (floor.top - ground).abs() < _epsilon,
+      );
+      if (!joined) {
+        violations.add('curve at x=${curve.left} does not join its floors');
+      }
+      final flat = (curve.points.last.y - ground).abs() < _epsilon;
+      var smooth = flat != (curve.kind == CurveKind.slope);
+      for (var i = 1; i < curve.points.length; i++) {
+        final a = curve.points[i - 1];
+        final b = curve.points[i];
+        final dx = b.x - a.x;
+        if (dx <= 0 ||
+            dx > CurvedRun.step + _epsilon ||
+            (b.y - a.y).abs() > maxSlope * dx + _epsilon) {
+          smooth = false;
+        }
+      }
+      final rises = curve.points.every((point) => point.y <= ground + _epsilon);
+      final dips = curve.points.every((point) => point.y >= ground - _epsilon);
+      var monotonic = true;
+      for (var i = 2; i < curve.points.length; i++) {
+        final before = curve.points[i - 1].y - curve.points[i - 2].y;
+        final after = curve.points[i].y - curve.points[i - 1].y;
+        if (before * after < -_epsilon) monotonic = false;
+      }
+      final shaped = switch (curve.kind) {
+        CurveKind.hill => rises,
+        CurveKind.halfPipe => dips,
+        CurveKind.slope => monotonic,
+      };
+      if (!smooth || !shaped) {
+        violations.add('curve at x=${curve.left} is malformed');
+      }
+    }
+  }
+
+  /// A curve ends where the next floor run starts, at the same height.
+  void _checkCurveJoins(
+    CurvedRun curve,
+    FloorRun before,
+    FloorRun after,
+    List<String> violations,
+  ) {
+    final end = curve.points.last;
+    if ((after.left - end.x).abs() > _epsilon ||
+        (after.top - end.y).abs() > _epsilon) {
+      violations.add('curve at x=${curve.left} does not join its floors');
+    }
+  }
+
+  /// Trampolines lie on a floor run, at least a meter wide, before a pit.
+  void _checkTrampolines(LevelData level, List<String> violations) {
+    for (final pad in level.trampolines) {
+      final lies = level.floors.any(
+        (floor) =>
+            (floor.top - pad.top).abs() < _epsilon &&
+            pad.left >= floor.left - _epsilon &&
+            pad.right <= floor.right + _epsilon,
+      );
+      if (!lies || pad.width < 1) {
+        violations.add('trampoline at x=${pad.left} does not lie on a run');
+      }
+    }
+  }
+
+  /// A loop stands on a run that reaches a tile past it, with its speed
+  /// boost just before it and nothing else in its way (level-generation
+  /// spec).
+  void _checkLoops(LevelData level, List<String> violations) {
+    for (final loop in level.loops) {
+      final approach = loop.left - loopBoostLead;
+      final stands = level.floors.any(
+        (floor) =>
+            (floor.top - loop.foot.y).abs() < _epsilon &&
+            floor.left <= approach + _epsilon &&
+            floor.right >= loop.right + tileSize - _epsilon,
+      );
+      if (!stands || loop.radius <= 0) {
+        violations.add('loop at x=${loop.foot.x} does not stand on a run');
+      }
+      final boosted = level.boosts.any(
+        (boost) =>
+            boost.type == BoostType.speed &&
+            (boost.position.x - approach).abs() < _epsilon,
+      );
+      if (!boosted) {
+        violations.add('loop at x=${loop.foot.x} has no speed boost');
+      }
+      bool inside(double x) => x > approach + _epsilon && x <= loop.right;
+      if (level.boosts.any((boost) => inside(boost.position.x)) ||
+          level.checkpoints.any((point) => inside(point.position.x)) ||
+          level.trampolines.any((pad) => inside(pad.right)) ||
+          level.hazards.any(
+            (strip) => strip.right > approach && strip.left <= loop.right,
+          )) {
+        violations.add('something blocks the loop at x=${loop.foot.x}');
+      }
+    }
+  }
+
+  /// A backward belt never runs so fast that pushing cannot beat it.
+  void _checkSurfaces(LevelData level, List<String> violations) {
+    final backward = level.floors.any(
+      (floor) => floor.surface == FloorSurface.conveyorBackward,
+    );
+    if (backward && envelope.beltSpeed * 2 > envelope.topSpeed) {
+      violations.add('backward belts run faster than the ball can push');
+    }
+  }
+
   /// Laser barriers hang above every jump of the route around them, with a
   /// sensible rhythm (design D9 of raise-difficulty-and-pace).
   void _checkLasers(LevelData level, List<String> violations) {
@@ -198,6 +359,9 @@ class LevelValidator {
       ramps: level.ramps,
       platforms: level.platforms,
       boosts: level.boosts,
+      curves: level.curves,
+      trampolines: level.trampolines,
+      loops: level.loops,
     );
     for (final laser in level.lasers) {
       final lowest = clearance.lowestEnd(laser.x);
@@ -296,6 +460,18 @@ class LevelValidator {
     if (!joins) {
       violations.add('ramp at x=${ramp.left} does not join its floors');
     }
+  }
+
+  /// The trampoline lying on [floor], if any.
+  static Trampoline? _padOn(LevelData level, FloorRun floor) {
+    for (final pad in level.trampolines) {
+      if ((pad.top - floor.top).abs() < _epsilon &&
+          pad.left >= floor.left - _epsilon &&
+          pad.right <= floor.right + _epsilon) {
+        return pad;
+      }
+    }
+    return null;
   }
 
   /// The type of the boost standing on [floor], if any.

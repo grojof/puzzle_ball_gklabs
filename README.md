@@ -65,6 +65,8 @@ The ADRs are:
 - [ADR-0012](docs/decisions/0012-self-hosted-web-on-coolify.md): the web game built and served by Coolify on our own
   server
 - [ADR-0013](docs/decisions/0013-demanding-pacing.md): a demanding pace from level 1, everything known by level 8
+- [ADR-0014](docs/decisions/0014-new-physics-interleaved.md): curved terrain from level 1, new physics interleaved
+  with the logic mechanics
 
 Contributors (human or AI) start with [AGENTS.md](AGENTS.md).
 

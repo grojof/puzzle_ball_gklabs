@@ -23,6 +23,20 @@ abstract final class ElementPalette {
   /// The red of spike tips.
   static const hazard = Color(0xFFFF3B3B);
 
+  /// A trampoline's springy pad.
+  static const trampoline = Color(0xFFFF5FA2);
+
+  /// A conveyor belt's rubber, and the marks that show its direction.
+  static const belt = Color(0xFF3A3F47);
+  static const beltMark = Color(0xFFFFD23F);
+
+  /// Ice, glassy and pale, and mud, dark and soft.
+  static const ice = Color(0xFFBFEFFF);
+  static const mud = Color(0xFF6B4423);
+
+  /// A loop's steel track.
+  static const track = Color(0xFFE8ECF2);
+
   /// Reserved for the next change's elements.
   static const logicA = Color(0xFF29D3F5);
   static const logicB = Color(0xFFF54BD8);

@@ -2,14 +2,46 @@ import 'package:flame/cache.dart';
 import 'package:flame_forge2d/flame_forge2d.dart';
 import 'package:flame_test/flame_test.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:level_generator/level_generator.dart' show MovementEnvelope;
+import 'package:level_generator/level_generator.dart';
 import 'package:puzzle_ball_gklabs/game/ball_envelope.dart';
 import 'package:puzzle_ball_gklabs/game/ball_odyssey_game.dart';
-import 'package:puzzle_ball_gklabs/game/components/boost_component.dart';
+import 'package:puzzle_ball_gklabs/game/components/components.dart';
 
 import '../helpers/game_helpers.dart';
 
 const double _dt = 1 / 60;
+
+/// A course on level ground at y 4: [floors] spans of ground, with a deep
+/// floor far below so nothing counts as a fall.
+LevelData _course({
+  List<(double, double, FloorSurface)> floors = const [],
+  List<CurvedRun> curves = const [],
+  List<Trampoline> trampolines = const [],
+  List<Loop> loops = const [],
+  List<Boost> boosts = const [],
+}) => LevelData(
+  seed: 'envelope',
+  level: 1,
+  ballStart: const Vec2(tileSize / 2, 3),
+  goal: const Vec2(299, 2.25),
+  floors: [
+    for (final (left, right, surface) in floors)
+      FloorRun(
+        position: Vec2(left, 4),
+        size: Vec2(right - left, tileSize),
+        surface: surface,
+      ),
+    const FloorRun(position: Vec2(0, 40), size: Vec2(300, tileSize)),
+  ],
+  ramps: const [],
+  boosts: boosts,
+  checkpoints: const [],
+  sections: const [],
+  estimatedDuration: 10,
+  curves: curves,
+  trampolines: trampolines,
+  loops: loops,
+);
 
 /// Proves the real physics reaches every number of [ballEnvelope], so levels
 /// stay completable when the physics is tuned (level-generation spec).
@@ -207,5 +239,252 @@ void main() {
         greaterThanOrEqualTo(ballEnvelope.gravityBoostJumpDistance),
       );
     });
+  });
+
+  group('the new physics reaches the movement envelope', () {
+    /// The ball of [game] at rest at [x], with input removed.
+    Future<BallComponent> placed(BallOdysseyGame game, double x) async {
+      game.input!.removeFromParent();
+      await game.ready();
+      final ball = game.level!.ball;
+      ball.body
+        ..setTransform(Vector2(x, 3.79), const Rot.identity())
+        ..linearVelocity = Vector2.zero();
+      for (var i = 0; i < 30; i++) {
+        game.update(_dt);
+      }
+      return ball;
+    }
+
+    // The smallest and biggest of each kind of curve.
+    final curves = [
+      for (final height in [0.75, 3.0]) ...[
+        CurvedRun.bumps(
+          kind: CurveKind.hill,
+          left: 40,
+          ground: 4,
+          bumps: [(4.4 * height, height)],
+        ),
+        CurvedRun.bumps(
+          kind: CurveKind.halfPipe,
+          left: 40,
+          ground: 4,
+          bumps: [(4.4 * height, -height)],
+        ),
+        CurvedRun.slope(left: 40, from: 4, to: 4 - height, width: 2.2 * height),
+      ],
+    ];
+    for (final curve in curves) {
+      final end = curve.points.last;
+      testWithGame(
+        'pushing from rest leaves a ${curve.kind.name} '
+        '${(curve.bottom - curve.top).toStringAsFixed(2)} m high fast enough',
+        () => testGame(
+          images: images,
+          levelFor: (_) => LevelData(
+            seed: 'envelope',
+            level: 1,
+            ballStart: const Vec2(tileSize / 2, 3),
+            goal: const Vec2(299, 0),
+            floors: [
+              const FloorRun(position: Vec2(0, 4), size: Vec2(40, tileSize)),
+              FloorRun(
+                position: Vec2(end.x, end.y),
+                size: const Vec2(150, tileSize),
+              ),
+              const FloorRun(position: Vec2(0, 40), size: Vec2(300, tileSize)),
+            ],
+            ramps: const [],
+            boosts: const [],
+            checkpoints: const [],
+            sections: const [],
+            estimatedDuration: 10,
+            curves: [curve],
+          ),
+        ),
+        (game) async {
+          final ball = await placed(game, 39.5);
+          game.intent.horizontal = 1;
+          for (var i = 0; i < 900; i++) {
+            game.update(_dt);
+            if (ball.body.position.x > end.x + 0.3) break;
+          }
+          expect(ball.body.position.x, greaterThan(end.x));
+          expect(
+            ball.body.linearVelocity.x,
+            greaterThanOrEqualTo(ballEnvelope.curveExitSpeed),
+          );
+        },
+      );
+    }
+
+    testWithGame(
+      'trampoline height and reach at top speed',
+      () => testGame(
+        images: images,
+        levelFor: (_) => _course(
+          floors: const [(0, 200, FloorSurface.plain)],
+          trampolines: const [Trampoline(position: Vec2(60, 4), width: 1.5)],
+        ),
+      ),
+      (game) async {
+        final ball = await placed(game, 20);
+        game.intent.horizontal = 1;
+        var peak = 4.0;
+        double? from;
+        for (var i = 0; i < 900; i++) {
+          game.update(_dt);
+          final p = ball.body.position;
+          if (from == null && ball.body.linearVelocity.y < -5) from = p.x;
+          if (from == null) continue;
+          if (p.y < peak) peak = p.y;
+          if (p.x > from + 2 && p.y >= 3.79) break;
+        }
+        expect(3.8 - peak, greaterThanOrEqualTo(ballEnvelope.trampolineHeight));
+        expect(
+          ball.body.position.x - from!,
+          greaterThanOrEqualTo(
+            ballEnvelope.maxTrampolineGap(
+              speed: ballEnvelope.topSpeed,
+              rise: 0,
+              margin: 1,
+            ),
+          ),
+        );
+      },
+    );
+
+    testWithGame(
+      'a forward belt carries a resting ball',
+      () => testGame(
+        images: images,
+        levelFor: (_) =>
+            _course(floors: const [(0, 200, FloorSurface.conveyorForward)]),
+      ),
+      (game) async {
+        final ball = await placed(game, 10);
+        for (var i = 0; i < 180; i++) {
+          game.update(_dt);
+        }
+        expect(
+          ball.body.linearVelocity.x,
+          greaterThanOrEqualTo(0.9 * ballEnvelope.beltSpeed),
+        );
+      },
+    );
+
+    for (final surface in [FloorSurface.ice, FloorSurface.conveyorBackward]) {
+      testWithGame(
+        'pushing on ${surface.name} reaches its speed curve',
+        () => testGame(
+          images: images,
+          levelFor: (_) => _course(floors: [(0, 200, surface)]),
+        ),
+        (game) async {
+          final ball = await placed(game, 10);
+          final x0 = ball.body.position.x;
+          game.intent.horizontal = 1;
+          for (var i = 0; i < 600; i++) {
+            game.update(_dt);
+            final distance = ball.body.position.x - x0;
+            if (distance > 150) break;
+            // A backward belt first carries the resting ball back.
+            if (distance < 0.5) continue;
+            expect(
+              ball.body.linearVelocity.x,
+              greaterThanOrEqualTo(ballEnvelope.speedOn(surface, distance)),
+              reason: 'at $distance m',
+            );
+          }
+        },
+      );
+    }
+
+    testWithGame(
+      'mud top speed and jump',
+      () => testGame(
+        images: images,
+        levelFor: (_) => _course(floors: const [(0, 200, FloorSurface.mud)]),
+      ),
+      (game) async {
+        final ball = await placed(game, 10);
+        push(game, 3.79, 5);
+        expect(
+          ball.body.linearVelocity.x,
+          greaterThanOrEqualTo(ballEnvelope.mudTopSpeed),
+        );
+        final ground = ball.body.position.y;
+        game.intent.requestJump();
+        final (distance, height) = fly(game, ground);
+        expect(height, greaterThanOrEqualTo(ballEnvelope.mudJumpHeight));
+        expect(
+          distance,
+          greaterThanOrEqualTo(
+            ballEnvelope.maxGap(
+              speed: ballEnvelope.mudTopSpeed,
+              rise: 0,
+              margin: 1,
+              surface: FloorSurface.mud,
+            ),
+          ),
+        );
+      },
+    );
+
+    testWithGame(
+      'a loop entered at its entry speed goes around',
+      () => testGame(
+        images: images,
+        levelFor: (_) => _course(
+          floors: const [(0, 200, FloorSurface.plain)],
+          loops: const [Loop(foot: Vec2(40, 4), radius: loopRadius)],
+        ),
+      ),
+      (game) async {
+        final ball = await placed(game, 39.4);
+        ball.body
+          ..linearVelocity = Vector2(ballEnvelope.loopEntrySpeed, 0)
+          ..angularVelocity = ballEnvelope.loopEntrySpeed / 0.2;
+        game.intent.horizontal = 1;
+        var top = 4.0;
+        for (var i = 0; i < 480 && ball.body.position.x < 46; i++) {
+          game.update(_dt);
+          if (ball.body.position.y < top) top = ball.body.position.y;
+        }
+        expect(top, lessThan(4 - 2 * loopRadius + 0.5));
+        expect(ball.body.position.x, greaterThanOrEqualTo(46));
+      },
+    );
+
+    testWithGame(
+      "a loop's boost, taken from rest, carries the ball around",
+      () => testGame(
+        images: images,
+        levelFor: (_) => _course(
+          floors: const [(0, 200, FloorSurface.plain)],
+          loops: const [Loop(foot: Vec2(40, 4), radius: loopRadius)],
+          boosts: const [
+            Boost(
+              position: Vec2(40 - loopRadius - loopBoostLead, 3.4),
+              type: BoostType.speed,
+            ),
+          ],
+        ),
+      ),
+      (game) async {
+        final ball = await placed(game, 40 - loopRadius - loopBoostLead - 1);
+        game.intent.horizontal = 1;
+        double? entry;
+        for (var i = 0; i < 480 && ball.body.position.x < 46; i++) {
+          game.update(_dt);
+          if (entry == null && ball.body.position.x >= 39.4) {
+            entry = ball.body.linearVelocity.x;
+          }
+        }
+        expect(ball.body.position.x, greaterThanOrEqualTo(46));
+        // With a fifth to spare (design D5).
+        expect(entry, greaterThanOrEqualTo(1.2 * ballEnvelope.loopEntrySpeed));
+      },
+    );
   });
 }
