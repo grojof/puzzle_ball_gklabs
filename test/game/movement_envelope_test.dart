@@ -579,7 +579,7 @@ void main() {
 
     // A pit fan as the generator builds it, with the least clearance.
     const run = 4.0;
-    const hover = run - 0.5 - 0.2;
+    const hover = run - 0.9 - 0.2;
     const base = run + 3;
     const fan = Fan(
       left: 30,
@@ -641,7 +641,7 @@ void main() {
             FloorRun(position: Vec2(12, run - 10), size: Vec2(30, 11.5)),
           ],
           fans: const [
-            Fan(left: 10.5, right: 12, base: run, top: run - 2 * 10.7),
+            Fan(left: 10.5, right: 12, base: run, top: run - 1.5 * 11.1),
           ],
         ),
       ),
@@ -661,9 +661,9 @@ void main() {
           if (p.x > 12.5 && p.y < run - 10) over = time;
         }
         expect(over, isNotNull);
-        // Risen 10.7 m to its hover height in that time.
+        // Risen 11.1 m to its hover height in that time.
         expect(
-          10.7 / (over! - entered!),
+          11.1 / (over! - entered!),
           greaterThan(ballEnvelope.fanRiseSpeed),
         );
       },

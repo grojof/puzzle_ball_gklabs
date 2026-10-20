@@ -306,9 +306,9 @@ class Loop {
 }
 
 /// How strongly a fan lifts the ball at its base, as a multiple of gravity:
-/// the lift fades to nothing at the column's top, so the ball floats halfway
-/// up (design D1 of add-dynamic-elements).
-const fanLift = 2.0;
+/// the lift fades to nothing at the column's top, so the ball floats two
+/// thirds of the way up (design D1 of add-dynamic-elements).
+const fanLift = 3.0;
 
 /// A fan blowing a column of air from its [base] up to its [top] (world y),
 /// between [left] and [right] (level-mechanics spec).
@@ -364,10 +364,13 @@ class Fan {
 /// The radius of a bumper, in meters.
 const bumperRadius = 0.35;
 
-/// How high a bumper roof's lower edge hangs above the run under it, in
-/// meters: above a rolling ball, below any jump (design D2 of
-/// add-dynamic-elements).
-const bumperRoofHeight = 1.0;
+/// How high a bumper post's stand lifts it off the run, in meters: a
+/// rolling ball hits the bumper (design D2 of add-dynamic-elements).
+const bumperStand = 0.1;
+
+/// The stretch of run a bumper post takes to jump over, in meters: the
+/// bumper, and the rise and fall of a jump clearing it.
+const postSpan = 3.0;
 
 /// How far a riser's bumper is set into the wall, in meters.
 const bumperInset = 0.2;
@@ -391,6 +394,10 @@ class Bumper {
   @override
   String toString() => 'Bumper$center';
 }
+
+/// The tiles of run before a mace's lane, out of its reach, to wait in: a
+/// ball setting off from their back crosses the lane at speed.
+const pendulumRoom = 2;
 
 /// The radius of a pendulum's mace, in meters.
 const maceRadius = 0.45;
@@ -899,9 +906,9 @@ enum SectionKind {
   /// A fan at the foot of a wall higher than a jump boost reaches.
   fanClimb,
 
-  /// A drop gap under a roof of bumpers: rolling off clears it, a jump hits
-  /// the roof.
-  bumperRoof,
+  /// Bumper posts standing on the runs after a gap: each is jumped, and
+  /// running into one throws the ball back.
+  bumperPosts,
 
   /// Maces swinging over a run, each with room to wait before it.
   pendulums,

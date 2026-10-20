@@ -264,7 +264,13 @@ void main() {
           for (final boost in data.boosts) {
             counts[boost.type] = counts[boost.type]! + 1;
             final served = switch (boost.type) {
-              BoostType.speed => [SectionKind.speedBoost, SectionKind.loop],
+              // Hills and half-pipes may launch the ball with one too.
+              BoostType.speed => [
+                SectionKind.speedBoost,
+                SectionKind.loop,
+                SectionKind.hill,
+                SectionKind.halfPipe,
+              ],
               // Break points and deep towers climb with jump boosts too.
               BoostType.jump => [
                 SectionKind.jumpBoost,
@@ -323,8 +329,14 @@ void main() {
               (f) => strip.left >= f.left && strip.right <= f.right,
             );
             expect(strip.top, run.top);
-            expect(strip.left - run.left, greaterThanOrEqualTo(tileSize));
-            expect(run.right - strip.right, greaterThanOrEqualTo(tileSize));
+            expect(
+              strip.left - run.left,
+              greaterThanOrEqualTo(tileSize - 1e-9),
+            );
+            expect(
+              run.right - strip.right,
+              greaterThanOrEqualTo(tileSize - 1e-9),
+            );
             expect(strip.width, greaterThanOrEqualTo(1));
             // In an adrenaline zone the ball runs faster.
             final rush = data.adrenaline.any((z) => z.covers(strip.left));
@@ -774,7 +786,7 @@ void main() {
         SectionKind.loop,
         SectionKind.trampolineHops,
         SectionKind.conveyor,
-        SectionKind.bumperRoof,
+        SectionKind.bumperPosts,
         SectionKind.seesaw,
       };
       var total = 0;
@@ -987,30 +999,47 @@ void main() {
       expect(split, greaterThan(0));
     });
 
-    test('bumper roofs hang over drop gaps, and risers kick back', () {
-      var roofs = 0;
+    test('bumper posts stand on runs past a gap, and risers kick back', () {
+      var posts = 0;
+      var deep = 0;
       var risers = 0;
-      for (final (_, data) in levels(17, 80)) {
+      for (final (n, data) in levels(17, 80)) {
         final floors = data.floors;
+        final margin = curve.parametersFor(n).margin;
         for (var i = 0; i + 1 < floors.length; i++) {
           final floor = floors[i];
           final next = floors[i + 1];
-          final row = floor.top - bumperRoofHeight - bumperRadius;
-          final roof = data.bumpers.where(
+          final stand = floor.top - bumperStand - bumperRadius;
+          final on = data.bumpers.where(
             (bumper) =>
-                (bumper.center.y - row).abs() < 1e-9 &&
-                bumper.center.x > floor.right - 2 * tileSize - 1e-9 &&
-                bumper.center.x < next.left + 1e-9,
+                (bumper.center.y - stand).abs() < 1e-9 &&
+                bumper.center.x > floor.left &&
+                bumper.center.x < floor.right,
           );
-          if (roof.isNotEmpty && next.left > floor.right) {
-            roofs++;
-            // A drop, roofed from two tiles before its edge to its far side.
-            expect(next.top, greaterThan(floor.top));
+          if (on.isNotEmpty) {
+            posts += on.length;
+            if (on.length > 1) deep++;
+            // A gap before the run, a tile to jump from, a tile to land on.
+            expect(floor.left, greaterThan(floors[i - 1].right));
             expect(
-              roof.first.center.x,
-              closeTo(floor.right - 2 * tileSize + bumperRadius, 1e-9),
+              on.first.center.x - postSpan / 2 - floor.left,
+              closeTo(tileSize, 1e-9),
             );
-            expect(roof.last.center.x, closeTo(next.left - bumperRadius, 1e-9));
+            expect(
+              floor.right - on.last.center.x - postSpan / 2,
+              greaterThanOrEqualTo(tileSize - 1e-9),
+            );
+            // Jumped like spikes as wide as the span.
+            expect(
+              postSpan,
+              lessThanOrEqualTo(
+                testEnvelope.maxGap(
+                  speed: testEnvelope.speedCurve.first,
+                  rise: 0,
+                  margin: margin,
+                ),
+              ),
+            );
           }
           final riser = (next.left + bumperInset, floor.top - bumperRadius);
           if (data.bumpers.any(
@@ -1023,11 +1052,41 @@ void main() {
           }
         }
       }
-      // Above a rolling ball, below a jump.
-      expect(bumperRoofHeight, greaterThan(2 * ballRadius + 0.3));
-      expect(bumperRoofHeight, lessThan(testEnvelope.jumpHeight / 2));
-      expect(roofs, greaterThan(0));
+      expect(posts, greaterThan(0));
+      expect(deep, greaterThan(0));
       expect(risers, greaterThan(0));
+    });
+
+    test('hills and half-pipes carry spikes or launch the ball, more '
+        'often deep', () {
+      double share(int from, int to) {
+        var curves = 0;
+        var carried = 0;
+        for (final (_, data) in levels(from, to)) {
+          for (final curve in data.curves) {
+            if (curve.kind == CurveKind.slope) continue;
+            curves++;
+            final after = data.floors
+                .where((floor) => (floor.left - curve.right).abs() < 1e-9)
+                .firstOrNull;
+            if (after == null) continue;
+            final spiked = data.hazards.any(
+              (strip) => strip.left >= after.left && strip.right <= after.right,
+            );
+            final boosted = data.boosts.any(
+              (boost) =>
+                  boost.type == BoostType.speed &&
+                  boost.position.x >= after.left &&
+                  boost.position.x <= after.right,
+            );
+            if (spiked || boosted) carried++;
+          }
+        }
+        return carried / curves;
+      }
+
+      expect(share(3, 10), greaterThan(0.25));
+      expect(share(120, 130), greaterThan(share(3, 10)));
     });
 
     test('pendulums leave room to wait and time to cross', () {
@@ -1035,9 +1094,10 @@ void main() {
       for (final (_, data) in levels(19, 80)) {
         final byRun = <double, List<Pendulum>>{};
         for (final pendulum in data.pendulums) {
+          const room = pendulumRoom * tileSize;
           final crossing = testEnvelope.pushTime(
-            0,
-            2 * (pendulum.reach + ballRadius),
+            room,
+            room + 2 * (pendulum.reach + ballRadius),
           );
           expect(crossing, lessThanOrEqualTo(pendulum.clearTime));
           final run = data.floors.singleWhere(
@@ -1049,7 +1109,7 @@ void main() {
           (byRun[run.left] ??= []).add(pendulum);
           expect(
             pendulum.left - ballRadius - run.left,
-            greaterThanOrEqualTo(tileSize - 1e-9),
+            greaterThanOrEqualTo(pendulumRoom * tileSize - 1e-9),
           );
           expect(
             run.right - pendulum.right - ballRadius,
@@ -1061,7 +1121,7 @@ void main() {
           for (var i = 1; i < run.length; i++) {
             expect(
               run[i].left - run[i - 1].right - 2 * ballRadius,
-              greaterThanOrEqualTo(tileSize - 1e-9),
+              greaterThanOrEqualTo(pendulumRoom * tileSize - 1e-9),
             );
           }
         }
@@ -1104,7 +1164,7 @@ void main() {
         containsAll([
           SectionKind.fanGap,
           SectionKind.fanClimb,
-          SectionKind.bumperRoof,
+          SectionKind.bumperPosts,
           SectionKind.pendulums,
           SectionKind.seesaw,
         ]),
@@ -1113,4 +1173,4 @@ void main() {
   });
 }
 
-const goldenDigests = [2371709512, 1675417042, 124226504];
+const goldenDigests = [768873675, 2649850469, 3036758814];

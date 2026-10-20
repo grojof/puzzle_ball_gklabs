@@ -198,4 +198,38 @@ void main() {
       expect(envelope.maxTrampolineGap(speed: 8, rise: 5, margin: 1.2), 0);
     });
   });
+
+  group('MovementEnvelope on the dynamic elements', () {
+    test('the push time from rest bounds the time to cover a stretch', () {
+      const step = MovementEnvelope.curveStep;
+      // The first stretch, at a speed growing as a square root.
+      expect(
+        testEnvelope.pushTime(0, step),
+        closeTo(2 * step / testEnvelope.speedCurve.first, 1e-9),
+      );
+      // Later stretches at the speed at their start.
+      expect(
+        testEnvelope.pushTime(step, 2 * step),
+        closeTo(step / testEnvelope.speedCurve.first, 1e-9),
+      );
+      expect(
+        testEnvelope.pushTime(0, 4),
+        closeTo(
+          testEnvelope.pushTime(0, 1) + testEnvelope.pushTime(1, 4),
+          1e-9,
+        ),
+      );
+      expect(testEnvelope.pushTime(3, 3), 0);
+    });
+
+    test('a seesaw jump is a lower arc at the exit speed', () {
+      final flat = testEnvelope.seesawAirTime(0)!;
+      expect(flat, lessThan(testEnvelope.flightTime));
+      expect(
+        testEnvelope.maxSeesawGap(rise: 0, margin: 1),
+        closeTo(testEnvelope.seesawExitSpeed * flat, 1e-9),
+      );
+      expect(testEnvelope.maxSeesawGap(rise: 3, margin: 1), 0);
+    });
+  });
 }

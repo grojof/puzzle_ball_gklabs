@@ -29,6 +29,14 @@
 - [ ] 5.2 Play on the author's phone: levels 15, 17, 19, 21 and a deep one; measure frame time; verify the feedback is noted for the PR
 - [ ] 5.3 Run the local CI checks, open the PR as ready, and squash merge when CI passes; verify CI passes
 
+## 6. After the first play-test
+
+- [x] 6.1 Replace the bumper roofs by bumper posts on the runs after a gap (D2); verify generator, validator, mechanics and bot tests
+- [x] 6.2 Make maces throw the ball hard and swing faster, crossing from the back of a two-tile room (D3); verify the mechanics and pendulum tests
+- [x] 6.3 Make fans lift harder and rise faster, re-measuring the clearance (D1); verify the envelope tests
+- [x] 6.4 Let hills and half-pipes carry spikes in a valley or a boost launch (D11); verify a generator test that their share grows deep
+- [ ] 6.5 Run the stress run again, rebuild for the phone, and play again (stress run: 800/800)
+
 ## Workflow follow-up
 
 - After merge, archive the change.

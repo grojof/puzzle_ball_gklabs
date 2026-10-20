@@ -129,7 +129,7 @@ void main() {
         (11, {SectionKind.conveyor, SectionKind.ice, SectionKind.mud}),
         (13, {SectionKind.loop}),
         (15, {SectionKind.fanGap, SectionKind.fanClimb}),
-        (17, {SectionKind.bumperRoof}),
+        (17, {SectionKind.bumperPosts}),
         (19, {SectionKind.pendulums}),
         (21, {SectionKind.seesaw}),
       ];

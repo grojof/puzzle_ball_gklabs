@@ -3,10 +3,8 @@ import 'dart:math' as math;
 import 'package:flame_forge2d/flame_forge2d.dart';
 import 'package:flutter/painting.dart';
 import 'package:level_generator/level_generator.dart'
-    show Bumper, FloorSurface, bumperRadius;
+    show Bumper, bumperRadius, bumperStand;
 import 'package:puzzle_ball_gklabs/game/components/ball_component.dart';
-import 'package:puzzle_ball_gklabs/game/components/ground_surface.dart';
-import 'package:puzzle_ball_gklabs/game/visuals/element_painter.dart';
 import 'package:puzzle_ball_gklabs/game/visuals/element_palette.dart';
 
 /// A pinball bumper: touching it throws the ball straight away from it at
@@ -14,11 +12,16 @@ import 'package:puzzle_ball_gklabs/game/visuals/element_palette.dart';
 /// (level-mechanics spec, design D2 of add-dynamic-elements).
 ///
 /// Drawn with a bright cap and a chrome ring, it lights up and swells when
-/// it throws the ball (game-visuals spec).
+/// it throws the ball (game-visuals spec). A post stands on a short steel
+/// stand.
 class BumperComponent extends BodyComponent with ContactCallbacks {
-  new({required this.bumper}) : super(renderBody: false);
+  new({required this.bumper, this.post = false}) : super(renderBody: false);
 
   final Bumper bumper;
+
+  /// Whether the bumper is a post standing on the ground, rather than set
+  /// in a riser.
+  final bool post;
 
   /// The speed a bumper throws the ball at, in m/s.
   static const speed = 9.0;
@@ -84,8 +87,21 @@ class BumperComponent extends BodyComponent with ContactCallbacks {
     ],
   ).createShader(Rect.fromCircle(center: Offset.zero, radius: bumperRadius));
 
+  static final _stand = Paint()..color = const Color(0xFF39444E);
+
   @override
   void render(Canvas canvas) {
+    if (post) {
+      canvas.drawRect(
+        const Rect.fromLTWH(
+          -0.08,
+          bumperRadius - 0.05,
+          0.16,
+          bumperStand + 0.05,
+        ),
+        _stand,
+      );
+    }
     // Swells and glows while flashing.
     final flash = isFlashing
         ? math.sin(math.pi * _sinceThrow / flashTime)
@@ -119,93 +135,5 @@ class BumperComponent extends BodyComponent with ContactCallbacks {
       );
     }
     canvas.restore();
-  }
-}
-
-/// The steel beam a bumper roof hangs from, over its row of bumpers: a ball
-/// that comes down on the roof from above lands on the beam and rolls off
-/// its end, instead of bouncing on the bumpers' tops (design D2 of
-/// add-dynamic-elements).
-class RoofBeamComponent extends BodyComponent implements GroundSurface {
-  new({required this.left, required this.right, required this.bottom})
-    : super(renderBody: false);
-
-  /// The beam's ends, in meters, and its underside, in world y.
-  final double left;
-  final double right;
-  final double bottom;
-
-  /// The beam's thickness, in meters.
-  static const thickness = 0.15;
-
-  @override
-  FloorSurface get floorSurface => FloorSurface.plain;
-
-  double get _top => bottom - thickness;
-
-  @override
-  bool supports(Vector2 center) =>
-      center.x >= left - GroundSurface.edgeTolerance &&
-      center.x <= right + GroundSurface.edgeTolerance &&
-      center.y < _top;
-
-  /// The beams over each roof among [bumpers]: rows of bumpers at one
-  /// height, less than a bumper apart.
-  static List<RoofBeamComponent> over(List<Bumper> bumpers) {
-    final beams = <RoofBeamComponent>[];
-    var row = <Bumper>[];
-    void close() {
-      if (row.length > 1) {
-        beams.add(
-          RoofBeamComponent(
-            left: row.first.center.x - bumperRadius,
-            right: row.last.center.x + bumperRadius,
-            bottom: row.first.center.y - bumperRadius + 0.05,
-          ),
-        );
-      }
-      row = [];
-    }
-
-    for (final bumper in bumpers) {
-      final last = row.isEmpty ? null : row.last;
-      if (last != null &&
-          (last.center.y != bumper.center.y ||
-              bumper.center.x - last.center.x > 3 * bumperRadius)) {
-        close();
-      }
-      row.add(bumper);
-    }
-    close();
-    return beams;
-  }
-
-  @override
-  Body createBody() {
-    return world.createBody(
-      BodyDef(position: Vector2((left + right) / 2, bottom - thickness / 2)),
-    )..createShape(
-      Polygon.box((right - left) / 2, thickness / 2),
-      ShapeDef(enableContactEvents: true, userData: this),
-    );
-  }
-
-  @override
-  void render(Canvas canvas) {
-    final beam = Rect.fromCenter(
-      center: Offset.zero,
-      width: right - left,
-      height: thickness,
-    );
-    canvas.drawRect(
-      beam,
-      Paint()
-        ..shader = const LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [Color(0xFF8C98A4), Color(0xFF39444E)],
-        ).createShader(beam),
-    );
-    ElementPainter.outline(canvas, Path()..addRect(beam), 0.03);
   }
 }

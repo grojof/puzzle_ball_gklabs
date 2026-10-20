@@ -16,9 +16,9 @@ import 'package:level_generator/level_generator.dart';
 /// - a belt carrying it at 2.44 m/s; on ice about a third of the ground to
 ///   reach a speed; on mud 3.45 m/s at most and a 1.74 m jump;
 /// - a 1.75 m loop taking 11.5 m/s;
-/// - in a fan's column, its bottom bobbing at most 0.28 m below the hover
+/// - in a fan's column, its bottom bobbing at most 0.76 m below the hover
 ///   height and never sinking below the run it entered from, rising about
-///   2.2 m/s; leaving a seesaw at 5.2 m/s or more, with a 1.59 m jump.
+///   5 m/s up a wall; leaving a seesaw at 5.2 m/s or more, with a 1.59 m jump.
 ///
 /// `test/game/movement_envelope_test.dart` fails if the physics stops reaching
 /// these numbers (level-generation spec).
@@ -49,7 +49,7 @@ const ballEnvelope = MovementEnvelope(
   mudFlightTime: 1.1,
   loopEntrySpeed: 12,
   rushGain: 1.24,
-  fanClearance: 0.5,
+  fanClearance: 0.9,
   fanCatchDepth: 3,
   fanRiseSpeed: 2,
   seesawExitSpeed: 5,

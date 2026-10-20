@@ -92,6 +92,16 @@ class LevelValidator {
           );
         }
       }
+      // A bumper post is jumped like spikes as wide as its span.
+      for (final post in level.bumpers) {
+        if (!_postOn(post, floor)) continue;
+        final left = post.center.x - postSpan / 2;
+        final before = along(left - floor.left, speed);
+        final limit = envelope.maxGap(speed: before, rise: 0, margin: margin);
+        if (postSpan > limit * (1 + _epsilon) + _epsilon) {
+          violations.add('post at x=$left exceeds $limit');
+        }
+      }
       speed = along(floor.size.x, speed);
       // Past maces, the player sets off from rest at the last one's lane.
       final lane = _lastLane(level, floor);
@@ -190,21 +200,6 @@ class LevelValidator {
         surface: floor.surface,
       );
       var limit = plain;
-      if (_roofed(level, floor, next)) {
-        // Under a bumper roof the ball rolls off: no jump.
-        if (rise > -_epsilon) {
-          violations.add('bumper roof at x=${floor.right} is over no drop');
-        }
-        final roll = envelope.maxRollOffGap(
-          speed: speed,
-          drop: -rise,
-          margin: margin,
-        );
-        if (gap > roll * (1 + _epsilon) + _epsilon) {
-          violations.add('roll-off of $gap at x=${floor.right} exceeds $roll');
-        }
-        continue;
-      }
       if (boost == BoostType.doubleJump) {
         limit = envelope.maxDoubleJumpGap(speed: speed, margin: margin);
         if (gap <= plain + _epsilon) {
@@ -281,18 +276,13 @@ class LevelValidator {
     return null;
   }
 
-  /// Whether a bumper roof hangs over the gap from [floor] to [next].
-  static bool _roofed(LevelData level, FloorRun floor, FloorRun next) =>
-      level.bumpers.any((bumper) => _roofsGap(bumper, floor, next));
-
-  /// Whether [bumper] belongs to a roof over the gap after [floor]: at the
-  /// roof's height above it, from two tiles before its edge to the far side.
-  static bool _roofsGap(Bumper bumper, FloorRun floor, FloorRun next) =>
-      next.left > floor.right + _epsilon &&
-      (bumper.center.y - (floor.top - bumperRoofHeight - bumperRadius)).abs() <
+  /// Whether [bumper] is a post standing on [floor], with a tile of run-up
+  /// before its span and a tile after it.
+  static bool _postOn(Bumper bumper, FloorRun floor) =>
+      (bumper.center.y - (floor.top - bumperStand - bumperRadius)).abs() <
           _epsilon &&
-      bumper.center.x >= floor.right - 2 * tileSize - _epsilon &&
-      bumper.center.x <= next.left + _epsilon;
+      bumper.center.x - postSpan / 2 >= floor.left + tileSize - _epsilon &&
+      bumper.center.x + postSpan / 2 <= floor.right - tileSize + _epsilon;
 
   /// Fans over a pit cover it from edge to edge, with at most a tile
   /// without wind between columns of at least two tiles; they hold the ball
@@ -347,8 +337,8 @@ class LevelValidator {
     }
   }
 
-  /// Every bumper hangs in a roof over a drop gap, or sits low in the riser
-  /// of a step up (design D2 of add-dynamic-elements).
+  /// Every bumper stands as a post on a run, or sits low in the riser of a
+  /// step up (design D2 of add-dynamic-elements).
   void _checkBumpers(LevelData level, List<String> violations) {
     final floors = level.floors;
     for (final bumper in level.bumpers) {
@@ -361,17 +351,19 @@ class LevelValidator {
             next.top < floor.top - _epsilon &&
             (bumper.center.x - (next.left + bumperInset)).abs() < _epsilon &&
             (bumper.center.y - (floor.top - bumperRadius)).abs() < _epsilon;
-        if (riser || _roofsGap(bumper, floor, next)) placed = true;
+        if (riser) placed = true;
       }
+      if (floors.any((floor) => _postOn(bumper, floor))) placed = true;
       if (!placed) {
         violations.add('bumper at ${bumper.center} is misplaced');
       }
     }
   }
 
-  /// Every mace hangs over a run with a tile to wait in before and after
-  /// its lane, out of every other lane, and leaves the lane clear long
-  /// enough to cross it from rest (design D3 of add-dynamic-elements).
+  /// Every mace hangs over a run with room to wait in before its lane and a
+  /// tile after it, out of every other lane, and leaves the lane clear long
+  /// enough to cross it from rest at the room's back (design D3 of
+  /// add-dynamic-elements).
   void _checkPendulums(
     LevelData level,
     double margin,
@@ -384,7 +376,7 @@ class LevelValidator {
       final over = level.floors.any(
         (floor) =>
             (floor.top - pendulum.ground).abs() < _epsilon &&
-            floor.left <= lane - tileSize + _epsilon &&
+            floor.left <= lane - pendulumRoom * tileSize + _epsilon &&
             floor.right >= end + tileSize - _epsilon,
       );
       final shaped =
@@ -397,11 +389,13 @@ class LevelValidator {
       }
       if (previous != null &&
           (previous.ground - pendulum.ground).abs() < _epsilon &&
-          lane - (previous.right + ballRadius) < tileSize - _epsilon) {
+          lane - (previous.right + ballRadius) <
+              pendulumRoom * tileSize - _epsilon) {
         violations.add('pendulum at x=${pendulum.pivot.x} leaves no room');
       }
       previous = pendulum;
-      final crossing = envelope.pushTime(0, end - lane);
+      const room = pendulumRoom * tileSize;
+      final crossing = envelope.pushTime(room, room + end - lane);
       if (crossing > margin * pendulum.clearTime * (1 + _epsilon)) {
         violations.add(
           'pendulum at x=${pendulum.pivot.x} leaves $crossing s to cross '

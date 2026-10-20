@@ -143,7 +143,7 @@ void main() {
           checkpoints: [],
           sections: [],
           estimatedDuration: 10,
-          fans: [Fan(left: 10.5, right: 12, base: _top, top: _top - 2 * 8.7)],
+          fans: [Fan(left: 10.5, right: 12, base: _top, top: _top - 1.5 * 8.7)],
         ),
       ),
       (game) async {
@@ -161,28 +161,26 @@ void main() {
   });
 
   group('bumpers', () {
+    const post = Bumper(Vec2(12, _top - bumperStand - bumperRadius));
+
     testWithGame(
-      'throw a ball that jumps into them straight back down',
-      () => gameOn(
-        _course(
-          bumpers: const [
-            Bumper(Vec2(10, _top - bumperRoofHeight - bumperRadius)),
-          ],
-        ),
-      ),
+      'standing on a run throw a ball rolling into them back',
+      () => gameOn(_course(bumpers: const [post])),
       (game) async {
-        final ball = _place(game, 10);
-        _run(game, 0.3);
-        game.intent.requestJump();
+        final ball = _place(game, 6);
+        game.intent.horizontal = 1;
         final bumper = game.level!.children.whereType<BumperComponent>().single;
+        expect(bumper.post, isTrue);
         var fastest = 0.0;
-        for (var i = 0; i < 60; i++) {
+        for (var i = 0; i < 240 && !bumper.isFlashing; i++) {
           game.update(_dt);
-          fastest = math.max(fastest, ball.body.linearVelocity.y);
-          if (bumper.isFlashing) break;
+        }
+        for (var i = 0; i < 3; i++) {
+          fastest = math.max(fastest, -ball.body.linearVelocity.x);
+          game.update(_dt);
         }
         expect(bumper.isFlashing, isTrue);
-        expect(fastest, closeTo(BumperComponent.speed, 0.5));
+        expect(fastest, greaterThan(BumperComponent.speed * 0.6));
         expect(audio.played, contains(GameSound.bumper));
         expect(haptics.played, contains(Haptic.hit));
         bumper.render(Canvas(PictureRecorder()));
@@ -192,30 +190,24 @@ void main() {
     );
 
     testWithGame(
-      'in a roof carry a ball that lands on them on their beam, to roll off',
-      () => gameOn(
-        _course(
-          bumpers: [
-            for (var x = 10.0; x <= 14; x += 0.8)
-              Bumper(Vec2(x, _top - bumperRoofHeight - bumperRadius)),
-          ],
-        ),
-      ),
+      'standing on a run let a ball jump over them',
+      () => gameOn(_course(bumpers: const [post])),
       (game) async {
-        final beam = game.level!.children.whereType<RoofBeamComponent>().single;
-        expect(beam.left, closeTo(10 - bumperRadius, 1e-9));
-        final ball = _place(game, 12, y: _top - 3);
+        final ball = _place(game, 6);
         game.intent.horizontal = 1;
-        var rested = false;
-        for (var i = 0; i < 240 && ball.body.position.x < 15; i++) {
+        for (
+          var i = 0;
+          i < 240 && ball.body.position.x < 12 - postSpan / 2;
+          i++
+        ) {
           game.update(_dt);
-          if (ball.isOnGround && ball.body.position.y < _top - 1) {
-            rested = true;
-          }
         }
-        expect(rested, isTrue);
-        expect(ball.body.position.x, greaterThan(14.5));
-        beam.render(Canvas(PictureRecorder()));
+        game.intent.requestJump();
+        for (var i = 0; i < 120 && ball.body.position.x < 14; i++) {
+          game.update(_dt);
+        }
+        expect(ball.body.position.x, greaterThan(14));
+        expect(audio.played, isNot(contains(GameSound.bumper)));
       },
     );
 
@@ -294,6 +286,11 @@ void main() {
         if (ball.body.linearVelocity.x.abs() > 1) swingAtHit = before;
       }
       expect(swingAtHit, isNotNull);
+      // Thrown hard, not just pushed.
+      expect(
+        ball.body.linearVelocity.length,
+        greaterThan(PendulumComponent.knockSpeed * 0.8),
+      );
       // A positive angular speed swings the mace towards smaller x.
       expect(ball.body.linearVelocity.x.sign, swingAtHit! > 0 ? -1 : 1);
       expect(audio.played, contains(GameSound.thud));
@@ -308,14 +305,22 @@ void main() {
         final level = game.level!;
         final mace = level.children.whereType<PendulumComponent>().single;
         final lane = pendulum.left - ballRadius;
-        final ball = _place(game, lane - 0.3);
-        // Wait for the lane to clear for the crossing from rest.
+        const room = pendulumRoom * tileSize;
+        final ball = _place(game, lane - room);
+        // Wait for the lane to clear for the crossing from rest at the back
+        // of the waiting room.
         final crossing = ballEnvelope.pushTime(
-          0,
-          2 * (pendulum.reach + ballRadius),
+          room,
+          room + 2 * (pendulum.reach + ballRadius),
         );
         expect(crossing, lessThan(pendulum.clearTime));
-        for (var i = 0; i < 600 && !mace.clearFor(crossing); i++) {
+        final enter = ballEnvelope.pushTime(0, room);
+        for (var i = 0; i < 600; i++) {
+          var clear = true;
+          for (var t = enter; t <= crossing + enter; t += 0.02) {
+            if (mace.inLaneAt(mace.time + t)) clear = false;
+          }
+          if (clear) break;
           game.update(_dt);
         }
         game.intent.horizontal = 1;
@@ -402,7 +407,7 @@ void main() {
       _course(
         floors: const [(0, 20), (40, 60), (80, 190)],
         fans: const [Fan(left: 20, right: 40, base: 7, top: -3)],
-        bumpers: const [Bumper(Vec2(50, 2.65))],
+        bumpers: const [Bumper(Vec2(50, _top - bumperStand - bumperRadius))],
         pendulums: const [
           Pendulum(
             pivot: Vec2(100, _top - maceClearance - maceRadius - 3),

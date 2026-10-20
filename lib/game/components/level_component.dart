@@ -226,8 +226,8 @@ class LevelComponent extends Component with HasGameReference<Forge2DGame> {
       for (final seesaw in data.seesaws) SeesawComponent(seesaw: seesaw),
       for (final pendulum in data.pendulums)
         PendulumComponent(pendulum: pendulum),
-      for (final bumper in data.bumpers) BumperComponent(bumper: bumper),
-      ...RoofBeamComponent.over(data.bumpers),
+      for (final bumper in data.bumpers)
+        BumperComponent(bumper: bumper, post: _isPost(bumper)),
       for (final zone in data.adrenaline) _zone(zone),
       RushTrailComponent(ball: ball),
       for (final platform in data.platforms)
@@ -269,6 +269,15 @@ class LevelComponent extends Component with HasGameReference<Forge2DGame> {
       ball,
     ]);
   }
+
+  /// Whether [bumper] stands as a post on a floor run.
+  bool _isPost(Bumper bumper) => data.floors.any(
+    (floor) =>
+        (floor.top - bumperStand - bumperRadius - bumper.center.y).abs() <
+            1e-6 &&
+        floor.left < bumper.center.x &&
+        bumper.center.x < floor.right,
+  );
 
   /// Whether [fan] is set in a floor run rather than standing in a pit.
   bool _inFloor(Fan fan) => data.floors.any(

@@ -25,13 +25,12 @@ the heavier ball, like every other element.
     before the bank falls into the pit.
 - **Bumpers (level 17):** pinball bumpers set in ceilings and walls. Touching one throws the ball away from it at a
   fixed, strong speed. They play as traps, but never send the ball back to a checkpoint by themselves.
-  - **Bumper roofs:** a row of bumpers hangs low over a drop gap and the run before it. Rolling off the edge clears
-    the gap, but a jump hits the roof and is slammed down into the pit. This is a flow element that punishes the
-    habit of jumping at every edge.
+  - **Bumper posts:** bumpers on short stands on the runs after a gap, a tile in, one at first and up to three
+    deep. Each is jumped; landing long or rolling on runs into it, and it throws the ball back, often into the gap.
   - **Bumper risers:** from level 17, a break point's short tread can end in a riser lined with bumpers. A ball that
     overshoots the tread is kicked back into the gap.
 - **Pendulums (level 19):** iron maces swinging on a rigid arm over a run, on a fixed rhythm like the lasers.
-  - **Hits:** a mace that meets the ball knocks it along its swing, back down the run or off into the pit.
+  - **Hits:** a mace that meets the ball throws it away hard, back down the run or off into the pit.
   - **Waiting spots:** the run has room outside the mace's reach to wait in.
   - **Crossing:** each mace leaves the lane clear long enough for a ball starting from rest at a waiting spot to cross.
   - **Deep levels:** two or three maces with their own phases hang over one run.
@@ -49,6 +48,9 @@ the heavier ball, like every other element.
   - a sharp vibration when a bumper or a mace hits the ball.
 - **Generator:** new data, sections and measured envelope values, with the validator, the laser clearance and the
   fall detection extended. The bot learns each element, and the stress run adds levels 17, 19 and 21.
+- **Curves with obstacles** (after the first play-test): hills and half-pipes often carry spikes in a valley
+  between two bumps, or a speed boost after them that launches the ball over a long gap, more often deep, so wavy
+  stretches are not empty.
 - `generatorVersion` 6 with new golden digests.
 
 ## Capabilities
@@ -59,7 +61,7 @@ the heavier ball, like every other element.
 - `level-generation`:
   - stages: fans at 15, bumpers at 17, pendulums at 19, seesaws at 21;
   - deep levels use the new elements too;
-  - new requirements for fans, bumper roofs, pendulums and seesaws.
+  - new requirements for fans, bumper posts, pendulums, seesaws, and obstacles on curves.
 - `level-mechanics`:
   - fans, bumpers, pendulums and seesaws in play;
   - respawns reset the seesaws.
@@ -71,7 +73,7 @@ the heavier ball, like every other element.
 
 - **Generator:** `packages/level_generator`:
   - data: `Fan`, `Bumper`, `Pendulum`, `Seesaw`;
-  - section kinds: `fanGap`, `fanClimb`, `bumperRoof`, `pendulums`, `seesaw`;
+  - section kinds: `fanGap`, `fanClimb`, `bumperPosts`, `pendulums`, `seesaw`;
   - difficulty curve, envelope, validator, laser clearance and tests.
 - **Game:**
   - four components: a fan's sensor that lifts, static bumpers, kinematic pendulums, and a dynamic seesaw on a

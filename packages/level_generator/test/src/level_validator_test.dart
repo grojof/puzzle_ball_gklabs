@@ -810,7 +810,7 @@ void main() {
           strict(
             course(
               floors: wall,
-              fans: const [Fan(left: 3, right: 4.5, base: 4, top: -11)],
+              fans: const [Fan(left: 3, right: 4.5, base: 4, top: -5)],
             ),
           ),
           contains(startsWith('fan at x=3.0 does not lift above the wall')),
@@ -828,35 +828,29 @@ void main() {
     });
 
     group('bumpers', () {
-      const row = 4 - bumperRoofHeight - bumperRadius;
-      List<Bumper> roof(double from, double to) => [
-        for (var x = from; x <= to + 1e-9; x += 0.8) Bumper(Vec2(x, row)),
-      ];
+      const stand = 4 - bumperStand - bumperRadius;
+      final run = [floor(0, 4, tiles: 6), floor(10.5, 4)];
 
-      test('accept a roof over a drop gap that rolling off clears', () {
+      test('accept a post a jump clears, with a tile either side', () {
         expect(
           strict(
-            course(
-              floors: [floor(0, 4), floor(7.5, 6)],
-              bumpers: roof(1.85, 7.15),
-            ),
+            course(floors: run, bumpers: const [Bumper(Vec2(4.5, stand))]),
           ),
           isEmpty,
         );
       });
 
-      test('reject a roof over no drop, or a gap rolling off misses', () {
+      test('reject a post too close to an edge, or beyond a jump', () {
         expect(
-          strict(
-            course(
-              floors: [floor(0, 4), floor(7.5, 4)],
-              bumpers: roof(1.85, 7.15),
-            ),
+          strict(course(floors: run, bumpers: const [Bumper(Vec2(2, stand))])),
+          contains(startsWith('bumper at (2.000, 3.550) is misplaced')),
+        );
+        expect(
+          check(
+            course(floors: run, bumpers: const [Bumper(Vec2(4.5, stand))]),
+            margin: 0.3,
           ),
-          containsAll([
-            startsWith('bumper roof at x=4.5 is over no drop'),
-            startsWith('roll-off of 3.0 at x=4.5'),
-          ]),
+          contains(startsWith('post at x=3.0 exceeds')),
         );
       });
 
@@ -892,6 +886,7 @@ void main() {
 
       test('accept a mace with room around it and time to cross', () {
         expect(strict(course(floors: run, pendulums: [mace(6)])), isEmpty);
+        expect(strict(course(floors: run, pendulums: [mace(4)])), isNotEmpty);
       });
 
       test('reject a mace off its run, too wide a swing, no room, or too '

@@ -13,8 +13,9 @@ import 'package:puzzle_ball_gklabs/game/visuals/element_palette.dart';
 /// design D1 of add-dynamic-elements).
 ///
 /// Inside the column the ball is lifted by [fanLift] times gravity at the
-/// base, fading to nothing at the top, so it floats halfway up; an extra
-/// vertical damping settles its bobbing. The push works as in the air.
+/// base, fading to nothing at the top, so it floats two thirds of the way
+/// up; an extra vertical damping settles its bobbing. The push works as in
+/// the air.
 ///
 /// Drawn as a steel housing with spinning blades, on a pillar into the pit
 /// or set in the floor, and pale currents rising through the column
@@ -28,7 +29,7 @@ class FanComponent extends BodyComponent with ContactCallbacks {
   final bool inFloor;
 
   /// How strongly the column damps the ball's vertical speed, per second.
-  static const damping = 1.0;
+  static const damping = 0.6;
 
   /// The least time between two whooshes, in seconds.
   static const whooshGap = 1.0;

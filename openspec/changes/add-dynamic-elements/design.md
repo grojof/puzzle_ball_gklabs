@@ -35,8 +35,9 @@ See proposal.md for the motivation. Today:
 - **Data:** `Fan(left, right, base, top)`, a column of air from the fan at `base` up to `top` (world y).
 - **Physics:**
   - inside the column, the ball gets an upward acceleration of `g · s · (1 − h / H)`, where `h` is its height above
-    the fan, `H` the column's height and `s` = 2;
-  - it floats at the hover height `H / 2`, where the lift equals gravity, and the damping settles its bobbing;
+    the fan, `H` the column's height and `s` = 3 (2 before the first play-test, which found the rise slow);
+  - it floats at the hover height `2 H / 3`, where the lift equals gravity, and an extra vertical damping of 0.6/s
+    settles its bobbing;
   - the push works as in the air, so the player steers it;
   - the hover height is exact, so the generator can use it.
 - **Fan gaps:**
@@ -53,9 +54,9 @@ See proposal.md for the motivation. Today:
   - its hover height is `fanClearance` above the wall's top;
   - a fan climb counts as a climb towards the course's target height.
 - **Measured** with the real ball (rounded safely):
-  - `fanClearance` 0.5 m: a floating ball's bottom bobs at most 0.28 m below the hover height;
+  - `fanClearance` 0.9 m: a floating ball's bottom bobs at most 0.76 m below the hover height, after jumping in;
   - `fanCatchDepth` 3 m: a ball that rolls or jumps in never sinks below the run;
-  - `fanRiseSpeed` 2 m/s: the mean rising speed, about 2.2 m/s up a 10 m wall, for the duration estimate.
+  - `fanRiseSpeed` 2 m/s for the duration estimate: about 5 m/s up a wall, under a second to float over a pit.
 - **Fall detection:** a fan's base counts as ground in its column, so a ball bobbing in a pit is not taken for a fall.
 
 ### D2. Bumpers
@@ -65,18 +66,14 @@ See proposal.md for the motivation. Today:
   - on contact, the ball's speed along the contact normal becomes `bumperSpeed` (about 9 m/s) outwards, and its speed
     along the surface is kept;
   - this is a set speed, as with trampolines, so the throw does not depend on how hard the ball hit.
-- **Bumper roofs** (`bumperRoof`, a flow kind):
-  - a run of at least three tiles, then a drop gap, 1.5 m to `1.5 + 3 × intensity` down;
-  - a row of bumpers over the run's last two tiles and the gap;
-  - the roof's lower edge is above a rolling ball (twice its radius plus 0.3 m), and below a jump's height at every
-    point of the row, so a jump taken under the roof always hits it;
-  - the gap's width is a share of `speed × fallTime(drop)`, from the precision interval, using the speed the model
-    carries to the edge, and the landing is sized as for any drop.
-
-  A player who keeps pushing and rolls off flies clear. One who jumps at the edge from habit is slammed into the pit.
-- **The roof's beam:** the row hangs from a steel beam, a static body the ball can stand on. A fast ball dropping onto
-  the run from a ledge before it may fly over the roof: it lands on the beam and rolls off its end towards the far
-  bank, instead of bouncing on the bumpers' tops, where the stress run found it trapped.
+- **Bumper posts** (`bumperPosts`, a flow kind; they replace the bumper roofs of the first play-test, which the
+  author found senseless: going under hit the roof, so they went over it):
+  - a gap onto a single tile's landing, then a post a tile in, standing on a stand 0.1 m high, so a rolling ball hits
+    it;
+  - from depth 0.5, up to three posts, each after a tile of run;
+  - a post is jumped like spikes as wide as `postSpan` (3 m): the bumper and the rise and fall of a jump clearing it,
+    so it needs the reach at the speed of the tile before it;
+  - landing long or rolling on runs into the post, which throws the ball back, often into the gap.
 - **Bumper risers:** from level 17, half of the short-tread break points line their riser's face with two or three
   bumpers below the lip. An overshoot is kicked back into the gap. A jump from the tread still clears the lip.
 
@@ -94,16 +91,17 @@ See proposal.md for the motivation. Today:
   - so the generator needs no trigonometry: the reach strip's half-width is `√(L² − (L − d)²) + maceRadius`, with
     `d` the lane's height, using only a square root, which is exact on every platform.
 - **Physics:**
-  - a kinematic body, whose angular velocity each step is set to reach the scheduled angle at the next step, so the
-    mace hits with its real speed;
+  - a kinematic body, whose angular velocity each step is set to reach the scheduled angle at the next step;
+  - a mace that meets the ball throws it straight away from the mace at `knockSpeed` (10 m/s), as a bumper does, so a
+    hit is hard (the first play-test found the plain push too soft);
   - the ball is a bullet, so a fast mace never passes through it.
 - **Pendulum runs** (`pendulums`, a challenge kind, also tense for the adrenaline rush):
   - one mace, or two or three from depth 0.5;
-  - each mace has a waiting room of at least one tile before its reach strip, out of every strip;
+  - each mace has a waiting room of two tiles (`pendulumRoom`) before its reach strip, out of every strip;
   - the run ends in a gap or a drop, so a knock forwards can throw the ball off.
 - **Sizing:**
   - the crossing time is computed with the speed curve, from rest at the back of the waiting room to beyond the strip
-    plus the ball;
+    plus the ball: the ball reaches the lane at speed, so the maces swing faster than from rest at its edge;
   - the period is set so the crossing takes a share of the clear time `clear × period`, from the precision interval;
   - the duration estimate adds half a period for each mace;
   - inside an adrenaline zone the ball only crosses faster, so the rest-based sizing stays honest.
@@ -132,15 +130,15 @@ See proposal.md for the motivation. Today:
 ### D5. Difficulty curve
 - **Introductions:**
   - `fanGap` and `fanClimb` at 15;
-  - `bumperRoof` at 17, and bumper risers in break points from 17;
+  - `bumperPosts` at 17, and bumper risers in break points from 17;
   - `pendulums` at 19;
   - `seesaw` at 21.
 
   Level 19 is a breather. It still introduces its element, as level 9 does.
-- **Base weights:** `fanGap` 0.6, `fanClimb` 0.4, `bumperRoof` 0.7, `pendulums` 0.6, `seesaw` 0.6. All five are rich
+- **Base weights:** `fanGap` 0.6, `fanClimb` 0.4, `bumperPosts` 0.7, `pendulums` 0.6, `seesaw` 0.6. All five are rich
   kinds, which grow more common with depth.
 - **Kinds:**
-  - flow kinds gain `bumperRoof` and `seesaw`;
+  - flow kinds gain `bumperPosts` and `seesaw`;
   - tense kinds gain `pendulums`;
   - plain climbs are unchanged.
 
@@ -154,6 +152,15 @@ traveling their band without changing the levels' character:
   seesaw;
 - sections that climb or descend away from the target height weigh a third.
 
+### D11. Curves that carry obstacles
+The first play-test found wavy stretches empty. A hill or a half-pipe carries an obstacle with a probability of
+`0.5 + 0.4 d`:
+- a hill: spikes in a valley between two single bumps, on a run of a tile, the strip and a tile, or, once speed
+  boosts are known and half the time, one or two bumps followed by a speed boost and a long gap;
+- a half-pipe: a speed boost and a long gap after it, once speed boosts are known.
+
+Both reuse the spikes' and the speed boost's sections, so the validator's rules already cover them.
+
 ### D6. Validator, clearance and falls
 - **Validator:**
   - **fans:**
@@ -162,7 +169,8 @@ traveling their band without changing the levels' character:
     - bases lie `fanCatchDepth` below the run;
     - windless stretches are within a glide;
     - nothing solid stands in a column but the floor fan's own ground;
-  - **bumper roofs:** they lie between the rolling and jumping bounds, and their gap is within the roll-off reach;
+  - **bumper posts:** each stands on a run with a tile of run either side of its span, and the span is within a
+    jump at the speed before it;
   - **pendulums:**
     - waiting rooms are out of every strip;
     - the strips are on one run;
@@ -199,7 +207,7 @@ traveling their band without changing the levels' character:
 - **Fans:**
   - in a fan gap it floats and pushes on, easing off once above the far bank's edge;
   - in a fan climb it waits against the wall until above the top, then pushes over.
-- **Bumper roofs:** it never jumps under a roof, and rolls off pushing.
+- **Bumper posts:** it jumps them as it jumps spikes as wide as their span.
 - **Pendulums:**
   - it stops in each waiting room;
   - it reads the pendulum's schedule from the level data and the game's clock;
@@ -217,7 +225,7 @@ traveling their band without changing the levels' character:
 ### D10. Versions and records
 - `generatorVersion` becomes 6, with new golden digests on the VM and in Chrome.
 - ADR-0016 records how each element plays and why: fans upwards and always on, maces that push, seesaws over pits, and
-  bumpers as roofs and risers.
+  bumpers as posts and risers, and curves that carry obstacles.
 
 ## Risks / Trade-offs
 
@@ -227,8 +235,8 @@ traveling their band without changing the levels' character:
   on the settled ball, and the author's play-test judges the feel.
 - **[A seesaw jitters or catapults]** → Its limits, damping and light plank are measured, and the jump after it is
   sized from the measured worst case.
-- **[Players do not read the bumper roof as a "don't jump" sign]** → The roof is in view before the edge, at the
-  height a jump reaches, and the first one appears on level 17 with a forgiving gap.
+- **[A post's throw feels unfair]** → It is in view across the gap, and a careful landing leaves a tile to jump it
+  from.
 - **[Frame time]** → The new bodies are few and their art is cached. The frame time is measured on the reference
   phone.
 

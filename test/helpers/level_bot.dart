@@ -63,6 +63,13 @@ class LevelBot {
   /// The ferry the bot has set off to board, by index.
   int? _boarding;
 
+  /// Where the bot backs up to before jumping a bumper post, and the post,
+  /// while it does.
+  ({double to, double post})? _backUpTo;
+
+  /// The mace whose lane the bot has set off to cross.
+  Pendulum? _crossing;
+
   /// The ball's vertical speed in the last frame, to notice a bounce.
   double _lastVy = 0;
 
@@ -96,13 +103,28 @@ class LevelBot {
     return null;
   }
 
-  /// The spike strips lying on [run], left to right.
-  Iterable<SpikeStrip> _stripsOn(FloorRun run) => data.hazards.where(
-    (strip) =>
-        (strip.top - run.top).abs() < 1e-6 &&
-        strip.left >= run.left &&
-        strip.right <= run.right,
-  );
+  /// The spike strips lying on [run], and the spans of its bumper posts,
+  /// jumped alike, left to right.
+  Iterable<SpikeStrip> _stripsOn(FloorRun run) =>
+      [
+            ...data.hazards,
+            for (final bumper in data.bumpers)
+              if ((bumper.center.y - (run.top - bumperStand - bumperRadius))
+                      .abs() <
+                  1e-6)
+                SpikeStrip(
+                  position: Vec2(bumper.center.x - postSpan / 2, run.top),
+                  width: postSpan,
+                ),
+          ]
+          .where(
+            (strip) =>
+                (strip.top - run.top).abs() < 1e-6 &&
+                strip.left >= run.left &&
+                strip.right <= run.right,
+          )
+          .toList()
+        ..sort((a, b) => a.left.compareTo(b.left));
 
   /// The stretches of [run] clear of spikes, from its left.
   List<Landing> _clear(FloorRun run) {
@@ -225,20 +247,47 @@ class LevelBot {
         return (push: 1, jump: false);
       }
       _launchEnd = run.right;
+      // Inside a bumper post's span, short of the post: too close and too
+      // slow to jump it, backs up to the start of its run-up, to set off
+      // from there.
+      final back = _backUpTo;
+      if (back != null && p.x > back.to && p.x < back.post) {
+        return (push: -1, jump: false);
+      }
+      _backUpTo = null;
+      for (final bumper in data.bumpers) {
+        final left = bumper.center.x - postSpan / 2;
+        final stands =
+            (bumper.center.y - (run.top - bumperStand - bumperRadius)).abs() <
+            1e-6;
+        if (stands && p.x > left - 0.05 && p.x < bumper.center.x) {
+          _backUpTo = (
+            to: math.max(run.left + 0.3, left - tileSize + 0.3),
+            post: bumper.center.x,
+          );
+          return (push: -1, jump: false);
+        }
+      }
       // Spikes ahead on this run come first: their start is the edge.
       final strip = _stripsOn(run)
           .where((strip) => strip.left > p.x - 0.05)
           .firstOrNull;
       if (strip != null) {
-        final lead = math.max(0.15, v.x * 0.04);
+        // A post stands tall: a fast ball takes off earlier to clear it.
+        final post = data.bumpers.any(
+          (bumper) =>
+              (bumper.center.x - strip.left - postSpan / 2).abs() < 1e-6,
+        );
+        final lead = post
+            ? math.max(0.3, v.x * 0.1)
+            : math.max(0.15, v.x * 0.04);
         if (strip.left - p.x > lead) return (push: 1, jump: false);
         _jumped = true;
         _pending = _clear(run).firstWhere((s) => s.left >= strip.right - 1e-6);
         return (push: 1, jump: true);
       }
       // A seesaw, a fan in the floor or a pit of fans takes the ball on
-      // from the edge, and under a bumper roof a jump would hit the roof:
-      // it rolls on.
+      // from the edge: it rolls on.
       if (_rollsOn(run)) return (push: 1, jump: false);
       final next = surfaceAt(run.right + 0.05);
       final climb = next == null ? 0.0 : run.top - next;
@@ -396,7 +445,7 @@ class LevelBot {
   }
 
   /// Whether the ball rolls on past the end of [run] without jumping: onto
-  /// a seesaw, into a fan's column, or off a ledge under a bumper roof.
+  /// a seesaw or into a fan's column.
   bool _rollsOn(FloorRun run) {
     final seesaw = data.seesaws.any(
       (seesaw) =>
@@ -408,15 +457,7 @@ class LevelBot {
           (fan.left - run.right).abs() < 1e-6 ||
           ((fan.right - run.right).abs() < 1e-6 && fan.base == run.top),
     );
-    final roof = data.bumpers.any(
-      (bumper) =>
-          (bumper.center.y - (run.top - bumperRoofHeight - bumperRadius))
-                  .abs() <
-              1e-6 &&
-          bumper.center.x >= run.right - 2 * tileSize - 1e-6 &&
-          bumper.center.x <= run.right + 1e-6,
-    );
-    return seesaw || fan || roof;
+    return seesaw || fan;
   }
 
   /// On a run under maces: goes when the next mace's lane stays clear for
@@ -438,22 +479,31 @@ class LevelBot {
       if (pendulum.pivot.x < run.left || pendulum.pivot.x > run.right) {
         continue;
       }
-      final start = pendulum.left - LevelComponent.ballRadius - 0.1;
-      final end = pendulum.right + LevelComponent.ballRadius + 0.1;
-      // Only the next mace, once near enough to stop before it.
-      if (p.x > end || start - p.x > 6) continue;
-      // Already in the lane: carries on.
-      if (p.x >= start) return (push: 1, jump: false);
+      final start = pendulum.left - LevelComponent.ballRadius - 0.03;
+      final end = pendulum.right + LevelComponent.ballRadius + 0.03;
+      // Only the next mace, once near enough to stop before its room.
+      if (p.x > end || start - p.x > pendulumRoom * tileSize + 5) continue;
+      // Already in the lane, or set off for it: carries on.
+      if (p.x >= start || _crossing == pendulum) {
+        return (push: 1, jump: false);
+      }
       // When it would enter and leave the lane pushing from here.
       final enter = _pushTime(p.x, math.max(0, v.x), start, force);
       final leave = _pushTime(p.x, math.max(0, v.x), end, force);
       var clear = true;
-      for (var t = enter; t <= leave + 0.1; t += 0.02) {
+      for (var t = enter; t <= leave + 0.02; t += 0.02) {
         if (mace.inLaneAt(mace.time + t)) clear = false;
       }
-      if (clear) return (push: 1, jump: false);
-      // Stops a little short of the lane to wait.
-      final ahead = start - 0.2 - p.x;
+      if (clear) {
+        _crossing = pendulum;
+        return (push: 1, jump: false);
+      }
+      // Waits at the back of the room before the lane, to set off from
+      // there, backing up to it if need be.
+      final ahead = start - pendulumRoom * tileSize + 0.2 - p.x;
+      if (ahead < -0.1) {
+        return (push: (ahead * 3 - v.x * 1.5).clamp(-1.0, 1.0), jump: false);
+      }
       final allowed = ahead <= 0 ? 0.0 : math.sqrt(1.4 * force * ahead);
       return (push: ((allowed - v.x) * 2).clamp(-1.0, 1.0), jump: false);
     }
@@ -538,6 +588,8 @@ class LevelBot {
       if (!ball.isOnGround || run == null) continue;
       if ((run.right - nearEdge).abs() > 1e-6) continue;
       if (run.right - p.x > 12) continue;
+      // Spikes or a post still ahead on the run come first.
+      if (_stripsOn(run).any((strip) => strip.right > p.x)) continue;
       // Boards if it gets well onto the deck before the pause ends, and
       // once it has set off, carries on.
       final docked = deck.x - run.right < 0.35;

@@ -14,7 +14,7 @@ import 'package:puzzle_ball_gklabs/game/visuals/element_palette.dart';
 /// design D3 of add-dynamic-elements).
 ///
 /// A kinematic body: each step it takes its scheduled angle and angular
-/// speed, so a mace that meets the ball knocks it with its real speed.
+/// speed, and a mace that meets the ball throws it away at [knockSpeed].
 ///
 /// Drawn as a riveted bracket, a dark arm and a studded mace, its swing
 /// traced faintly (game-visuals spec).
@@ -25,6 +25,10 @@ class PendulumComponent extends BodyComponent with ContactCallbacks {
 
   /// The arm's thickness, in meters.
   static const armWidth = 0.1;
+
+  /// The speed a mace knocks the ball away at, in m/s: harder than its own
+  /// swing, so a hit throws the ball (design D3 of add-dynamic-elements).
+  static const knockSpeed = 10.0;
 
   /// The angle at which the mace leaves the lane, from straight down.
   late final double laneAngle = math.acos(
@@ -91,7 +95,11 @@ class PendulumComponent extends BodyComponent with ContactCallbacks {
 
   @override
   void beginContact(Object other, Contact contact) {
-    if (other is BallComponent) other.struck();
+    if (other is! BallComponent) return;
+    final mace = body.worldPoint(Vector2(0, pendulum.length));
+    final away = other.body.position - mace;
+    if (away.length2 == 0) return;
+    other.knock(away.normalized(), knockSpeed);
   }
 
   @override

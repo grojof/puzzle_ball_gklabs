@@ -243,15 +243,6 @@ class MovementEnvelope {
     return time == null ? 0 : margin * seesawExitSpeed * time;
   }
 
-  /// The widest gap a ball rolling off a ledge at [speed], without jumping,
-  /// clears onto ground [drop] meters lower, scaled by [margin] (design D2
-  /// of add-dynamic-elements).
-  double maxRollOffGap({
-    required double speed,
-    required double drop,
-    required double margin,
-  }) => margin * speed * fallTime(drop);
-
   /// At most how long a ball pushed from rest takes to go from [from] to
   /// [to] meters along flat ground, in seconds (design D3 of
   /// add-dynamic-elements).

@@ -29,7 +29,7 @@ const testEnvelope = MovementEnvelope(
   mudFlightTime: 1.1,
   loopEntrySpeed: 12,
   rushGain: 1.24,
-  fanClearance: 0.5,
+  fanClearance: 0.9,
   fanCatchDepth: 3,
   fanRiseSpeed: 2,
   seesawExitSpeed: 5,

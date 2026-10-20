@@ -1,7 +1,7 @@
 ---
 type: decision
 title: "ADR-0016: Fans, bumpers, pendulums and seesaws"
-description: "Fans blow upwards and are always on; bumpers hang in roofs over drop gaps and sit low in risers; maces swing on a rhythm and push the ball; seesaws tip over pits. Each is measured with the real ball and introduced at levels 15, 17, 19 and 21."
+description: "Fans blow upwards and are always on; bumpers stand as posts after gaps and sit low in risers; maces swing on a rhythm and push the ball; seesaws tip over pits. Each is measured with the real ball and introduced at levels 15, 17, 19 and 21."
 tags: [level-generation, physics, mechanics]
 ---
 
@@ -18,24 +18,27 @@ the static terrain, they move or push the ball. The author chose how three of th
 - **Pendulums:** maces that push the ball, rather than blades that send it back.
 - **Seesaws:** planks over a pit, rather than moving ramps on solid ground.
 
-The bumpers' placement was proposed with the change and accepted with it.
+The bumpers were first proposed as roofs over drop gaps. The author's play-test found them senseless: going under
+hit the roof, so they went over it. They chose posts on the ground instead. They also asked for faster, harder maces,
+faster fans, and obstacles on wavy stretches, which felt empty.
 
 ## Decision
 
 - **Fans (level 15):**
-  - a column of air lifts the ball towards a hover height halfway up and settles it there, while the player steers;
+  - a column of air lifts the ball towards a hover height two thirds up and settles it there, while the player
+    steers;
   - they float the ball across pits wider than any jump, sometimes split into columns with a tile of no wind between
     them;
   - set in the floor, they lift it over a wall higher than a jump boost reaches.
 - **Bumpers (level 17):**
   - a bumper throws the ball away from it at a fixed speed;
-  - in a roof over a drop gap, rolling off clears the gap, while the habit of jumping at an edge slams the ball into
-    the pit; the roof hangs from a steel beam, so a ball coming down on top of it rolls off instead of bouncing there;
+  - posts stand on short stands on the run after a gap, to be jumped; landing long or rolling on runs into one,
+    which throws the ball back towards the gap;
   - set low in the riser of a short tread, a bumper kicks an overshoot back into the gap.
 - **Pendulums (level 19):**
-  - iron maces swing on a fixed rhythm and push the ball as heavy bodies;
-  - a tile before each mace is out of its reach, for waiting;
-  - the lane stays clear long enough to cross from rest;
+  - iron maces swing on a fixed rhythm and throw the ball away hard when they hit it;
+  - two tiles before each mace are out of its reach, for waiting;
+  - the lane stays clear long enough to cross from rest at the back of that room;
   - deep runs hang up to three maces.
 - **Seesaws (level 21):**
   - a light, balanced plank rests leaning back over a pit;
@@ -47,6 +50,8 @@ The bumpers' placement was proposed with the change and accepted with it.
   - seesaws: the speed and the jump at the far end.
 
   The generator needs only exact operations and square roots, so levels stay the same on every platform.
+- **Curves with obstacles:** hills and half-pipes often carry spikes in a valley or a speed boost and a long gap
+  after them, more often deep.
 - **Vertical travel:** a course that has taken more than a minute of play to reach its target height slopes its
   landings towards it, and gaps lean towards that height two to one. Flow-heavy levels with no climbs no longer stay
   flat.

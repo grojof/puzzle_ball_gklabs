@@ -728,7 +728,7 @@ void main() {
       'draws a level with every element',
       () => testGame(
         images: images,
-        levelFor: (_) => levelGenerator.generate(seed: 'render147', level: 45),
+        levelFor: (_) => levelGenerator.generate(seed: 'render124', level: 45),
       ),
       (game) async {
         final level = game.level!;

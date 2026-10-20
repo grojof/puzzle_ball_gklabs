@@ -91,7 +91,7 @@ const Set<SectionKind> _flowKinds = {
   SectionKind.loop,
   SectionKind.trampolineHops,
   SectionKind.conveyor,
-  SectionKind.bumperRoof,
+  SectionKind.bumperPosts,
   SectionKind.seesaw,
 };
 
@@ -141,7 +141,6 @@ const Set<SectionKind> _descents = {
   SectionKind.drop,
   SectionKind.cascade,
   SectionKind.descent,
-  SectionKind.bumperRoof,
 };
 
 class _Builder {
@@ -499,8 +498,8 @@ class _Builder {
         _fanGap();
       case SectionKind.fanClimb:
         _fanClimb();
-      case SectionKind.bumperRoof:
-        _bumperRoof();
+      case SectionKind.bumperPosts:
+        _bumperPosts();
       case SectionKind.pendulums:
         _pendulums();
       case SectionKind.seesaw:
@@ -995,7 +994,7 @@ class _Builder {
     // From level 17, half the risers kick an overshoot back into the gap
     // (design D2 of add-dynamic-elements).
     final bumped =
-        parameters.weights.containsKey(SectionKind.bumperRoof) &&
+        parameters.weights.containsKey(SectionKind.bumperPosts) &&
         random.chance(0.5);
     if (!parameters.weights.containsKey(SectionKind.jumpBoost)) {
       _flat(1);
@@ -1147,19 +1146,44 @@ class _Builder {
 
   /// One to three bumps in a row, each as gentle as a ramp. A fast ball
   /// takes off from a crest and comes down on the next slope or the
-  /// landing.
+  /// landing. More often deep, the hill is not left empty: spikes lie in a
+  /// valley between two bumps, or a speed boost after it launches the ball
+  /// over a long gap (design D11 of add-dynamic-elements).
   void _hill() {
+    if (random.chance(_wavyShare)) {
+      if (!_canLaunch || random.chance(0.5)) {
+        _curve(CurveKind.hill, [_bump(_rampHeight())]);
+        _spikes();
+        _flat(1);
+        _curve(CurveKind.hill, [_bump(_rampHeight())]);
+        return;
+      }
+      _curve(CurveKind.hill, [
+        for (var i = random.intIn(1, 2); i > 0; i--) _bump(_rampHeight()),
+      ]);
+      _speedBoost();
+      return;
+    }
     final count = random.intIn(1, 3);
     _curve(CurveKind.hill, [
       for (var i = 0; i < count; i++) _bump(_rampHeight()),
     ]);
   }
 
-  /// A smooth dip 1.5–3 m deep, to roll through and climb out of.
+  /// A smooth dip 1.5–3 m deep, to roll through and climb out of; more
+  /// often deep, a speed boost after it launches the ball over a long gap.
   void _halfPipe() {
     final (width, depth) = _bump(random.range(1.5, 1.5 + 1.5 * intensity));
     _curve(CurveKind.halfPipe, [(width, -depth)]);
+    if (_canLaunch && random.chance(_wavyShare)) _speedBoost();
   }
+
+  /// How often a hill or a half-pipe carries an obstacle: half at first,
+  /// most deep.
+  double get _wavyShare => 0.5 + 0.4 * parameters.depth;
+
+  /// Whether speed boosts are known, so a curve may launch the ball.
+  bool get _canLaunch => parameters.weights.containsKey(SectionKind.speedBoost);
 
   /// A bump of [height] and the width that keeps it gentle.
   (double, double) _bump(double height) =>
@@ -1295,42 +1319,35 @@ class _Builder {
     _landedLate = false;
   }
 
-  /// A drop gap under a roof of bumpers hanging over the run's last two
-  /// tiles and the gap: rolling off at the speed carried clears it, a jump
-  /// hits the roof (design D2 of add-dynamic-elements).
-  void _bumperRoof() {
-    _flat(3);
-    final drop = random.range(1.5, 1.5 + 3 * intensity);
-    final reach = envelope.maxRollOffGap(speed: speed, drop: drop, margin: 1);
-    final width = math.min(
-      math.max(tileSize * 0.8, reach * _share()),
-      reach * margin,
-    );
-    final from = x - 2 * tileSize + bumperRadius;
-    final to = x + width - bumperRadius;
-    final count = ((to - from) / (2 * bumperRadius + 0.1)).floor() + 1;
-    final row = y - bumperRoofHeight - bumperRadius;
+  /// A gap onto a single tile, then one bumper post, or up to three deep,
+  /// each jumped from a tile of run-up: landing long, or rolling on, runs
+  /// into a post, which throws the ball back into the gap (design D2 of
+  /// add-dynamic-elements).
+  void _bumperPosts() {
+    _gap(_gapRise(), landingTiles: 1);
+    final count = parameters.depth >= 0.5 ? random.intIn(1, 3) : 1;
     for (var i = 0; i < count; i++) {
-      final along = count == 1 ? from : from + (to - from) * i / (count - 1);
-      bumpers.add(Bumper(Vec2(along, row)));
+      _flat(1);
+      // Only where a jump clears it from the run-up.
+      if (_reach(0) * margin < postSpan) continue;
+      bumpers.add(
+        Bumper(Vec2(x + postSpan / 2, y - bumperStand - bumperRadius)),
+      );
+      x += postSpan;
+      _time(postSpan, obstacle: true);
+      _land(envelope.flightTime, covered: postSpan);
     }
-    _closeRun();
-    x += width;
-    y += drop;
-    _openRun();
-    _time(width, obstacle: true);
-    _land(envelope.fallTime(drop), covered: width);
   }
 
-  /// Maces swinging over the run, one, or up to three deep, each with a
-  /// tile to wait in before it and a lane clear long enough to cross from
-  /// rest; then a gap, so a knock can throw the ball off (design D3 of
-  /// add-dynamic-elements).
+  /// Maces swinging over the run, one, or up to three deep, each with two
+  /// tiles to wait in before it and a lane clear long enough to cross from
+  /// rest at their back; then a gap, so a knock can throw the ball off
+  /// (design D3 of add-dynamic-elements).
   void _pendulums() {
     final count = parameters.depth >= 0.5 ? random.intIn(1, 3) : 1;
     var lane = x;
     for (var i = 0; i < count; i++) {
-      _flat(1);
+      _flat(pendulumRoom);
       final length = random.range(2.5, 3.5);
       final clear = random.range(0.2, 0.3);
       final reach = Pendulum(
@@ -1341,7 +1358,9 @@ class _Builder {
         phase: 0,
       ).reach;
       final span = 2 * (reach + ballRadius);
-      final period = envelope.pushTime(0, span) / (_share() * clear);
+      const room = pendulumRoom * tileSize;
+      final crossing = envelope.pushTime(room, room + span);
+      final period = crossing / (_share() * clear);
       lane = x;
       pendulums.add(
         Pendulum(

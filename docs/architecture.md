@@ -89,11 +89,10 @@ generator for, with the savegame's seed. It holds terrain, sensors, the goal and
   stronger; `RushTrailComponent` draws its trail and `AdrenalineGlowComponent`, in the viewport, the red pulse at the
   screen's edges. `LoopComponent` is two one-sided, frictionless arcs that take turns through their collision filters,
   so the way in and the way out can cross at the foot; inside, the ball's push and damping are suspended.
-  `FanComponent` is a sensor whose column lifts the ball by twice gravity at its base, fading to none at its top,
-  with an extra vertical damping. `BumperComponent` is a static circle that sets the ball's speed away from it; a
-  roof's row hangs from a `RoofBeamComponent`, ground the ball can land on from above.
+  `FanComponent` is a sensor whose column lifts the ball by three times gravity at its base, fading to none at its top,
+  with an extra vertical damping. `BumperComponent` is a static circle that sets the ball's speed away from it.
   `PendulumComponent` is a kinematic body that takes its scheduled angle and angular speed every step, from its own
-  clock; the ball is a bullet, so a fast mace never passes through it. `SeesawComponent` is a light plank on a
+  clock, and throws the ball away when its mace hits it; the ball is a bullet, so a fast mace never passes through it. `SeesawComponent` is a light plank on a
   revolute joint, limited to its two tilts, that turns about its centre of mass and goes back to rest on a respawn.
 - **Restart and advance:** replace that component in place. Body components destroy their bodies when removed.
 - **Falling:** a fall is detected once no ground is left below the ball that it could still reach: `LevelComponent`
@@ -178,7 +177,8 @@ and copies the centre and zoom it returns into the viewfinder.
    - in an adrenaline zone it reads the plain curve scaled by the rush's gain;
    - after a fan or a mace it starts from rest, and after a seesaw it is the measured exit speed;
    - a checkpoint resets it to what a player builds after a respawn.
-   A course slow to reach its target height slopes its landings towards it.
+   A course slow to reach its target height slopes its landings towards it, and hills and half-pipes often carry
+   spikes in a valley or a speed boost and a long gap.
    Curves are exact polynomials, sampled every half meter at most, so they are the same on every platform.
    Checkpoints go at the start of a floor run once enough time has passed since the last respawn point.
 3. `LevelValidator` re-checks a level independently: geometry, ramp and curve joins, spikes, ferries, crumbling
@@ -190,8 +190,8 @@ speed curve included. Two game tests keep them honest: `movement_envelope_test.d
 the physics stops reaching them, and `level_playthrough_test.dart` has a bot (`test/helpers/level_bot.dart`) play one
 level per introduction plus deep levels. The bot takes off near edges, holds a steady push in the air, rides ferries,
 uses orbs, keeps pushing over curves and through loops, steers after a trampoline's bounce or a jump boost, pushes
-harder in a rush, and jumps off a ledge over spikes just below. It floats on through fans, rolls off under bumper
-roofs, waits for each mace to leave its lane, and jumps from a seesaw's far end. Before tuning the
+harder in a rush, and jumps off a ledge over spikes just below. It floats on through fans, jumps bumper posts as it
+jumps spikes, waits at the back of each mace's room for its lane to clear, and jumps from a seesaw's far end. Before tuning the
 curve, run a local stress run of a few hundred levels with the same bot. Box2D allows only so many worlds in one test
 process, so keep each stress file under about 120 levels.
 

@@ -298,8 +298,13 @@ class BallComponent extends BodyComponent with ContactCallbacks {
 
   double _sinceStruck = double.infinity;
 
-  /// A mace hit the ball: the physics knocks it, this plays the feedback.
-  void struck() {
+  /// Throws the ball away from a mace along [normal] at [speed], keeping
+  /// its speed along the mace (level-mechanics spec).
+  void knock(Vector2 normal, double speed) {
+    final velocity = body.linearVelocity;
+    final along = velocity - normal * velocity.dot(normal);
+    body.linearVelocity = along + normal * speed;
+    _sinceGround = double.infinity;
     if (_sinceStruck < struckGap) return;
     _sinceStruck = 0;
     audio.play(GameSound.thud);

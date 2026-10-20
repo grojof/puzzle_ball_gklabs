@@ -89,27 +89,28 @@ the hover height.
 - **WHEN** a fan stands at the foot of a wall higher than a jump boost reaches
 - **THEN** its column lifts the ball above the wall's top, and pushing forwards lands it on the ledge
 
-### Requirement: Bumper roofs
-A bumper roof SHALL hang over a drop gap and the end of the run before it: low enough that a jump from that run hits
-it, and high enough that a ball rolling along the run passes under it. The gap SHALL be cleared by rolling off the
-edge, within the reach of a ball leaving the edge at the speed it can carry there, with the level's precision.
+### Requirement: Bumper posts
+Bumper posts SHALL stand on the run after a gap, a tile in, one at first and up to three deep, each with a tile of run
+before and after it. Each SHALL be cleared by a jump from the run-up before it, with the level's precision, as spikes
+as wide as the post's span are.
 
-#### Scenario: Rolling off
-- **WHEN** a player keeps pushing and rolls off the edge under a bumper roof
-- **THEN** the ball falls clear of the roof and lands on the far side
+#### Scenario: Jumping a post
+- **WHEN** a player lands short after the gap and jumps from the tile before a post
+- **THEN** the ball clears the post and lands beyond it
 
-#### Scenario: Jumping into the roof
-- **WHEN** a player jumps from the run under a bumper roof
-- **THEN** the ball hits the roof and is thrown down
+#### Scenario: Landing long
+- **WHEN** a player lands long after the gap and rolls into the post
+- **THEN** the post throws the ball back, towards the gap
 
 ### Requirement: Pendulums leave a way through
-Pendulums SHALL hang over floor runs, with room on the run before and after each mace's reach where the ball can wait
-without being hit. Each mace SHALL leave the lane clear, on every swing, for long enough that a ball starting from rest
-at the waiting spot before it crosses its reach, with the level's precision. Deeper levels MAY hang two or three maces
+Pendulums SHALL hang over floor runs, with two tiles of run before each mace's reach where the ball can wait without
+being hit, and a tile after the last. Each mace SHALL leave the lane clear, on every swing, for long enough that a ball
+starting from rest at the back of its waiting room crosses its reach, with the level's precision. Deeper levels MAY hang two or three maces
 over one run, each with its own waiting room.
 
 #### Scenario: Waiting for the gap
-- **WHEN** the player waits at the waiting spot before a mace and goes as soon as the mace leaves the lane
+- **WHEN** the player waits at the back of the room before a mace and sets off so as to reach the lane as the mace
+  leaves it
 - **THEN** the ball crosses the mace's reach before it comes back
 
 #### Scenario: A gauntlet
@@ -124,3 +125,12 @@ a pushing ball is measured to have there, with the level's precision.
 #### Scenario: Riding a seesaw
 - **WHEN** a player rolls onto a seesaw, rides it as it tips and jumps from its far end
 - **THEN** the ball reaches the far bank
+
+### Requirement: Curves carry obstacles
+Hills and half-pipes SHALL often carry an obstacle, more often in deeper levels: spikes in a valley between two bumps,
+jumped from the run before them, or a speed boost after the curve that launches the ball over a gap longer than a
+jump, once speed boosts are known. Each SHALL follow the rules of spikes and speed boosts.
+
+#### Scenario: A wavy stretch
+- **WHEN** a level with hills is generated
+- **THEN** some of its hills have spikes in a valley or a speed boost and a long gap after them

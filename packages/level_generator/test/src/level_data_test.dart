@@ -366,10 +366,10 @@ void main() {
   });
 
   group('dynamic elements', () {
-    test('fans lift to halfway up their column, with equality and text', () {
+    test('fans lift two thirds up their column, with equality and text', () {
       const fan = Fan(left: 2, right: 8, base: 7, top: -1);
       expect(fan.height, 8);
-      expect(fan.hover, 3);
+      expect(fan.hover, closeTo(7 - 8 * 2 / 3, 1e-9));
       expect(fan.covers(2), isTrue);
       expect(fan.covers(9), isFalse);
       expect(fan, const Fan(left: 2, right: 8, base: 7, top: -1));

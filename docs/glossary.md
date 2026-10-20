@@ -37,9 +37,9 @@ audience: maintainer
 | **Surface** | What a floor run's top is made of: plain, a **conveyor belt** that carries the ball forwards or backwards, **ice**, slow to speed up and slow to stop, or **mud**, which holds the ball slow and weakens its jump. |
 | **Trampoline** | A pad on a floor run that throws the ball up to the same height whatever its fall, keeping its horizontal speed. |
 | **Loop** | A vertical circle the ball rides around on its inside after a speed boost; a ball too slow rolls back out. |
-| **Fan** | A column of air blowing upwards, always on, that floats the ball at a hover height halfway up: across a pit too wide to jump, or set in the floor, up a wall. |
-| **Bumper** | A pinball bumper that throws the ball away from it at a fixed speed: in a **bumper roof** over a drop gap, which a jump hits and rolling off clears, or low in the riser of a short tread. |
-| **Pendulum** | An iron mace on a rigid arm, swinging over a run on a fixed rhythm; it knocks the ball, and leaves its lane clear long enough to cross from the tile before it. |
+| **Fan** | A column of air blowing upwards, always on, that floats the ball at a hover height two thirds up: across a pit too wide to jump, or set in the floor, up a wall. |
+| **Bumper** | A pinball bumper that throws the ball away from it at a fixed speed: a **bumper post** standing on the run after a gap, to be jumped, or one low in the riser of a short tread. |
+| **Pendulum** | An iron mace on a rigid arm, swinging over a run on a fixed rhythm; it throws the ball away hard, and leaves its lane clear long enough to cross from the back of the two tiles before it. |
 | **Seesaw** | A plank on a pivot over a pit, resting with its near end level with the run; past the pivot it tips forwards, and the ball jumps from its far end. |
 | **Gap** | A stretch without floor that the ball must jump. |
 | **Boost** | A sensor that changes the ball's motion: jump, speed or gravity, or an orb. |

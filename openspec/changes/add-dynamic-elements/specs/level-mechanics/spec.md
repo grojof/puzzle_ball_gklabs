@@ -34,17 +34,18 @@ outside it, the fan SHALL have no effect.
 Touching a bumper SHALL throw the ball straight away from the bumper's surface at a fixed speed, whatever speed it hit
 at, keeping its speed along the surface. A bumper SHALL NOT send the ball back to a checkpoint by itself.
 
-#### Scenario: Jumping into a roof
-- **WHEN** the ball jumps into a bumper above it
-- **THEN** it is thrown downwards at the bumper's speed
+#### Scenario: Rolling into a post
+- **WHEN** the ball rolls into a bumper post
+- **THEN** it is thrown back at the bumper's speed
 
 ### Requirement: Pendulums knock the ball
 A pendulum SHALL swing an iron mace on a rigid arm on a fixed rhythm, the same on every device. A mace that meets the
-ball SHALL knock it along its swing, as a heavy solid body. It SHALL NOT send the ball back to a checkpoint by itself.
+ball SHALL throw it straight away from the mace at a fixed, strong speed. It SHALL NOT send the ball back to a checkpoint
+by itself.
 
 #### Scenario: Hit by a mace
 - **WHEN** a mace swinging forwards meets the ball
-- **THEN** the ball is knocked forwards, and falls if it is knocked off the run
+- **THEN** the ball is thrown forwards hard, and falls if it is thrown off the run
 
 #### Scenario: Passing under a raised mace
 - **WHEN** the ball crosses a mace's reach while the mace is high in its swing
