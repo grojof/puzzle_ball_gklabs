@@ -32,11 +32,13 @@ outside it, the fan SHALL have no effect.
 
 ### Requirement: Bumpers throw the ball
 Touching a bumper SHALL throw the ball straight away from the bumper's surface at a fixed speed, whatever speed it hit
-at, keeping its speed along the surface. A bumper SHALL NOT send the ball back to a checkpoint by itself.
+at, keeping its speed along the surface. A climb's bumper SHALL instead throw a ball landing on its top up at that
+speed, leaning towards the side it shows, or straight up, wherever on the top the ball lands. A bumper SHALL NOT send
+the ball back to a checkpoint by itself.
 
-#### Scenario: Coming down on a bumper
-- **WHEN** the ball comes down a little off a bumper's top
-- **THEN** it is thrown back up at the bumper's speed, leaning to that side
+#### Scenario: Coming down on a climb's bumper
+- **WHEN** the ball comes down anywhere on the top of a climb's bumper that leans right
+- **THEN** it is thrown up and to the right, onto the next bumper if the player does not push
 
 ### Requirement: Pendulums knock the ball
 A pendulum SHALL swing an iron mace on a rigid arm on a fixed rhythm, the same on every device. A mace that meets the

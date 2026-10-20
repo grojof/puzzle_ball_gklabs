@@ -20,8 +20,9 @@ the static terrain, they move or push the ball. The author chose how three of th
 
 The bumpers were first proposed as roofs over drop gaps. The author's play-test found them senseless: going under
 hit the roof, so they went over it. Posts on the ground came next, but they broke the immersion. The author asked
-for something more skilful: climbing up while alternating between bumpers. They also asked for faster, harder maces,
-faster fans, and obstacles on wavy stretches, which felt empty.
+for something more skilful: climbing up while alternating between bumpers. That climb, with bounces that depended on
+where the ball landed, proved extremely hard, and they chose throws that lean onto the next bumper by themselves. They
+also asked for faster, harder maces, faster fans, and obstacles on wavy stretches, which felt empty.
 
 ## Decision
 
@@ -33,8 +34,9 @@ faster fans, and obstacles on wavy stretches, which felt empty.
   - set in the floor, they lift it over a wall higher than a jump boost reaches.
 - **Bumpers (level 17):**
   - a bumper throws the ball away from it at a fixed speed;
-  - before a wall higher than a jump, bumpers in two alternating columns climb to the ledge: the ball bounces from
-    one to the next, steering each bounce; a miss drops it back to the run before the wall;
+  - before a wall higher than a jump, two or four wide bumpers in two alternating columns climb to the ledge: each
+    throws the ball up and onto the next, the last straight up beside the ledge, so the player lands on them and
+    corrects a little in the air; a miss drops the ball back to the run before the wall;
   - set low in the riser of a short tread, a bumper kicks an overshoot back into the gap.
 - **Pendulums (level 19):**
   - iron maces swing on a fixed rhythm and throw the ball away hard when they hit it;

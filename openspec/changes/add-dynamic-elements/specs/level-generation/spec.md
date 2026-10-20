@@ -90,14 +90,14 @@ the hover height.
 - **THEN** its column lifts the ball above the wall's top, and pushing forwards lands it on the ledge
 
 ### Requirement: Bumper climbs
-A bumper climb SHALL stand before a wall higher than a jump: bumpers in two columns, alternating from the far one to the
-one next to the wall, each higher than the last. The lowest SHALL be within a jump from the run before the wall, each
-next one and the ledge within the measured rise of a bounce, with the level's precision, and no two so close that a
-straight bounce hits the bumper two above. The run before the wall SHALL leave room to jump onto the lowest bumper and
-to fall back onto.
+A bumper climb SHALL stand before a wall higher than a jump: two or four bumpers in two alternating columns, each
+higher than the last, each throwing the ball towards the next and the last straight up. The lowest SHALL be within a
+jump from the run before the wall, and each next one and the ledge within the measured rise of a throw, with the
+level's precision. The run before the wall SHALL leave room to jump onto the lowest bumper and to fall back onto.
 
 #### Scenario: Climbing
-- **WHEN** a player jumps onto the lowest bumper and steers each bounce onto the next one
+- **WHEN** a player jumps onto the lowest bumper, rides each throw onto the next one and pushes onto the ledge from
+  the last
 - **THEN** the ball reaches the ledge
 
 #### Scenario: Missing a bumper

@@ -501,26 +501,22 @@ class LevelBot {
       // Notices a bounce off a bumper: the ball rises right beside it.
       for (var i = 0; i < bumpers.length; i++) {
         final c = bumpers[i].center;
-        final close = (p - Vector2(c.x, c.y)).length < bumperRadius + 0.5;
+        final close = (p - Vector2(c.x, c.y)).length < bumpers[i].radius + 0.5;
         if (close && v.y < -3) _bounced = math.max(_bounced, i);
       }
       if (_bounced >= bumpers.length - 1) {
-        // Off the last bumper: onto the ledge.
+        // Off the last bumper, straight up: onto the ledge once above it.
         _target = null;
         _jumped = true;
         _launchEnd = wall.left;
-        return (push: 1, jump: false);
+        return (push: bottom < wall.top - 0.05 ? 1 : 0, jump: false);
       }
       final next = bumpers[_bounced + 1].center;
-      final towards = _bounced + 2 < bumpers.length
-          ? bumpers[_bounced + 2].center.x
-          : wall.left + 1;
-      // Lands just off the top of the next bumper, on the side facing the
-      // one after: the bounce goes up, and the push in the air carries
-      // the ball across.
-      var aim = next.x + (towards > next.x ? 0.12 : -0.12);
-      final top = next.y - bumperRadius;
-      const band = bumperRadius + LevelComponent.ballRadius + 0.1;
+      // The bumpers lean their throws towards the next: lands on the top.
+      final bumper = bumpers[_bounced + 1];
+      var aim = next.x;
+      final top = bumper.top;
+      final band = bumper.radius + LevelComponent.ballRadius + 0.1;
       // Rising under another bumper, moves out from under it at once.
       for (final other in bumpers) {
         final c = other.center;

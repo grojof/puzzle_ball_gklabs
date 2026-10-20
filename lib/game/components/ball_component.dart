@@ -282,10 +282,13 @@ class BallComponent extends BodyComponent with ContactCallbacks {
   }
 
   /// Throws the ball away from a bumper along [normal] at [speed], keeping
-  /// its speed along the bumper's surface (level-mechanics spec).
-  void bump(Vector2 normal, double speed) {
+  /// its speed along the bumper's surface unless not [keepAlong]
+  /// (level-mechanics spec).
+  void bump(Vector2 normal, double speed, {bool keepAlong = true}) {
     final velocity = body.linearVelocity;
-    final along = velocity - normal * velocity.dot(normal);
+    final along = keepAlong
+        ? velocity - normal * velocity.dot(normal)
+        : Vector2.zero();
     body.linearVelocity = along + normal * speed;
     _sinceGround = double.infinity;
     audio.play(GameSound.bumper);

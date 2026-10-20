@@ -375,24 +375,49 @@ const bumperColumnGap = 2.2;
 /// How far a riser's bumper is set into the wall, in meters.
 const bumperInset = 0.2;
 
-/// A pinball bumper centred at [center]: touching it throws the ball away
-/// from it (level-mechanics spec).
+/// The radius of a bumper climb's bumpers, in meters: wide enough to land
+/// on.
+const climbBumperRadius = 0.5;
+
+/// A pinball bumper centred at [center], of [radius]: touching it throws
+/// the ball away from it. A climb's bumper [lean]s its throw from the top
+/// towards one side, -1 left or 1 right, wherever the ball lands on it, or
+/// throws it straight up with 0 (level-mechanics spec, design D2 of
+/// add-dynamic-elements).
 @immutable
 class Bumper {
   /// A bumper centred at [center].
-  const new(this.center);
+  const new(this.center, {this.radius = bumperRadius, this.lean = 0});
 
   /// The bumper's centre.
   final Vec2 center;
 
-  @override
-  bool operator ==(Object other) => other is Bumper && other.center == center;
+  /// The bumper's radius, in meters.
+  final double radius;
+
+  /// Which way a throw from its top leans: -1 left, 1 right, 0 straight
+  /// up for a climb's bumper (one of [radius] [climbBumperRadius]), or
+  /// straight away from any other bumper.
+  final int lean;
+
+  /// The top of the bumper, in world y.
+  double get top => center.y - radius;
 
   @override
-  int get hashCode => center.hashCode;
+  bool operator ==(Object other) =>
+      other is Bumper &&
+      other.center == center &&
+      other.radius == radius &&
+      other.lean == lean;
 
   @override
-  String toString() => 'Bumper$center';
+  int get hashCode => Object.hash(center, radius, lean);
+
+  @override
+  String toString() {
+    final size = radius == bumperRadius ? '' : ' r${radius.toStringAsFixed(3)}';
+    return 'Bumper$center$size${lean == 0 ? '' : ' lean$lean'}';
+  }
 }
 
 /// The tiles of run before a mace's lane, out of its reach, to wait in: a

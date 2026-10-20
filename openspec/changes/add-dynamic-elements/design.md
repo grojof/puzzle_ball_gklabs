@@ -67,18 +67,25 @@ See proposal.md for the motivation. Today:
     along the surface is kept;
   - this is a set speed, as with trampolines, so the throw does not depend on how hard the ball hit.
 - **Bumper climbs** (`bumperClimb`, a challenge kind and a climb). The first play-test found roofs over drop gaps
-  senseless (going under hit the roof, so the author went over it), and the second found posts on the run after a gap
-  broke the immersion. The author asked for something more skilful, climbing up while alternating between bumpers:
+  senseless (going under hit the roof, so the author went over it), the second found posts on the run after a gap
+  broke the immersion, and the author asked for something more skilful: climbing up while alternating between
+  bumpers. The third found the climb, with bounces that depended on where the ball landed, extremely hard; the
+  author chose leaning throws:
   - a run of four tiles, then a wall;
   - in front of it, two columns of bumpers, `bumperWallGap` (0.9 m) and 3.1 m from the wall, alternating from the far
-    column to the near one, four bumpers or, deep, six;
+    column to the near one: two, or deep, half the time, four;
+  - the climb's bumpers are wider (`climbBumperRadius`, 0.5 m), and each `lean`s its throw: a ball landing anywhere on
+    its top is thrown up at 11 m/s, slanting 0.45 m sideways per meter up, towards the next bumper; the last throws
+    straight up beside the ledge, where the player pushes onto it near the top of the throw;
+  - measured, a ball landing up to 0.3 m off a top comes down on the next bumper, 2.2 m across and 1.7 to 1.9 m up,
+    within its radius, with no push: the skill is landing on the first, not pushing the wrong way, and the last push;
   - the lowest bumper's top within a jump (90 % of the precision share of the jump's height, from 1.9 to 2.3 m);
   - each next top, and the ledge, a share of `bumperHopRise` above the last, never less than 1.7 m between bumpers,
-    or a straight bounce hits the bumper two above in the same column;
-  - the bumpers throw at 11 m/s (9 before), so a bounce rises about 2 to 2.7 m;
+    or a throw reaches the bumper two above in the same column;
+  - the bumpers throw at 11 m/s (9 before);
   - a miss drops the ball back to the run, so it costs time, not a life.
-- **Measured:** `bumperHopRise` 2 m: the ball's bottom rises at least 2.05 m above a bumper's top when it comes down
-  0.2 m off it after a 2 m fall, and 2.7 m when it comes down on the top.
+- **Measured:** `bumperHopRise` 2 m: a leaning throw lifts the ball's bottom at least 2.25 m above the bumper's top,
+  and a straight one 2.6 m.
 - **Bumper risers:** from level 17, half of the short-tread break points line their riser's face with two or three
   bumpers below the lip. An overshoot is kicked back into the gap. A jump from the tread still clears the lip.
 
@@ -212,9 +219,9 @@ Both reuse the spikes' and the speed boost's sections, so the validator's rules 
 - **Fans:**
   - in a fan gap it floats and pushes on, easing off once above the far bank's edge;
   - in a fan climb it waits against the wall until above the top, then pushes over.
-- **Bumper climbs:** it stands before the lowest bumper and jumps onto it, then steers each flight onto the next
-  bumper, coming down just off its top on the side of the one after, keeping clear of a bumper's side until above it
-  and moving out from under the bumper above; from the last it lands on the ledge.
+- **Bumper climbs:** it stands before the lowest bumper and jumps onto it, then steers each flight onto the top of
+  the next bumper, keeping clear of a bumper's side until above it and moving out from under the bumper above; from
+  the last it pushes onto the ledge once above it.
 - **Pendulums:**
   - it stops in each waiting room;
   - it reads the pendulum's schedule from the level data and the game's clock;
@@ -243,7 +250,8 @@ Both reuse the spikes' and the speed boost's sections, so the validator's rules 
 - **[A seesaw jitters or catapults]** → Its limits, damping and light plank are measured, and the jump after it is
   sized from the measured worst case.
 - **[A bumper climb is too hard]** → A miss only drops the ball back to the run, and the steps are sized from the
-  measured hop with the level's precision; the bot climbs walls of two to six bumpers.
+  measured throw with the level's precision; the throws lean onto the next bumper by themselves; the bot climbs
+  walls of two and four bumpers.
 - **[Frame time]** → The new bodies are few and their art is cached. The frame time is measured on the reference
   phone.
 

@@ -313,7 +313,13 @@ class LevelValidator {
         floor.left <= near - bumperColumnGap - tileSize + _epsilon;
     for (var i = 0; i < bumpers.length; i++) {
       final onNear = (bumpers[i].center.x - near).abs() < _epsilon;
-      if (onNear != i.isOdd) shaped = false;
+      // Each leans towards the next; the last throws straight up.
+      final lean = i == bumpers.length - 1 ? 0 : (i.isEven ? 1 : -1);
+      if (onNear != i.isOdd ||
+          bumpers[i].lean != lean ||
+          bumpers[i].radius != climbBumperRadius) {
+        shaped = false;
+      }
     }
     if (!shaped) {
       violations.add('bumper climb at x=${wall.left} is malformed');
@@ -321,7 +327,7 @@ class LevelValidator {
     final hop = envelope.bumperHopRise * margin;
     var top = floor.top;
     var reach = envelope.jumpHeight * margin;
-    for (final bumper in [...bumpers.map((b) => b.center.y - bumperRadius)]) {
+    for (final bumper in [...bumpers.map((b) => b.top)]) {
       if (top - bumper > reach + _epsilon) {
         violations.add('bumper at y=$bumper is out of reach in its climb');
       }

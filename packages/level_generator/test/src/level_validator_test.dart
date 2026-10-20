@@ -836,8 +836,10 @@ void main() {
           Bumper(
             Vec2(
               9 - bumperWallGap - ((k.isEven != swapped) ? bumperColumnGap : 0),
-              4 - tops[k] + bumperRadius,
+              4 - tops[k] + climbBumperRadius,
             ),
+            radius: climbBumperRadius,
+            lean: k == tops.length - 1 ? 0 : (k.isEven ? 1 : -1),
           ),
       ];
 

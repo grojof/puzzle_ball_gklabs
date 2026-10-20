@@ -729,44 +729,71 @@ void main() {
       );
     }
 
-    // Coming down a little off the top, after a hop of its own.
-    for (final offset in [-0.2, 0.2]) {
+    // A climb's bumper, landed on off its top after a hop of its own.
+    for (final offset in [-0.3, 0.3]) {
       testWithGame(
-        'a bumper landed on ${offset.abs()} m off its top throws the ball up '
-        'by its hop',
+        "a climb's bumper landed on ${offset.abs()} m off its top throws the "
+        'ball up by its hop, onto the next bumper',
         () => testGame(
           images: images,
           levelFor: (_) => course(
             floors: const [
               FloorRun(position: Vec2(0, run), size: Vec2(60, tileSize)),
             ],
-            bumpers: const [Bumper(Vec2(20, run - 4))],
+            bumpers: const [
+              Bumper(Vec2(20, run - 4), radius: climbBumperRadius, lean: 1),
+            ],
           ),
         ),
         (game) async {
           game.input!.removeFromParent();
           await game.ready();
           final ball = game.level!.ball;
-          const top = run - 4 - bumperRadius;
+          const top = run - 4 - climbBumperRadius;
           ball.body
             ..setTransform(
-              Vector2(20 + offset, top - ballRadius - 2),
+              Vector2(20 + offset, top - ballRadius - 1.5),
               const Rot.identity(),
             )
             ..linearVelocity = Vector2.zero();
           var bounced = false;
           var highest = double.infinity;
-          for (var i = 0; i < 180; i++) {
-            final falling = ball.body.linearVelocity.y >= 0;
-            game.update(_dt);
-            if (falling && ball.body.linearVelocity.y < 0) bounced = true;
-            if (bounced) highest = math.min(highest, ball.body.position.y);
+          double? across;
+          // The next bumper's top, a step of 1.7 to 1.9 m up.
+          for (final step in [1.7, 1.9]) {
+            for (var i = 0; i < 180; i++) {
+              final falling = ball.body.linearVelocity.y >= 0;
+              game.update(_dt);
+              if (falling && ball.body.linearVelocity.y < 0) bounced = true;
+              if (!bounced) continue;
+              highest = math.min(highest, ball.body.position.y);
+              final next = top - step - ballRadius;
+              if (ball.body.linearVelocity.y > 0 &&
+                  ball.body.position.y >= next) {
+                across = ball.body.position.x - 20;
+                break;
+              }
+            }
+            expect(bounced, isTrue);
+            expect(
+              top - (highest + ballRadius),
+              greaterThanOrEqualTo(ballEnvelope.bumperHopRise),
+            );
+            // With no push, the lean carries it onto the next bumper.
+            expect(
+              (across! - bumperColumnGap).abs(),
+              lessThan(climbBumperRadius),
+            );
+            // Again from the same throw, for the other step.
+            ball.body
+              ..setTransform(
+                Vector2(20 + offset, top - ballRadius - 1.5),
+                const Rot.identity(),
+              )
+              ..linearVelocity = Vector2.zero();
+            bounced = false;
+            highest = double.infinity;
           }
-          expect(bounced, isTrue);
-          expect(
-            top - (highest + ballRadius),
-            greaterThanOrEqualTo(ballEnvelope.bumperHopRise),
-          );
         },
       );
     }

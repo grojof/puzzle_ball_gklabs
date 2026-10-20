@@ -79,7 +79,7 @@ const _ferryTime = 10.0;
 const _fanClimbMax = 10.0;
 
 /// The tallest wall a bumper climb reaches, in meters.
-const _bumperClimbMax = 14.0;
+const _bumperClimbMax = 10.0;
 
 /// The least step between a bumper climb's bumpers, in meters: a straight
 /// bounce off one then never reaches the bumper two above.
@@ -1334,11 +1334,12 @@ class _Builder {
   }
 
   /// Bumpers in two columns before a wall, alternating and each higher than
-  /// the last: the ball jumps onto the lowest, then bounces from one to the
-  /// next up to the ledge. A miss drops it back to the run (design D2 of
+  /// the last, each throwing the ball up and towards the next, the last
+  /// towards the ledge: the ball jumps onto the lowest, then bounces from
+  /// one to the next. A miss drops it back to the run (design D2 of
   /// add-dynamic-elements).
   void _bumperClimb() {
-    final count = parameters.depth >= 0.5 && random.chance(0.5) ? 6 : 4;
+    final count = parameters.depth >= 0.5 && random.chance(0.5) ? 4 : 2;
     _flat(_climbRoom);
     // The lowest top within a jump, then steps within a hop, and never so
     // close that a straight bounce hits the bumper two above.
@@ -1354,7 +1355,13 @@ class _Builder {
       if (i > 0) top += step(_bumperStep);
       final column = i.isEven ? bumperColumnGap : 0.0;
       bumpers.add(
-        Bumper(Vec2(x - bumperWallGap - column, y - top + bumperRadius)),
+        Bumper(
+          Vec2(x - bumperWallGap - column, y - top + climbBumperRadius),
+          radius: climbBumperRadius,
+          // From the far column towards the near one, and back; the last
+          // straight up, beside the ledge.
+          lean: i == count - 1 ? 0 : (i.isEven ? 1 : -1),
+        ),
       );
     }
     final height = top + step(1.2);

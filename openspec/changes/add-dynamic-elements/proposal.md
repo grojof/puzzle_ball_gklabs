@@ -25,9 +25,10 @@ the heavier ball, like every other element.
     before the bank falls into the pit.
 - **Bumpers (level 17):** pinball bumpers that throw the ball away from them at a fixed, strong speed. They never
   send the ball back to a checkpoint by themselves.
-  - **Bumper climbs:** before a wall higher than a jump, bumpers in two columns, alternating and each higher
-    than the last. The ball jumps onto the lowest and bounces from one to the next, steering each bounce, up to the
-    ledge; a miss drops it back to the run before the wall, to try again.
+  - **Bumper climbs:** before a wall higher than a jump, two or four wide bumpers in two columns, alternating and
+    each higher than the last. Each throws a ball landing on it up and towards the next, the last straight up beside
+    the ledge, so the player lands on them and corrects a little in the air; a miss drops the ball back to the run
+    before the wall, to try again.
   - **Bumper risers:** from level 17, a break point's short tread can end in a riser lined with bumpers. A ball that
     overshoots the tread is kicked back into the gap.
 - **Pendulums (level 19):** iron maces swinging on a rigid arm over a run, on a fixed rhythm like the lasers.

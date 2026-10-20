@@ -381,12 +381,17 @@ void main() {
       expect(fan.toString(), 'Fan(2.000..8.000, 7.000..-1.000)');
     });
 
-    test('bumpers have value equality and text', () {
+    test('bumpers have a top, value equality and text', () {
       const bumper = Bumper(Vec2(1, 2));
+      expect(bumper.top, 2 - bumperRadius);
       expect(bumper, const Bumper(Vec2(1, 2)));
       expect(bumper, isNot(const Bumper(Vec2(1, 3))));
       expect(bumper.hashCode, const Bumper(Vec2(1, 2)).hashCode);
       expect(bumper.toString(), 'Bumper(1.000, 2.000)');
+      const climbing = Bumper(Vec2(1, 2), radius: climbBumperRadius, lean: -1);
+      expect(climbing.top, 2 - climbBumperRadius);
+      expect(climbing, isNot(bumper));
+      expect(climbing.toString(), 'Bumper(1.000, 2.000) r0.500 lean-1');
     });
 
     test('pendulums reach the lane over a strip, with equality and text', () {

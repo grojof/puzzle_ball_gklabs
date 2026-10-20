@@ -1021,19 +1021,25 @@ void main() {
           ]..sort((a, b) => b.center.y.compareTo(a.center.y));
           if (climb.isNotEmpty) {
             climbs++;
-            if (climb.length > 4) tall++;
+            if (climb.length > 2) tall++;
             // A wall beyond a jump boost, from the far column to the near.
             expect(next.left, closeTo(floor.right, 1e-9));
             expect(floor.top - next.top, greaterThan(testEnvelope.jumpHeight));
             expect(climb.length.isEven, isTrue);
             for (var k = 0; k < climb.length; k++) {
               expect((climb[k].center.x - near).abs() < 1e-9, k.isOdd);
+              // Each throws towards the next, the last straight up.
+              expect(
+                climb[k].lean,
+                k == climb.length - 1 ? 0 : (k.isEven ? 1 : -1),
+              );
+              expect(climb[k].radius, climbBumperRadius);
             }
             // The lowest within a jump, each step and the ledge within a
             // hop, and never closer than a straight bounce reaches.
             final tops = [
               floor.top,
-              for (final bumper in climb) bumper.center.y - bumperRadius,
+              for (final bumper in climb) bumper.top,
               next.top,
             ];
             expect(

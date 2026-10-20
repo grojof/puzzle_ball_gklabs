@@ -38,7 +38,7 @@ audience: maintainer
 | **Trampoline** | A pad on a floor run that throws the ball up to the same height whatever its fall, keeping its horizontal speed. |
 | **Loop** | A vertical circle the ball rides around on its inside after a speed boost; a ball too slow rolls back out. |
 | **Fan** | A column of air blowing upwards, always on, that floats the ball at a hover height two thirds up: across a pit too wide to jump, or set in the floor, up a wall. |
-| **Bumper** | A pinball bumper that throws the ball away from it at a fixed speed: in a **bumper climb**, two alternating columns before a wall that the ball bounces up, or low in the riser of a short tread. |
+| **Bumper** | A pinball bumper that throws the ball away from it at a fixed speed: in a **bumper climb**, two alternating columns before a wall, each bumper throwing the ball up onto the next, or low in the riser of a short tread. |
 | **Pendulum** | An iron mace on a rigid arm, swinging over a run on a fixed rhythm; it throws the ball away hard, and leaves its lane clear long enough to cross from the back of the two tiles before it. |
 | **Seesaw** | A plank on a pivot over a pit, resting with its near end level with the run; past the pivot it tips forwards, and the ball jumps from its far end. |
 | **Gap** | A stretch without floor that the ball must jump. |

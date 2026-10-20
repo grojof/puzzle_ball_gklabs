@@ -42,6 +42,11 @@
 - [x] 7.1 Replace the bumper posts by bumper climbs before a wall, with stronger bumpers (D2); verify generator, validator, mechanics, envelope and bot tests
 - [ ] 7.2 Run the stress run again (800/800), rebuild for the phone, and play again
 
+## 8. After the third play-test
+
+- [x] 8.1 Make the climb's bumpers wider and lean their throws onto the next one, two or four per climb (D2); verify the envelope test that a throw lands on the next bumper, and the bot on two- and four-bumper climbs
+- [ ] 8.2 Run the stress run again (800/800), rebuild for the phone, and play again
+
 ## Workflow follow-up
 
 - After merge, archive the change.
