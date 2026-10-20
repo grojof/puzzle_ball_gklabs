@@ -40,7 +40,17 @@ abstract final class ElementPalette {
   /// The adrenaline rush: a heart's crimson.
   static const rush = Color(0xFFE8124F);
 
-  /// Reserved for the next change's elements.
+  /// A fan's air currents, pale and airy.
+  static const air = Color(0xFFDDF6FF);
+
+  /// A bumper's bright cap.
+  static const bumper = Color(0xFFE53DFF);
+
+  /// A mace's iron, and a seesaw's wooden plank.
+  static const iron = Color(0xFF4A4F57);
+  static const wood = Color(0xFFB07A45);
+
+  /// Reserved for the logic and memory mechanics.
   static const logicA = Color(0xFF29D3F5);
   static const logicB = Color(0xFFF54BD8);
   static const memory = Color(0x99FFFFFF);

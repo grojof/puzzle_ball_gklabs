@@ -168,9 +168,11 @@ class BallComponent extends BodyComponent with ContactCallbacks {
         // A rolling ball spins fast: without this, Box2D caps its rotation
         // per step, which caps its rolling speed at about 9.3 m/s.
         allowFastRotation: true,
-        // The ball is the only moving body: it never sleeps, so whatever
-        // moves it acts at once.
+        // The ball never sleeps, so whatever moves it acts at once.
         enableSleep: false,
+        // A fast mace never passes through it (design D3 of
+        // add-dynamic-elements).
+        isBullet: true,
       ),
     )..createShape(
       Circle(radius: radius),
@@ -188,6 +190,7 @@ class BallComponent extends BodyComponent with ContactCallbacks {
   void update(double dt) {
     super.update(dt);
     _boostTimer.update(dt);
+    _sinceStruck += dt;
     if (_reachedGoal) return;
     _sinceJump += dt;
     final standing = _standingOn();
@@ -276,6 +279,39 @@ class BallComponent extends BodyComponent with ContactCallbacks {
     _sinceJump = 0;
     audio.play(GameSound.boostJump);
     haptics.play(Haptic.jump);
+  }
+
+  /// Throws the ball away from a bumper along [normal] at [speed], keeping
+  /// its speed along the bumper's surface unless not [keepAlong]
+  /// (level-mechanics spec).
+  void bump(Vector2 normal, double speed, {bool keepAlong = true}) {
+    final velocity = body.linearVelocity;
+    final along = keepAlong
+        ? velocity - normal * velocity.dot(normal)
+        : Vector2.zero();
+    body.linearVelocity = along + normal * speed;
+    _sinceGround = double.infinity;
+    audio.play(GameSound.bumper);
+    haptics.play(Haptic.hit);
+  }
+
+  /// The least time between two mace hits' feedback, in seconds: a mace
+  /// pushing the ball along touches it more than once.
+  static const struckGap = 0.4;
+
+  double _sinceStruck = double.infinity;
+
+  /// Throws the ball away from a mace along [normal] at [speed], keeping
+  /// its speed along the mace (level-mechanics spec).
+  void knock(Vector2 normal, double speed) {
+    final velocity = body.linearVelocity;
+    final along = velocity - normal * velocity.dot(normal);
+    body.linearVelocity = along + normal * speed;
+    _sinceGround = double.infinity;
+    if (_sinceStruck < struckGap) return;
+    _sinceStruck = 0;
+    audio.play(GameSound.thud);
+    haptics.play(Haptic.hit);
   }
 
   /// Charges one jump the player can use in mid-air: a double-jump orb

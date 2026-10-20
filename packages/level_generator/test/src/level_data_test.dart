@@ -364,4 +364,127 @@ void main() {
       expect(data.canonical, contains('Adrenaline'));
     });
   });
+
+  group('dynamic elements', () {
+    test('fans lift two thirds up their column, with equality and text', () {
+      const fan = Fan(left: 2, right: 8, base: 7, top: -1);
+      expect(fan.height, 8);
+      expect(fan.hover, closeTo(7 - 8 * 2 / 3, 1e-9));
+      expect(fan.covers(2), isTrue);
+      expect(fan.covers(9), isFalse);
+      expect(fan, const Fan(left: 2, right: 8, base: 7, top: -1));
+      expect(fan, isNot(const Fan(left: 2, right: 8, base: 7, top: 0)));
+      expect(
+        fan.hashCode,
+        const Fan(left: 2, right: 8, base: 7, top: -1).hashCode,
+      );
+      expect(fan.toString(), 'Fan(2.000..8.000, 7.000..-1.000)');
+    });
+
+    test('bumpers have a top, value equality and text', () {
+      const bumper = Bumper(Vec2(1, 2));
+      expect(bumper.top, 2 - bumperRadius);
+      expect(bumper, const Bumper(Vec2(1, 2)));
+      expect(bumper, isNot(const Bumper(Vec2(1, 3))));
+      expect(bumper.hashCode, const Bumper(Vec2(1, 2)).hashCode);
+      expect(bumper.toString(), 'Bumper(1.000, 2.000)');
+      const climbing = Bumper(Vec2(1, 2), radius: climbBumperRadius, lean: -1);
+      expect(climbing.top, 2 - climbBumperRadius);
+      expect(climbing, isNot(bumper));
+      expect(climbing.toString(), 'Bumper(1.000, 2.000) r0.500 lean-1');
+    });
+
+    test('pendulums reach the lane over a strip, with equality and text', () {
+      const pendulum = Pendulum(
+        pivot: Vec2(10, 0),
+        length: 3,
+        period: 4,
+        clear: 0.25,
+        phase: 1,
+      );
+      expect(pendulum.ground, closeTo(3 + maceRadius + maceClearance, 1e-9));
+      // √(3² − 2.55²) + the mace.
+      expect(pendulum.reach, closeTo(1.5803 + maceRadius, 1e-4));
+      expect(pendulum.left, closeTo(10 - pendulum.reach, 1e-9));
+      expect(pendulum.right, closeTo(10 + pendulum.reach, 1e-9));
+      expect(pendulum.clearTime, 1);
+      const same = Pendulum(
+        pivot: Vec2(10, 0),
+        length: 3,
+        period: 4,
+        clear: 0.25,
+        phase: 1,
+      );
+      expect(pendulum, same);
+      expect(pendulum.hashCode, same.hashCode);
+      expect(
+        pendulum,
+        isNot(
+          const Pendulum(
+            pivot: Vec2(10, 0),
+            length: 3,
+            period: 4,
+            clear: 0.25,
+            phase: 2,
+          ),
+        ),
+      );
+      expect(
+        pendulum.toString(),
+        'Pendulum(10.000, 0.000) 3.000 4.000/0.250+1.000',
+      );
+    });
+
+    test('seesaws place their ends at rest and tipped, with equality and '
+        'text', () {
+      const seesaw = Seesaw(pivot: Vec2(10, 3), halfLength: 5, rest: 3, tip: 4);
+      expect(seesaw.nearEnd, const Vec2(6, 6));
+      expect(seesaw.farEndAtRest, const Vec2(14, 0));
+      expect(seesaw.farEnd, const Vec2(13, 7));
+      expect((seesaw.left, seesaw.right), (6, 14));
+      const same = Seesaw(pivot: Vec2(10, 3), halfLength: 5, rest: 3, tip: 4);
+      expect(seesaw, same);
+      expect(seesaw.hashCode, same.hashCode);
+      expect(
+        seesaw,
+        isNot(
+          const Seesaw(pivot: Vec2(10, 3), halfLength: 5, rest: 3, tip: 3.5),
+        ),
+      );
+      expect(seesaw.toString(), 'Seesaw(10.000, 3.000) 5.000 3.000/4.000');
+    });
+
+    test('levels count fans in their lowest point and list every element', () {
+      const data = LevelData(
+        seed: 's',
+        level: 1,
+        ballStart: Vec2(0.75, 3),
+        goal: Vec2(10, 2.25),
+        floors: [FloorRun(position: Vec2(0, 4), size: Vec2(12, 1.5))],
+        ramps: [],
+        boosts: [],
+        checkpoints: [],
+        sections: [],
+        estimatedDuration: 10,
+        fans: [Fan(left: 2, right: 8, base: 9, top: 1)],
+        bumpers: [Bumper(Vec2(1, 2))],
+        pendulums: [
+          Pendulum(
+            pivot: Vec2(10, 0),
+            length: 3,
+            period: 4,
+            clear: 0.25,
+            phase: 1,
+          ),
+        ],
+        seesaws: [Seesaw(pivot: Vec2(10, 3), halfLength: 5, rest: 3, tip: 4)],
+      );
+      expect(data.lowestPoint, 9);
+      final text = data.canonical;
+      expect(text, contains('Fan('));
+      expect(text, contains('Bumper('));
+      expect(text, contains('Pendulum('));
+      expect(text, contains('Seesaw('));
+    });
+  });
 }

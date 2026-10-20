@@ -13,7 +13,7 @@ audience: maintainer
 | **Level** | One generated course from the ball start to the goal. |
 | **Seed** | The value that makes level generation deterministic: same seed and level number, same level. |
 | **Difficulty curve** | The function from level number to generation parameters: intensity, precision, obstacle share, target duration, checkpoint spacing and which sections may appear. |
-| **Stage** | Five consecutive levels, for pacing: each has one breather. Elements are introduced by level: hills, half-pipes, spikes and the set pieces at level 1, ferries at 2, speed boosts at 3, crumbling islands at 4, island hops and the adrenaline rush at 5, jump boosts at 6, gravity boosts at 7, orbs at 8, trampolines at 9, conveyor belts, ice and mud at 11 and loops at 13. |
+| **Stage** | Five consecutive levels, for pacing: each has one breather. Elements are introduced by level: hills, half-pipes, spikes and the set pieces at level 1, ferries at 2, speed boosts at 3, crumbling islands at 4, island hops and the adrenaline rush at 5, jump boosts at 6, gravity boosts at 7, orbs at 8, trampolines at 9, conveyor belts, ice and mud at 11, loops at 13, fans at 15, bumpers at 17, pendulums at 19 and seesaws at 21. |
 | **Breather** | The gentler fourth level of each stage, so difficulty rises in a sawtooth rather than a straight line. |
 | **Movement envelope** | What the ball can do, as numbers measured with the real physics: jump height, flight time, top speed, the reach of each boost and trampoline, the speed and jump on each surface, and the speed a loop needs. The generator keeps every obstacle within it. |
 | **Precision** | The share of the reach each gap and climb uses, drawn from an interval that grows with the level: about 82–89 % on the first level, towards 90–95 % deep. Its high end is the most any gap may use, which the validator checks. |
@@ -37,6 +37,10 @@ audience: maintainer
 | **Surface** | What a floor run's top is made of: plain, a **conveyor belt** that carries the ball forwards or backwards, **ice**, slow to speed up and slow to stop, or **mud**, which holds the ball slow and weakens its jump. |
 | **Trampoline** | A pad on a floor run that throws the ball up to the same height whatever its fall, keeping its horizontal speed. |
 | **Loop** | A vertical circle the ball rides around on its inside after a speed boost; a ball too slow rolls back out. |
+| **Fan** | A column of air blowing upwards, always on, that floats the ball at a hover height two thirds up: across a pit too wide to jump, or set in the floor, up a wall. |
+| **Bumper** | A pinball bumper that throws the ball away from it at a fixed speed: in a **bumper climb**, two alternating columns before a wall, each bumper throwing the ball up onto the next, or low in the riser of a short tread. |
+| **Pendulum** | An iron mace on a rigid arm, swinging over a run on a fixed rhythm; it throws the ball away hard, and leaves its lane clear long enough to cross from the back of the two tiles before it. |
+| **Seesaw** | A plank on a pivot over a pit, resting with its near end level with the run; past the pivot it tips forwards, and the ball jumps from its far end. |
 | **Gap** | A stretch without floor that the ball must jump. |
 | **Boost** | A sensor that changes the ball's motion: jump, speed or gravity, or an orb. |
 | **Orb** | A double-jump orb: collecting it charges one jump the player can use in mid-air, shown on the jump button; it comes back after a respawn. |

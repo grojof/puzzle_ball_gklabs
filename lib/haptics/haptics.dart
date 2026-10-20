@@ -15,6 +15,9 @@ enum Haptic {
 
   /// An adrenaline rush started.
   heartbeat,
+
+  /// A bumper or a mace hit the ball.
+  hit,
 }
 
 /// Where the game sends its vibration events; the game knows nothing else
@@ -57,6 +60,8 @@ class DeviceHaptics implements HapticsSink {
         unawaited(_doublePulse());
       case Haptic.heartbeat:
         unawaited(_heartbeat());
+      case Haptic.hit:
+        unawaited(HapticFeedback.vibrate());
     }
   }
 

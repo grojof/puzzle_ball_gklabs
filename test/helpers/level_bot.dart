@@ -29,7 +29,10 @@ typedef Landing = ({double left, double right, double top});
 /// the boosts act on their own (design D9 of add-physical-mechanics). It
 /// keeps pushing over curves and through loops, and after a trampoline's
 /// bounce chooses the ground beyond it (design D9 of
-/// add-curved-terrain-and-physics).
+/// add-curved-terrain-and-physics). It floats on through fans' columns,
+/// rolls off under bumper roofs, waits for each mace to leave its lane, and
+/// rides seesaws down to jump from their far end (design D8 of
+/// add-dynamic-elements).
 class LevelBot {
   new(this.data);
 
@@ -59,6 +62,13 @@ class LevelBot {
 
   /// The ferry the bot has set off to board, by index.
   int? _boarding;
+
+  /// The bumper of a climb the ball last bounced on, by index from the
+  /// bottom; -1 before the first.
+  int _bounced = -1;
+
+  /// The mace whose lane the bot has set off to cross.
+  Pendulum? _crossing;
 
   /// The ball's vertical speed in the last frame, to notice a bounce.
   double _lastVy = 0;
@@ -175,6 +185,18 @@ class LevelBot {
     if (ball.isInLoop) return (push: 1, jump: false);
     final ferry = _ferry(ball, p, v, bottom);
     if (ferry != null) return ferry;
+    // A fan's column floats the ball: it pushes on across, or up a wall,
+    // and picks its landing afresh once out.
+    if (_inFans(p)) {
+      _target = null;
+      _pending = null;
+      _jumped = false;
+      return (push: 1, jump: false);
+    }
+    final mace = _pendulums(ball, p, v, bottom);
+    if (mace != null) return mace;
+    final climb = _bumperClimb(ball, p, v, bottom);
+    if (climb != null) return climb;
     if (ball.isOnGround) {
       // Contacts linger for a frame or two after a jump.
       if (_airTime > 0.1) {
@@ -189,6 +211,16 @@ class LevelBot {
       }
       final run = _runUnder(p.x, bottom);
       if (run == null) {
+        // On a seesaw: rides it down and jumps from its far end.
+        for (final seesaw in data.seesaws) {
+          if (p.x < seesaw.left - 0.3 || p.x > seesaw.right + 0.3) continue;
+          _launchEnd = seesaw.right;
+          // Fast, the plank tips away from under the ball before its end.
+          final lead = math.max(0.4, v.x * 0.12);
+          if (seesaw.farEnd.x - p.x > lead) return (push: 1, jump: false);
+          _jumped = true;
+          return (push: 1, jump: true);
+        }
         for (final ramp in data.ramps) {
           if (ramp.left - 0.3 <= p.x && p.x <= ramp.right + 0.3) {
             _launchEnd = ramp.right;
@@ -213,6 +245,9 @@ class LevelBot {
         _pending = _clear(run).firstWhere((s) => s.left >= strip.right - 1e-6);
         return (push: 1, jump: true);
       }
+      // A seesaw, a fan in the floor or a pit of fans takes the ball on
+      // from the edge: it rolls on.
+      if (_rollsOn(run)) return (push: 1, jump: false);
       final next = surfaceAt(run.right + 0.05);
       final climb = next == null ? 0.0 : run.top - next;
       // Takes off close to the edge before a gap, as precise gaps need, and
@@ -348,6 +383,223 @@ class LevelBot {
     return (push: low, jump: false);
   }
 
+  /// Whether the ball is in a fan's column, or between two columns over
+  /// one pit.
+  bool _inFans(Vector2 p) {
+    for (final fan in data.fans) {
+      if (p.y < fan.top || p.y > fan.base) continue;
+      if (fan.covers(p.x)) return true;
+      // A lull between two columns of the same pit.
+      final next = data.fans.where(
+        (other) =>
+            other.base == fan.base &&
+            other.left > fan.right &&
+            other.left - fan.right <= tileSize + 1e-6,
+      );
+      if (next.isNotEmpty && p.x > fan.right && p.x < next.first.left) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /// Whether the ball rolls on past the end of [run] without jumping: onto
+  /// a seesaw or into a fan's column.
+  bool _rollsOn(FloorRun run) {
+    final seesaw = data.seesaws.any(
+      (seesaw) =>
+          seesaw.left >= run.right - 1e-6 &&
+          seesaw.left <= run.right + seesawCrack + 1e-6,
+    );
+    final fan = data.fans.any(
+      (fan) =>
+          (fan.left - run.right).abs() < 1e-6 ||
+          ((fan.right - run.right).abs() < 1e-6 && fan.base == run.top),
+    );
+    return seesaw || fan;
+  }
+
+  /// On a run under maces: goes when the next mace's lane stays clear for
+  /// the crossing, and otherwise stops short of its lane to wait; null away
+  /// from maces.
+  ({double push, bool jump})? _pendulums(
+    BallComponent ball,
+    Vector2 p,
+    Vector2 v,
+    double bottom,
+  ) {
+    final level = ball.parent;
+    if (level == null || !ball.isOnGround) return null;
+    final run = _runUnder(p.x, bottom);
+    if (run == null) return null;
+    final force = BallComponent.moveForce / ball.body.mass;
+    for (final mace in level.children.whereType<PendulumComponent>()) {
+      final pendulum = mace.pendulum;
+      if (pendulum.pivot.x < run.left || pendulum.pivot.x > run.right) {
+        continue;
+      }
+      final start = pendulum.left - LevelComponent.ballRadius - 0.03;
+      final end = pendulum.right + LevelComponent.ballRadius + 0.03;
+      // Only the next mace, once near enough to stop before its room.
+      if (p.x > end || start - p.x > pendulumRoom * tileSize + 5) continue;
+      // Already in the lane, or set off for it: carries on.
+      if (p.x >= start || _crossing == pendulum) {
+        return (push: 1, jump: false);
+      }
+      // When it would enter and leave the lane pushing from here.
+      final enter = _pushTime(p.x, math.max(0, v.x), start, force);
+      final leave = _pushTime(p.x, math.max(0, v.x), end, force);
+      var clear = true;
+      for (var t = enter; t <= leave + 0.02; t += 0.02) {
+        if (mace.inLaneAt(mace.time + t)) clear = false;
+      }
+      if (clear) {
+        _crossing = pendulum;
+        return (push: 1, jump: false);
+      }
+      // Waits at the back of the room before the lane, to set off from
+      // there, backing up to it if need be.
+      final ahead = start - pendulumRoom * tileSize + 0.2 - p.x;
+      if (ahead < -0.1) {
+        return (push: (ahead * 3 - v.x * 1.5).clamp(-1.0, 1.0), jump: false);
+      }
+      final allowed = ahead <= 0 ? 0.0 : math.sqrt(1.4 * force * ahead);
+      return (push: ((allowed - v.x) * 2).clamp(-1.0, 1.0), jump: false);
+    }
+    return null;
+  }
+
+  /// Climbs a bumper climb: from the floor, jumps onto its lowest bumper,
+  /// then steers each bounce onto the next bumper, landing on the side
+  /// towards the one after, and from the last onto the ledge; null away
+  /// from bumper climbs.
+  ({double push, bool jump})? _bumperClimb(
+    BallComponent ball,
+    Vector2 p,
+    Vector2 v,
+    double bottom,
+  ) {
+    for (final climb in _climbs) {
+      final (:floor, :wall, :bumpers) = climb;
+      final left = bumpers.first.center.x;
+      // Off the climb: beside it, above the ledge past the wall, or below.
+      if (p.x < left - 4 || p.x > wall.left + 0.3) continue;
+      if (bottom < wall.top - 0.05 && p.x > wall.left - 0.4) continue;
+      if (ball.isOnGround) {
+        if (_runUnder(p.x, bottom) != floor) continue;
+        _bounced = -1;
+        // Stands a little before the lowest bumper and jumps onto it.
+        final stand = left - 1.1;
+        if (p.x > stand + 0.25) return (push: -1, jump: false);
+        if (p.x < stand - 0.25) {
+          return (push: (1.5 - v.x).clamp(-1.0, 1.0), jump: false);
+        }
+        if (v.x.abs() > 1.5) return (push: -v.x.sign, jump: false);
+        _jumped = true;
+        return (push: 1, jump: true);
+      }
+      // Notices a bounce off a bumper: the ball rises right beside it.
+      for (var i = 0; i < bumpers.length; i++) {
+        final c = bumpers[i].center;
+        final close = (p - Vector2(c.x, c.y)).length < bumpers[i].radius + 0.5;
+        if (close && v.y < -3) _bounced = math.max(_bounced, i);
+      }
+      if (_bounced >= bumpers.length - 1) {
+        // Off the last bumper, straight up: onto the ledge once above it.
+        _target = null;
+        _jumped = true;
+        _launchEnd = wall.left;
+        return (push: bottom < wall.top - 0.05 ? 1 : 0, jump: false);
+      }
+      final next = bumpers[_bounced + 1].center;
+      // The bumpers lean their throws towards the next: lands on the top.
+      final bumper = bumpers[_bounced + 1];
+      var aim = next.x;
+      final top = bumper.top;
+      final band = bumper.radius + LevelComponent.ballRadius + 0.1;
+      // Rising under another bumper, moves out from under it at once.
+      for (final other in bumpers) {
+        final c = other.center;
+        final above = p.y - c.y;
+        if (above > 0 && above < 2 && (p.x - c.x).abs() < band && v.y < 0) {
+          return (push: next.x > p.x ? 1 : -1, jump: false);
+        }
+      }
+      // Below the top, keeps clear of the bumper's side: heads for the
+      // edge of its reach until above it.
+      if (bottom > top - 0.05) {
+        final edge = next.x + (p.x < next.x ? -band : band);
+        if ((p.x - next.x).abs() < band) {
+          return (push: ((edge - p.x) * 4 - v.x).clamp(-1.0, 1.0), jump: false);
+        }
+        aim = edge;
+      }
+      // The steady push that comes down on the aim at the bumper's top.
+      final force = BallComponent.moveForce / ball.body.mass;
+      double? landing(double push) => _landingX(
+        p,
+        v,
+        top,
+        gravityScale: 1,
+        lowGravityFor: 0,
+        push: push * force,
+      );
+      final pushing = landing(1);
+      if (pushing == null || pushing <= aim) return (push: 1, jump: false);
+      final braking = landing(-1);
+      if (braking == null || braking >= aim) return (push: -1, jump: false);
+      var low = -1.0;
+      var high = 1.0;
+      for (var i = 0; i < 12; i++) {
+        final mid = (low + high) / 2;
+        final x = landing(mid);
+        if (x != null && x > aim) {
+          high = mid;
+        } else {
+          low = mid;
+        }
+      }
+      return (push: low, jump: false);
+    }
+    return null;
+  }
+
+  /// The bumper climbs of the level: the floor before each wall, the wall's
+  /// run, and its bumpers from the bottom.
+  late final List<({FloorRun floor, FloorRun wall, List<Bumper> bumpers})>
+  _climbs = [
+    for (var i = 0; i + 1 < data.floors.length; i++)
+      if (_climbBumpers(data.floors[i], data.floors[i + 1]) case final bumpers?)
+        (floor: data.floors[i], wall: data.floors[i + 1], bumpers: bumpers),
+  ];
+
+  List<Bumper>? _climbBumpers(FloorRun floor, FloorRun wall) {
+    final bumpers = [
+      for (final bumper in data.bumpers)
+        if (bumper.center.x >
+                wall.left - bumperWallGap - bumperColumnGap - 0.01 &&
+            bumper.center.x < wall.left - bumperWallGap + 0.01 &&
+            bumper.center.y < floor.top &&
+            bumper.center.y > wall.top - 1)
+          bumper,
+    ]..sort((a, b) => b.center.y.compareTo(a.center.y));
+    return bumpers.length < 2 ? null : bumpers;
+  }
+
+  /// The time to push from [from] at [speed] to [to], against the damping.
+  static double _pushTime(double from, double speed, double to, double force) {
+    var x = from;
+    var v = speed;
+    var time = 0.0;
+    const damping = 1 / (1 + _dt * BallComponent.linearDamping);
+    while (x < to && time < 10) {
+      v = (v + force * _dt) * damping;
+      x += v * _dt;
+      time += _dt;
+    }
+    return time;
+  }
+
   /// After a drop from [ledge] onto a run whose spikes start within 3.5 m, the
   /// stretch clear of spikes beyond them; null otherwise.
   Landing? _spikedLanding(FloorRun ledge) {
@@ -412,6 +664,8 @@ class LevelBot {
       if (!ball.isOnGround || run == null) continue;
       if ((run.right - nearEdge).abs() > 1e-6) continue;
       if (run.right - p.x > 12) continue;
+      // Spikes still ahead on the run come first.
+      if (_stripsOn(run).any((strip) => strip.right > p.x)) continue;
       // Boards if it gets well onto the deck before the pause ends, and
       // once it has set off, carries on.
       final docked = deck.x - run.right < 0.35;

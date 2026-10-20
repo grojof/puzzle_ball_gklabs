@@ -426,7 +426,8 @@ class BallOdysseyGame extends Forge2DGame with HasKeyboardHandlerComponents {
     if (input is TiltInput) input.stop();
     _level = null;
     _textures.clear();
-    world.physicsWorld.destroy();
+    // Only once: a destroyed world cannot be destroyed again.
+    if (world.physicsWorld.isValid) world.physicsWorld.destroy();
   }
 }
 

@@ -89,9 +89,14 @@ generator for, with the savegame's seed. It holds terrain, sensors, the goal and
   stronger; `RushTrailComponent` draws its trail and `AdrenalineGlowComponent`, in the viewport, the red pulse at the
   screen's edges. `LoopComponent` is two one-sided, frictionless arcs that take turns through their collision filters,
   so the way in and the way out can cross at the foot; inside, the ball's push and damping are suspended.
+  `FanComponent` is a sensor whose column lifts the ball by three times gravity at its base, fading to none at its top,
+  with an extra vertical damping. `BumperComponent` is a static circle that sets the ball's speed away from it.
+  `PendulumComponent` is a kinematic body that takes its scheduled angle and angular speed every step, from its own
+  clock, and throws the ball away when its mace hits it; the ball is a bullet, so a fast mace never passes through it. `SeesawComponent` is a light plank on a
+  revolute joint, limited to its two tilts, that turns about its centre of mass and goes back to rest on a respawn.
 - **Restart and advance:** replace that component in place. Body components destroy their bodies when removed.
 - **Falling:** a fall is detected once no ground is left below the ball that it could still reach: `LevelComponent`
-  keeps the lowest ground of every 2 m column, curves included, and checks, while the ball is in the air, whether any lies within the
+  keeps the lowest ground of every 2 m column, curves and fans' bases included, and checks, while the ball is in the air, whether any lies within the
   sideways reach of its fall ([ADR-0013](decisions/0013-demanding-pacing.md)). The level's lowest point is a backstop.
   Laser barriers (`LaserBarrierComponent`) light and darken on their own clock. A fall, spikes and a lit laser
   share `LevelComponent.sendBack()`: the ball respawns at rest above the last checkpoint it passed, with any
@@ -170,20 +175,25 @@ and copies the centre and zoom it returns into the viewfinder.
    - each surface reads its own speed curve, and gaps and climbs from mud use the mud jump;
    - after a curve or a loop it is the speed a pushing ball is measured to leave at;
    - in an adrenaline zone it reads the plain curve scaled by the rush's gain;
+   - after a fan or a mace it starts from rest, and after a seesaw it is the measured exit speed;
    - a checkpoint resets it to what a player builds after a respawn.
+   A course slow to reach its target height slopes its landings towards it, and hills and half-pipes often carry
+   spikes in a valley or a speed boost and a long gap.
    Curves are exact polynomials, sampled every half meter at most, so they are the same on every platform.
    Checkpoints go at the start of a floor run once enough time has passed since the last respawn point.
 3. `LevelValidator` re-checks a level independently: geometry, ramp and curve joins, spikes, ferries, crumbling
-   islands, orbs, trampolines, surfaces, loops, and every gap and climb against the envelope.
+   islands, orbs, trampolines, surfaces, loops, fans, bumpers, maces and seesaws, and every gap and climb against
+   the envelope.
 
 The game's `ballEnvelope` (`lib/game/ball_envelope.dart`) holds the numbers measured with the real physics, the
 speed curve included. Two game tests keep them honest: `movement_envelope_test.dart` drives the real ball and fails if
 the physics stops reaching them, and `level_playthrough_test.dart` has a bot (`test/helpers/level_bot.dart`) play one
 level per introduction plus deep levels. The bot takes off near edges, holds a steady push in the air, rides ferries,
 uses orbs, keeps pushing over curves and through loops, steers after a trampoline's bounce or a jump boost, pushes
-harder in a rush, and jumps off a ledge over spikes just below. Before tuning the
-curve, run a local stress run of a few hundred levels with the same bot. Box2D allows only so many worlds in one test
-process, so keep each stress file under about 120 levels.
+harder in a rush, and jumps off a ledge over spikes just below. It floats on through fans, bounces up bumper
+climbs, waits at the back of each mace's room for its lane to clear, and jumps from a seesaw's far end. Before
+tuning the curve, run a local stress run of a few hundred levels with the same bot. Box2D allows only so many worlds
+in one test process, so keep each stress file under about 120 levels.
 
 ## Audio
 

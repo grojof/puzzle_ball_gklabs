@@ -39,6 +39,10 @@ class LevelValidator {
     _checkLoops(level, violations);
     _checkSurfaces(level, violations);
     _checkAdrenaline(level, violations);
+    _checkFans(level, violations);
+    _checkBumpers(level, violations);
+    _checkPendulums(level, margin, violations);
+    _checkSeesaws(level, violations);
     _walk(level, margin, violations);
     return violations;
   }
@@ -89,6 +93,12 @@ class LevelValidator {
         }
       }
       speed = along(floor.size.x, speed);
+      // Past maces, the player sets off from rest at the last one's lane.
+      final lane = _lastLane(level, floor);
+      if (lane != null) {
+        final fromRest = envelope.speedAfter(floor.right - lane);
+        if (fromRest < speed) speed = fromRest;
+      }
       if (i == floors.length - 1) break;
       final next = floors[i + 1];
       if (next.left < floor.right - _epsilon) {
@@ -99,6 +109,24 @@ class LevelValidator {
       if (ferry != null) {
         _checkFerry(level, ferry, floor, next, violations);
         speed = speed < ferry.speed ? speed : ferry.speed;
+        continue;
+      }
+      final seesaw = _seesawAfter(level, floor);
+      if (seesaw != null) {
+        _checkSeesawGap(seesaw, next, margin, violations);
+        speed = envelope.seesawExitSpeed;
+        continue;
+      }
+      final columns = [
+        for (final fan in level.fans)
+          if (fan.left >= floor.right - _epsilon &&
+              fan.right <= next.left + _epsilon)
+            fan,
+      ];
+      if (columns.isNotEmpty) {
+        _checkFanGap(columns, floor, next, violations);
+        // The player lands from a float, and pushes on from rest.
+        speed = 0;
         continue;
       }
       final ramp = rampsByLeft[floor.right];
@@ -121,6 +149,22 @@ class LevelValidator {
       final rise = floor.top - next.top;
       final gap = next.left - floor.right;
       if (gap < _epsilon) {
+        final climb = _climbOf(level, floor, next);
+        if (climb != null) {
+          _checkClimb(climb, floor, next, margin, violations);
+          speed = 0;
+          continue;
+        }
+        final lift = _floorFan(level, floor);
+        if (rise > _epsilon && lift != null) {
+          if (next.top - lift.hover < envelope.fanClearance - _epsilon) {
+            violations.add(
+              'fan at x=${lift.left} does not lift above the wall',
+            );
+          }
+          speed = 0;
+          continue;
+        }
         if (rise > _epsilon) {
           final limit = switch (boost) {
             BoostType.jump => envelope.maxBoostedClimb(margin),
@@ -187,6 +231,267 @@ class LevelValidator {
         shares?.add(gap / reach);
       }
       if (boost == BoostType.speed) speed = envelope.topSpeed;
+    }
+  }
+
+  /// Where the lane of the last mace over [floor] starts, if any.
+  static double? _lastLane(LevelData level, FloorRun floor) {
+    double? lane;
+    for (final pendulum in level.pendulums) {
+      if (pendulum.pivot.x < floor.left || pendulum.pivot.x > floor.right) {
+        continue;
+      }
+      final start = pendulum.left - ballRadius;
+      if (lane == null || start > lane) lane = start;
+    }
+    return lane;
+  }
+
+  /// The seesaw whose near end rests just past [floor], if any.
+  static Seesaw? _seesawAfter(LevelData level, FloorRun floor) {
+    for (final seesaw in level.seesaws) {
+      final near = seesaw.nearEnd;
+      if (near.x >= floor.right - _epsilon &&
+          near.x <= floor.right + seesawCrack + _epsilon &&
+          (near.y - floor.top).abs() < _epsilon) {
+        return seesaw;
+      }
+    }
+    return null;
+  }
+
+  /// The fan set in [floor] at its right end, if any.
+  static Fan? _floorFan(LevelData level, FloorRun floor) {
+    for (final fan in level.fans) {
+      if ((fan.base - floor.top).abs() < _epsilon &&
+          (fan.right - floor.right).abs() < _epsilon &&
+          fan.left >= floor.left - _epsilon) {
+        return fan;
+      }
+    }
+    return null;
+  }
+
+  /// The bumpers of a climb before the wall [next] rises to from [floor],
+  /// from the bottom, if any: in the two columns before the wall, between
+  /// the two runs' heights.
+  static List<Bumper>? _climbOf(
+    LevelData level,
+    FloorRun floor,
+    FloorRun next,
+  ) {
+    if ((next.left - floor.right).abs() > _epsilon ||
+        next.top > floor.top - _epsilon) {
+      return null;
+    }
+    final near = next.left - bumperWallGap;
+    final bumpers = [
+      for (final bumper in level.bumpers)
+        if (((bumper.center.x - near).abs() < _epsilon ||
+                (bumper.center.x - near + bumperColumnGap).abs() < _epsilon) &&
+            bumper.center.y < floor.top &&
+            bumper.center.y > next.top)
+          bumper,
+    ]..sort((a, b) => b.center.y.compareTo(a.center.y));
+    return bumpers.isEmpty ? null : bumpers;
+  }
+
+  /// A bumper climb alternates its columns from the far one to the near
+  /// one, its lowest top within a jump, each step and the ledge within a
+  /// hop, with room on the run before it (design D2 of
+  /// add-dynamic-elements).
+  void _checkClimb(
+    List<Bumper> bumpers,
+    FloorRun floor,
+    FloorRun wall,
+    double margin,
+    List<String> violations,
+  ) {
+    final near = wall.left - bumperWallGap;
+    var shaped =
+        bumpers.length.isEven &&
+        floor.left <= near - bumperColumnGap - tileSize + _epsilon;
+    for (var i = 0; i < bumpers.length; i++) {
+      final onNear = (bumpers[i].center.x - near).abs() < _epsilon;
+      // Each leans towards the next; the last throws straight up.
+      final lean = i == bumpers.length - 1 ? 0 : (i.isEven ? 1 : -1);
+      if (onNear != i.isOdd ||
+          bumpers[i].lean != lean ||
+          bumpers[i].radius != climbBumperRadius) {
+        shaped = false;
+      }
+    }
+    if (!shaped) {
+      violations.add('bumper climb at x=${wall.left} is malformed');
+    }
+    final hop = envelope.bumperHopRise * margin;
+    var top = floor.top;
+    var reach = envelope.jumpHeight * margin;
+    for (final bumper in [...bumpers.map((b) => b.top)]) {
+      if (top - bumper > reach + _epsilon) {
+        violations.add('bumper at y=$bumper is out of reach in its climb');
+      }
+      top = bumper;
+      reach = hop;
+    }
+    if (top - wall.top > hop + _epsilon) {
+      violations.add('ledge at x=${wall.left} is out of reach of its climb');
+    }
+  }
+
+  /// Fans over a pit cover it from edge to edge, with at most a tile
+  /// without wind between columns of at least two tiles; they hold the ball
+  /// clear above both banks and catch it below the run (design D1 of
+  /// add-dynamic-elements).
+  void _checkFanGap(
+    List<Fan> columns,
+    FloorRun floor,
+    FloorRun next,
+    List<String> violations,
+  ) {
+    var edge = floor.right;
+    for (final fan in columns) {
+      final narrow = columns.length > 1 && fan.right - fan.left < 2 * tileSize;
+      if (fan.left - edge > tileSize + _epsilon || narrow) {
+        violations.add('fans over x=${floor.right} leave too wide a lull');
+      }
+      edge = fan.right;
+      final higher = floor.top < next.top ? floor.top : next.top;
+      if (fan.hover > higher - envelope.fanClearance + _epsilon) {
+        violations.add('fan at x=${fan.left} floats the ball too low');
+      }
+      if (fan.base < floor.top + envelope.fanCatchDepth - _epsilon) {
+        violations.add('fan at x=${fan.left} stands too high to catch');
+      }
+    }
+    if ((columns.first.left - floor.right).abs() > _epsilon ||
+        (next.left - edge).abs() > _epsilon) {
+      violations.add('fans over x=${floor.right} do not span the pit');
+    }
+  }
+
+  /// Every fan stands in a pit between two runs or in a floor before a
+  /// wall, with a column that rises above its base.
+  void _checkFans(LevelData level, List<String> violations) {
+    final floors = level.floors;
+    for (final fan in level.fans) {
+      var placed = false;
+      for (var i = 0; i + 1 < floors.length; i++) {
+        final floor = floors[i];
+        final next = floors[i + 1];
+        final inPit =
+            fan.left >= floor.right - _epsilon &&
+            fan.right <= next.left + _epsilon;
+        final inFloor =
+            _floorFan(level, floor) == fan && next.top < floor.top - _epsilon;
+        if (inPit || inFloor) placed = true;
+      }
+      if (!placed || fan.top >= fan.base || fan.left >= fan.right) {
+        violations.add('fan at x=${fan.left} is misplaced');
+      }
+    }
+  }
+
+  /// Every bumper is part of a climb before a wall, or sits low in the
+  /// riser of a step up (design D2 of add-dynamic-elements).
+  void _checkBumpers(LevelData level, List<String> violations) {
+    final floors = level.floors;
+    for (final bumper in level.bumpers) {
+      var placed = false;
+      for (var i = 0; i + 1 < floors.length; i++) {
+        final floor = floors[i];
+        final next = floors[i + 1];
+        final riser =
+            (next.left - floor.right).abs() < _epsilon &&
+            next.top < floor.top - _epsilon &&
+            (bumper.center.x - (next.left + bumperInset)).abs() < _epsilon &&
+            (bumper.center.y - (floor.top - bumperRadius)).abs() < _epsilon;
+        final climb = _climbOf(level, floor, next);
+        if (riser || (climb != null && climb.contains(bumper))) placed = true;
+      }
+      if (!placed) {
+        violations.add('bumper at ${bumper.center} is misplaced');
+      }
+    }
+  }
+
+  /// Every mace hangs over a run with room to wait in before its lane and a
+  /// tile after it, out of every other lane, and leaves the lane clear long
+  /// enough to cross it from rest at the room's back (design D3 of
+  /// add-dynamic-elements).
+  void _checkPendulums(
+    LevelData level,
+    double margin,
+    List<String> violations,
+  ) {
+    Pendulum? previous;
+    for (final pendulum in level.pendulums) {
+      final lane = pendulum.left - ballRadius;
+      final end = pendulum.right + ballRadius;
+      final over = level.floors.any(
+        (floor) =>
+            (floor.top - pendulum.ground).abs() < _epsilon &&
+            floor.left <= lane - pendulumRoom * tileSize + _epsilon &&
+            floor.right >= end + tileSize - _epsilon,
+      );
+      final shaped =
+          pendulum.length >= 2.5 - _epsilon &&
+          pendulum.length <= 3.5 + _epsilon &&
+          pendulum.clear >= 0.2 - _epsilon &&
+          pendulum.clear <= 0.3 + _epsilon;
+      if (!over || !shaped) {
+        violations.add('pendulum at x=${pendulum.pivot.x} is misplaced');
+      }
+      if (previous != null &&
+          (previous.ground - pendulum.ground).abs() < _epsilon &&
+          lane - (previous.right + ballRadius) <
+              pendulumRoom * tileSize - _epsilon) {
+        violations.add('pendulum at x=${pendulum.pivot.x} leaves no room');
+      }
+      previous = pendulum;
+      const room = pendulumRoom * tileSize;
+      final crossing = envelope.pushTime(room, room + end - lane);
+      if (crossing > margin * pendulum.clearTime * (1 + _epsilon)) {
+        violations.add(
+          'pendulum at x=${pendulum.pivot.x} leaves $crossing s to cross '
+          'in ${pendulum.clearTime}',
+        );
+      }
+    }
+  }
+
+  /// Every seesaw rests with its near end level with a run, just past it.
+  void _checkSeesaws(LevelData level, List<String> violations) {
+    for (final seesaw in level.seesaws) {
+      final rests = level.floors.any(
+        (floor) => _seesawAfter(level, floor) == seesaw,
+      );
+      final shaped =
+          seesaw.rest > 0 &&
+          seesaw.tip > seesaw.rest &&
+          seesaw.tip < seesaw.halfLength;
+      if (!rests || !shaped) {
+        violations.add('seesaw at x=${seesaw.pivot.x} is misplaced');
+      }
+    }
+  }
+
+  /// The far bank after [seesaw] is within a jump from its tipped far end,
+  /// and clear of the plank at rest.
+  void _checkSeesawGap(
+    Seesaw seesaw,
+    FloorRun bank,
+    double margin,
+    List<String> violations,
+  ) {
+    final far = seesaw.farEnd;
+    final gap = bank.left - far.x;
+    final limit = envelope.maxSeesawGap(rise: far.y - bank.top, margin: margin);
+    if (gap > limit * (1 + _epsilon) + _epsilon) {
+      violations.add('gap of $gap after seesaw at x=${far.x} exceeds $limit');
+    }
+    if (bank.left < seesaw.right + _epsilon) {
+      violations.add('seesaw at x=${seesaw.pivot.x} reaches over its bank');
     }
   }
 
@@ -389,6 +694,9 @@ class LevelValidator {
       trampolines: level.trampolines,
       loops: level.loops,
       adrenaline: level.adrenaline,
+      fans: level.fans,
+      pendulums: level.pendulums,
+      seesaws: level.seesaws,
     );
     for (final laser in level.lasers) {
       final lowest = clearance.lowestEnd(laser.x);

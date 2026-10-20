@@ -75,7 +75,11 @@ void main() {
           values.reduce((a, b) => a + b) / values.length;
       // The validator's speed is generous, so these are lower bounds.
       expect(mean(early), inInclusiveRange(0.6, 0.9));
-      expect(early.reduce(math.max), lessThanOrEqualTo(0.9));
+      // Never beyond the first level's margin: about 90 %.
+      expect(
+        early.reduce(math.max),
+        lessThanOrEqualTo(curve.parametersFor(1).margin + 1e-9),
+      );
       expect(mean(deep), greaterThan(mean(early)));
       expect(deep.reduce(math.max), lessThanOrEqualTo(0.96));
     });
@@ -260,7 +264,13 @@ void main() {
           for (final boost in data.boosts) {
             counts[boost.type] = counts[boost.type]! + 1;
             final served = switch (boost.type) {
-              BoostType.speed => [SectionKind.speedBoost, SectionKind.loop],
+              // Hills and half-pipes may launch the ball with one too.
+              BoostType.speed => [
+                SectionKind.speedBoost,
+                SectionKind.loop,
+                SectionKind.hill,
+                SectionKind.halfPipe,
+              ],
               // Break points and deep towers climb with jump boosts too.
               BoostType.jump => [
                 SectionKind.jumpBoost,
@@ -319,8 +329,14 @@ void main() {
               (f) => strip.left >= f.left && strip.right <= f.right,
             );
             expect(strip.top, run.top);
-            expect(strip.left - run.left, greaterThanOrEqualTo(tileSize));
-            expect(run.right - strip.right, greaterThanOrEqualTo(tileSize));
+            expect(
+              strip.left - run.left,
+              greaterThanOrEqualTo(tileSize - 1e-9),
+            );
+            expect(
+              run.right - strip.right,
+              greaterThanOrEqualTo(tileSize - 1e-9),
+            );
             expect(strip.width, greaterThanOrEqualTo(1));
             // In an adrenaline zone the ball runs faster.
             final rush = data.adrenaline.any((z) => z.covers(strip.left));
@@ -766,15 +782,26 @@ void main() {
         SectionKind.gap,
         SectionKind.drop,
         SectionKind.cascade,
+        SectionKind.speedBoost,
+        SectionKind.loop,
+        SectionKind.trampolineHops,
+        SectionKind.conveyor,
+        SectionKind.bumperClimb,
+        SectionKind.seesaw,
       };
+      var total = 0;
+      var mixed = 0;
       for (final (_, data) in levels(40, 45)) {
         final kinds = data.sections.toSet();
         expect(kinds.intersection(flow), isNotEmpty);
-        expect(
-          kinds.difference(flow).difference({SectionKind.flat}),
-          isNotEmpty,
-        );
+        total++;
+        // A challenge phrase may draw flow kinds too, when the level
+        // features them: only nearly every level shows another kind.
+        if (kinds.difference(flow).difference({SectionKind.flat}).isNotEmpty) {
+          mixed++;
+        }
       }
+      expect(mixed / total, greaterThan(0.9));
     });
 
     test('no plain climb follows another', () {
@@ -869,6 +896,296 @@ void main() {
       expect(beyondPlain, greaterThan(0));
     });
   });
+  group('dynamic elements', () {
+    Iterable<(int, LevelData)> levels(int from, int to) sync* {
+      for (final seed in seeds) {
+        for (var n = from; n <= to; n++) {
+          yield (n, level(n, seed));
+        }
+      }
+    }
+
+    test('each first appears in its own level, and never before', () {
+      for (final seed in seeds) {
+        expect(level(15, seed).fans, isNotEmpty, reason: seed);
+        expect(level(17, seed).bumpers, isNotEmpty, reason: seed);
+        expect(level(19, seed).pendulums, isNotEmpty, reason: seed);
+        expect(level(21, seed).seesaws, isNotEmpty, reason: seed);
+        for (var n = 1; n < 15; n++) {
+          expect(level(n, seed).fans, isEmpty);
+        }
+        for (var n = 15; n < 17; n++) {
+          expect(level(n, seed).bumpers, isEmpty);
+        }
+        for (var n = 17; n < 19; n++) {
+          expect(level(n, seed).pendulums, isEmpty);
+        }
+        for (var n = 19; n < 21; n++) {
+          expect(level(n, seed).seesaws, isEmpty);
+        }
+      }
+    });
+
+    test('fans float the ball clear of the banks and catch it below', () {
+      var gaps = 0;
+      var climbs = 0;
+      var split = 0;
+      for (final (_, data) in levels(15, 80)) {
+        final floors = data.floors;
+        for (var i = 0; i + 1 < floors.length; i++) {
+          final floor = floors[i];
+          final next = floors[i + 1];
+          final columns = [
+            for (final fan in data.fans)
+              if (fan.left >= floor.right - 1e-9 &&
+                  fan.right <= next.left + 1e-9)
+                fan,
+          ];
+          if (columns.isNotEmpty) {
+            gaps++;
+            if (columns.length > 1) split++;
+            for (final fan in columns) {
+              expect(
+                fan.hover,
+                lessThanOrEqualTo(
+                  math.min(floor.top, next.top) -
+                      testEnvelope.fanClearance +
+                      1e-9,
+                ),
+              );
+              expect(
+                fan.base,
+                greaterThanOrEqualTo(
+                  floor.top + testEnvelope.fanCatchDepth - 1e-9,
+                ),
+              );
+            }
+            for (var c = 1; c < columns.length; c++) {
+              expect(
+                columns[c].left - columns[c - 1].right,
+                lessThanOrEqualTo(tileSize + 1e-9),
+              );
+            }
+            // Wider than a jump reaches.
+            expect(
+              next.left - floor.right,
+              greaterThan(
+                testEnvelope.maxGap(
+                  speed: testEnvelope.topSpeed,
+                  rise: 0,
+                  margin: 1,
+                ),
+              ),
+            );
+          }
+          final floorFan = data.fans.where(
+            (fan) => fan.base == floor.top && fan.right == floor.right,
+          );
+          if (floorFan.isNotEmpty) {
+            climbs++;
+            expect(
+              floor.top - next.top,
+              greaterThan(testEnvelope.jumpBoostHeight),
+            );
+            expect(
+              next.top - floorFan.single.hover,
+              greaterThanOrEqualTo(testEnvelope.fanClearance - 1e-9),
+            );
+          }
+        }
+      }
+      expect(gaps, greaterThan(0));
+      expect(climbs, greaterThan(0));
+      expect(split, greaterThan(0));
+    });
+
+    test('bumper climbs zigzag up to their ledge, and risers kick back', () {
+      var climbs = 0;
+      var tall = 0;
+      var risers = 0;
+      for (final (n, data) in levels(17, 80)) {
+        final floors = data.floors;
+        final margin = curve.parametersFor(n).margin;
+        for (var i = 0; i + 1 < floors.length; i++) {
+          final floor = floors[i];
+          final next = floors[i + 1];
+          final near = next.left - bumperWallGap;
+          final climb = [
+            for (final bumper in data.bumpers)
+              if (((bumper.center.x - near).abs() < 1e-9 ||
+                      (bumper.center.x - near + bumperColumnGap).abs() <
+                          1e-9) &&
+                  bumper.center.y < floor.top &&
+                  bumper.center.y > next.top)
+                bumper,
+          ]..sort((a, b) => b.center.y.compareTo(a.center.y));
+          if (climb.isNotEmpty) {
+            climbs++;
+            if (climb.length > 2) tall++;
+            // A wall beyond a jump boost, from the far column to the near.
+            expect(next.left, closeTo(floor.right, 1e-9));
+            expect(floor.top - next.top, greaterThan(testEnvelope.jumpHeight));
+            expect(climb.length.isEven, isTrue);
+            for (var k = 0; k < climb.length; k++) {
+              expect((climb[k].center.x - near).abs() < 1e-9, k.isOdd);
+              // Each throws towards the next, the last straight up.
+              expect(
+                climb[k].lean,
+                k == climb.length - 1 ? 0 : (k.isEven ? 1 : -1),
+              );
+              expect(climb[k].radius, climbBumperRadius);
+            }
+            // The lowest within a jump, each step and the ledge within a
+            // hop, and never closer than a straight bounce reaches.
+            final tops = [
+              floor.top,
+              for (final bumper in climb) bumper.top,
+              next.top,
+            ];
+            expect(
+              tops[0] - tops[1],
+              lessThanOrEqualTo(testEnvelope.jumpHeight * margin + 1e-9),
+            );
+            for (var k = 2; k < tops.length; k++) {
+              expect(
+                tops[k - 1] - tops[k],
+                lessThanOrEqualTo(testEnvelope.bumperHopRise * margin + 1e-9),
+              );
+            }
+            for (var k = 2; k < tops.length - 1; k++) {
+              expect(tops[k - 1] - tops[k], greaterThanOrEqualTo(1.7 - 1e-9));
+            }
+          }
+          final riser = (next.left + bumperInset, floor.top - bumperRadius);
+          if (data.bumpers.any(
+            (bumper) =>
+                (bumper.center.x - riser.$1).abs() < 1e-9 &&
+                (bumper.center.y - riser.$2).abs() < 1e-9,
+          )) {
+            expect(next.top, lessThan(floor.top));
+            risers++;
+          }
+        }
+      }
+      expect(climbs, greaterThan(0));
+      expect(tall, greaterThan(0));
+      expect(risers, greaterThan(0));
+    });
+
+    test('hills and half-pipes carry spikes or launch the ball, more '
+        'often deep', () {
+      double share(int from, int to) {
+        var curves = 0;
+        var carried = 0;
+        for (final (_, data) in levels(from, to)) {
+          for (final curve in data.curves) {
+            if (curve.kind == CurveKind.slope) continue;
+            curves++;
+            final after = data.floors
+                .where((floor) => (floor.left - curve.right).abs() < 1e-9)
+                .firstOrNull;
+            if (after == null) continue;
+            final spiked = data.hazards.any(
+              (strip) => strip.left >= after.left && strip.right <= after.right,
+            );
+            final boosted = data.boosts.any(
+              (boost) =>
+                  boost.type == BoostType.speed &&
+                  boost.position.x >= after.left &&
+                  boost.position.x <= after.right,
+            );
+            if (spiked || boosted) carried++;
+          }
+        }
+        return carried / curves;
+      }
+
+      expect(share(3, 10), greaterThan(0.25));
+      expect(share(120, 130), greaterThan(share(3, 10)));
+    });
+
+    test('pendulums leave room to wait and time to cross', () {
+      var gauntlets = 0;
+      for (final (_, data) in levels(19, 80)) {
+        final byRun = <double, List<Pendulum>>{};
+        for (final pendulum in data.pendulums) {
+          const room = pendulumRoom * tileSize;
+          final crossing = testEnvelope.pushTime(
+            room,
+            room + 2 * (pendulum.reach + ballRadius),
+          );
+          expect(crossing, lessThanOrEqualTo(pendulum.clearTime));
+          final run = data.floors.singleWhere(
+            (floor) =>
+                floor.left <= pendulum.pivot.x &&
+                floor.right >= pendulum.pivot.x &&
+                (floor.top - pendulum.ground).abs() < 1e-9,
+          );
+          (byRun[run.left] ??= []).add(pendulum);
+          expect(
+            pendulum.left - ballRadius - run.left,
+            greaterThanOrEqualTo(pendulumRoom * tileSize - 1e-9),
+          );
+          expect(
+            run.right - pendulum.right - ballRadius,
+            greaterThanOrEqualTo(tileSize - 1e-9),
+          );
+        }
+        for (final run in byRun.values) {
+          if (run.length > 1) gauntlets++;
+          for (var i = 1; i < run.length; i++) {
+            expect(
+              run[i].left - run[i - 1].right - 2 * ballRadius,
+              greaterThanOrEqualTo(pendulumRoom * tileSize - 1e-9),
+            );
+          }
+        }
+      }
+      expect(gauntlets, greaterThan(0));
+    });
+
+    test('seesaws rest level with their run and reach their bank', () {
+      var seesaws = 0;
+      for (final (n, data) in levels(21, 80)) {
+        final margin = curve.parametersFor(n).margin;
+        for (final seesaw in data.seesaws) {
+          seesaws++;
+          final near = data.floors.lastWhere(
+            (floor) => floor.right <= seesaw.left + 1e-9,
+          );
+          final bank = data.floors.firstWhere(
+            (floor) => floor.left >= seesaw.right,
+          );
+          expect(seesaw.left - near.right, closeTo(seesawCrack, 1e-9));
+          expect(seesaw.nearEnd.y, closeTo(near.top, 1e-9));
+          final far = seesaw.farEnd;
+          final reach = testEnvelope.maxSeesawGap(
+            rise: far.y - bank.top,
+            margin: margin,
+          );
+          expect(bank.left - far.x, lessThanOrEqualTo(reach + 1e-9));
+        }
+      }
+      expect(seesaws, greaterThan(0));
+    });
+
+    test('deep levels use them all', () {
+      final kinds = <SectionKind>{};
+      for (final (_, data) in levels(60, 70)) {
+        kinds.addAll(data.sections);
+      }
+      expect(
+        kinds,
+        containsAll([
+          SectionKind.fanGap,
+          SectionKind.fanClimb,
+          SectionKind.bumperClimb,
+          SectionKind.pendulums,
+          SectionKind.seesaw,
+        ]),
+      );
+    });
+  });
 }
 
-const goldenDigests = [2751000118, 4153120212, 1316809374];
+const goldenDigests = [768873675, 2639266758, 905357616];

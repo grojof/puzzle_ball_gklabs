@@ -32,6 +32,11 @@ const rampClearance = 4.5;
 /// add-curved-terrain-and-physics).
 const loopClearance = 20.0;
 
+/// How far either side of a mace's swing or a seesaw no barrier hangs, in
+/// meters; fans keep [loopClearance], since they lift the ball high
+/// (design D6 of add-dynamic-elements).
+const dynamicClearance = 6.0;
+
 /// The route around a laser barrier: the ground and what launches the ball,
 /// so a barrier can hang above everything the intended route reaches
 /// (design D9 of raise-difficulty-and-pace).
@@ -47,6 +52,9 @@ class LaserClearance {
     this.trampolines = const [],
     this.loops = const [],
     this.adrenaline = const [],
+    this.fans = const [],
+    this.pendulums = const [],
+    this.seesaws = const [],
   });
 
   /// What the ball can do.
@@ -75,6 +83,15 @@ class LaserClearance {
 
   /// The route's adrenaline zones, where the ball runs faster.
   final List<AdrenalineZone> adrenaline;
+
+  /// The route's fans, which lift the ball to their hover heights.
+  final List<Fan> fans;
+
+  /// The route's pendulums.
+  final List<Pendulum> pendulums;
+
+  /// The route's seesaws.
+  final List<Seesaw> seesaws;
 
   /// The fastest the ball runs between [left] and [right]: faster in an
   /// adrenaline zone (design D8 of flow-and-pacing).
@@ -190,12 +207,24 @@ class LaserClearance {
   /// How high the route's jumps may rise near [x], above its ground, in
   /// meters: a plain jump's, a ramp launch's, an orb's double jump's, a
   /// trampoline's or a jump boost's. Null where a gravity boost serves,
-  /// whose floaty jumps rise too high for a barrier, and near a loop.
+  /// whose floaty jumps rise too high for a barrier, and near a loop, a fan,
+  /// a mace or a seesaw.
   double? clearance(double x) {
-    for (final loop in loops) {
-      if (loop.right >= x - loopClearance && loop.left <= x + loopClearance) {
-        return null;
-      }
+    bool within(double left, double right, double room) =>
+        right >= x - room && left <= x + room;
+    if (loops.any((loop) => within(loop.left, loop.right, loopClearance)) ||
+        fans.any((fan) => within(fan.left, fan.right, loopClearance)) ||
+        pendulums.any(
+          (pendulum) => within(
+            pendulum.pivot.x - pendulum.length - maceRadius,
+            pendulum.pivot.x + pendulum.length + maceRadius,
+            dynamicClearance,
+          ),
+        ) ||
+        seesaws.any(
+          (seesaw) => within(seesaw.left, seesaw.right, dynamicClearance),
+        )) {
+      return null;
     }
     var clearance = envelope.jumpHeight;
     for (final pad in trampolines) {

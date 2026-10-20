@@ -97,7 +97,7 @@ void main() {
       );
     });
 
-    test('introduces every element by level 13, leaving room for later '
+    test('introduces every element by level 21, leaving room for later '
         'mechanics', () {
       expect(
         curve.parametersFor(1).weights.keys,
@@ -128,6 +128,10 @@ void main() {
         (9, {SectionKind.trampolineHops}),
         (11, {SectionKind.conveyor, SectionKind.ice, SectionKind.mud}),
         (13, {SectionKind.loop}),
+        (15, {SectionKind.fanGap, SectionKind.fanClimb}),
+        (17, {SectionKind.bumperClimb}),
+        (19, {SectionKind.pendulums}),
+        (21, {SectionKind.seesaw}),
       ];
       for (final (level, kinds) in order) {
         expect(curve.parametersFor(level).introduces, kinds);
@@ -138,11 +142,11 @@ void main() {
       }
       expect(curve.parametersFor(1).introduces, isEmpty);
       // Kept for the logic mechanics of the next change.
-      for (final level in [10, 12, 14]) {
+      for (final level in [10, 12, 14, 16, 18, 20]) {
         expect(curve.parametersFor(level).introduces, isEmpty);
       }
       expect(
-        curve.parametersFor(13).weights.keys,
+        curve.parametersFor(21).weights.keys,
         unorderedEquals(
           SectionKind.values.where(
             (kind) =>

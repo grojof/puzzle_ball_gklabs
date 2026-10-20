@@ -5,6 +5,9 @@ import 'package:meta/meta.dart';
 /// The width and height of one terrain tile, in meters.
 const tileSize = 1.5;
 
+/// The ball's radius, in meters.
+const ballRadius = 0.2;
+
 /// An immutable 2D point or size in meters; y grows downwards.
 @immutable
 class Vec2 {
@@ -300,6 +303,270 @@ class Loop {
 
   @override
   String toString() => 'Loop$foot${radius.toStringAsFixed(3)}';
+}
+
+/// How strongly a fan lifts the ball at its base, as a multiple of gravity:
+/// the lift fades to nothing at the column's top, so the ball floats two
+/// thirds of the way up (design D1 of add-dynamic-elements).
+const fanLift = 3.0;
+
+/// A fan blowing a column of air from its [base] up to its [top] (world y),
+/// between [left] and [right] (level-mechanics spec).
+@immutable
+class Fan {
+  /// A column from [left] to [right], from [base] up to [top].
+  const new({
+    required this.left,
+    required this.right,
+    required this.base,
+    required this.top,
+  });
+
+  /// The column's left side, in meters.
+  final double left;
+
+  /// The column's right side, in meters.
+  final double right;
+
+  /// Where the fan stands and the column starts, in world y.
+  final double base;
+
+  /// Where the column ends, in world y.
+  final double top;
+
+  /// The column's height, in meters.
+  double get height => base - top;
+
+  /// The height the ball floats at, in world y: where the lift, fading from
+  /// [fanLift] times gravity at the base to none at the top, equals gravity.
+  double get hover => base - height * (1 - 1 / fanLift);
+
+  /// Whether [x] lies in the column.
+  bool covers(double x) => x >= left && x <= right;
+
+  @override
+  bool operator ==(Object other) =>
+      other is Fan &&
+      other.left == left &&
+      other.right == right &&
+      other.base == base &&
+      other.top == top;
+
+  @override
+  int get hashCode => Object.hash(left, right, base, top);
+
+  @override
+  String toString() =>
+      'Fan(${left.toStringAsFixed(3)}..${right.toStringAsFixed(3)}, '
+      '${base.toStringAsFixed(3)}..${top.toStringAsFixed(3)})';
+}
+
+/// The radius of a bumper, in meters.
+const bumperRadius = 0.35;
+
+/// How far a bumper climb's near column stands from its wall, in meters
+/// (design D2 of add-dynamic-elements).
+const bumperWallGap = 0.9;
+
+/// How much farther from the wall a bumper climb's far column stands, in
+/// meters.
+const bumperColumnGap = 2.2;
+
+/// How far a riser's bumper is set into the wall, in meters.
+const bumperInset = 0.2;
+
+/// The radius of a bumper climb's bumpers, in meters: wide enough to land
+/// on.
+const climbBumperRadius = 0.5;
+
+/// A pinball bumper centred at [center], of [radius]: touching it throws
+/// the ball away from it. A climb's bumper [lean]s its throw from the top
+/// towards one side, -1 left or 1 right, wherever the ball lands on it, or
+/// throws it straight up with 0 (level-mechanics spec, design D2 of
+/// add-dynamic-elements).
+@immutable
+class Bumper {
+  /// A bumper centred at [center].
+  const new(this.center, {this.radius = bumperRadius, this.lean = 0});
+
+  /// The bumper's centre.
+  final Vec2 center;
+
+  /// The bumper's radius, in meters.
+  final double radius;
+
+  /// Which way a throw from its top leans: -1 left, 1 right, 0 straight
+  /// up for a climb's bumper (one of [radius] [climbBumperRadius]), or
+  /// straight away from any other bumper.
+  final int lean;
+
+  /// The top of the bumper, in world y.
+  double get top => center.y - radius;
+
+  @override
+  bool operator ==(Object other) =>
+      other is Bumper &&
+      other.center == center &&
+      other.radius == radius &&
+      other.lean == lean;
+
+  @override
+  int get hashCode => Object.hash(center, radius, lean);
+
+  @override
+  String toString() {
+    final size = radius == bumperRadius ? '' : ' r${radius.toStringAsFixed(3)}';
+    return 'Bumper$center$size${lean == 0 ? '' : ' lean$lean'}';
+  }
+}
+
+/// The tiles of run before a mace's lane, out of its reach, to wait in: a
+/// ball setting off from their back crosses the lane at speed.
+const pendulumRoom = 2;
+
+/// The radius of a pendulum's mace, in meters.
+const maceRadius = 0.45;
+
+/// How far above the run a mace's lowest point passes at the bottom of its
+/// swing, in meters.
+const maceClearance = 0.1;
+
+/// The height of the lane a rolling ball takes, in meters: a mace whose
+/// lowest point is below it can hit the ball.
+const maceLane = 0.55;
+
+/// A pendulum: a mace on a rigid arm of [length] from [pivot], swinging over
+/// a run on a rhythm of [period] seconds, shifted by [phase]. In each half
+/// swing the mace is above the lane for [clear] times the period (design D3
+/// of add-dynamic-elements).
+@immutable
+class Pendulum {
+  /// A pendulum hanging from [pivot].
+  const new({
+    required this.pivot,
+    required this.length,
+    required this.period,
+    required this.clear,
+    required this.phase,
+  });
+
+  /// The point it swings from.
+  final Vec2 pivot;
+
+  /// From the pivot to the mace's centre, in meters.
+  final double length;
+
+  /// Seconds per full swing, there and back.
+  final double period;
+
+  /// The share of the period, in each half swing, during which the mace
+  /// stays above the lane.
+  final double clear;
+
+  /// Seconds into the swing at time zero.
+  final double phase;
+
+  /// The run under it, in world y.
+  double get ground => pivot.y + length + maceRadius + maceClearance;
+
+  /// How far either side of the pivot the mace can be in the lane, in
+  /// meters: only a square root, exact on every platform.
+  double get reach {
+    final drop = length - (maceLane - maceClearance);
+    return math.sqrt(length * length - drop * drop) + maceRadius;
+  }
+
+  /// The left end of the mace's reach in the lane.
+  double get left => pivot.x - reach;
+
+  /// The right end of the mace's reach in the lane.
+  double get right => pivot.x + reach;
+
+  /// How long the lane stays clear in each half swing, in seconds.
+  double get clearTime => clear * period;
+
+  @override
+  bool operator ==(Object other) =>
+      other is Pendulum &&
+      other.pivot == pivot &&
+      other.length == length &&
+      other.period == period &&
+      other.clear == clear &&
+      other.phase == phase;
+
+  @override
+  int get hashCode => Object.hash(pivot, length, period, clear, phase);
+
+  @override
+  String toString() =>
+      'Pendulum$pivot ${length.toStringAsFixed(3)} '
+      '${period.toStringAsFixed(3)}/${clear.toStringAsFixed(3)}'
+      '+${phase.toStringAsFixed(3)}';
+}
+
+/// How far a seesaw's near end rests past the edge of the run before it,
+/// in meters.
+const seesawCrack = 0.1;
+
+/// A seesaw: a plank of [halfLength] each side of its [pivot], over a pit.
+/// At rest it leans back, its near (left) end [rest] meters below the pivot;
+/// tipped forwards, its far end is [tip] meters below it (design D4 of
+/// add-dynamic-elements). The ends are the plank's top surface.
+@immutable
+class Seesaw {
+  /// A seesaw on [pivot].
+  const new({
+    required this.pivot,
+    required this.halfLength,
+    required this.rest,
+    required this.tip,
+  });
+
+  /// The point it turns on, on the plank's top surface.
+  final Vec2 pivot;
+
+  /// From the pivot to either end, in meters.
+  final double halfLength;
+
+  /// How far below the pivot the near end rests, in meters.
+  final double rest;
+
+  /// How far below the pivot the far end drops when tipped, in meters.
+  final double tip;
+
+  double _across(double offset) =>
+      math.sqrt(halfLength * halfLength - offset * offset);
+
+  /// The near end at rest, level with the run before it.
+  Vec2 get nearEnd => Vec2(pivot.x - _across(rest), pivot.y + rest);
+
+  /// The far end at rest.
+  Vec2 get farEndAtRest => Vec2(pivot.x + _across(rest), pivot.y - rest);
+
+  /// The far end when tipped, which the ball jumps from.
+  Vec2 get farEnd => Vec2(pivot.x + _across(tip), pivot.y + tip);
+
+  /// Left edge.
+  double get left => nearEnd.x;
+
+  /// Right edge: the far end at rest reaches farthest.
+  double get right => farEndAtRest.x;
+
+  @override
+  bool operator ==(Object other) =>
+      other is Seesaw &&
+      other.pivot == pivot &&
+      other.halfLength == halfLength &&
+      other.rest == rest &&
+      other.tip == tip;
+
+  @override
+  int get hashCode => Object.hash(pivot, halfLength, rest, tip);
+
+  @override
+  String toString() =>
+      'Seesaw$pivot ${halfLength.toStringAsFixed(3)} '
+      '${rest.toStringAsFixed(3)}/${tip.toStringAsFixed(3)}';
 }
 
 /// A strip of spikes lying on a floor run, from [position] (its left end on
@@ -657,6 +924,22 @@ enum SectionKind {
   /// before a riser, spikes just past a landing, or a gap right after a
   /// crest (design D3 of flow-and-pacing).
   breakPoint,
+
+  /// Fans that float the ball across a pit too wide to jump.
+  fanGap,
+
+  /// A fan at the foot of a wall higher than a jump boost reaches.
+  fanClimb,
+
+  /// Bumpers in a zigzag before a wall, bounced from one to the next up to
+  /// its ledge.
+  bumperClimb,
+
+  /// Maces swinging over a run, each with room to wait before it.
+  pendulums,
+
+  /// A seesaw over a pit, ridden down and jumped from.
+  seesaw,
 }
 
 /// One generated level.
@@ -681,6 +964,10 @@ class LevelData {
     this.trampolines = const [],
     this.loops = const [],
     this.adrenaline = const [],
+    this.fans = const [],
+    this.bumpers = const [],
+    this.pendulums = const [],
+    this.seesaws = const [],
     this.featured = const [],
   });
 
@@ -729,6 +1016,18 @@ class LevelData {
   /// Adrenaline zones, left to right.
   final List<AdrenalineZone> adrenaline;
 
+  /// Fans, left to right.
+  final List<Fan> fans;
+
+  /// Bumpers, left to right.
+  final List<Bumper> bumpers;
+
+  /// Pendulums, left to right.
+  final List<Pendulum> pendulums;
+
+  /// Seesaws, left to right.
+  final List<Seesaw> seesaws;
+
   /// The sections the level was built from, in order.
   final List<SectionKind> sections;
 
@@ -752,6 +1051,9 @@ class LevelData {
     for (final curve in curves) {
       if (curve.bottom > lowest) lowest = curve.bottom;
     }
+    for (final fan in fans) {
+      if (fan.base > lowest) lowest = fan.base;
+    }
     return lowest;
   }
 
@@ -769,5 +1071,9 @@ class LevelData {
     ...trampolines.map((e) => '$e'),
     ...loops.map((e) => '$e'),
     ...adrenaline.map((e) => '$e'),
+    ...fans.map((e) => '$e'),
+    ...bumpers.map((e) => '$e'),
+    ...pendulums.map((e) => '$e'),
+    ...seesaws.map((e) => '$e'),
   ].join('\n');
 }

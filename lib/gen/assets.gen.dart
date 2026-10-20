@@ -26,11 +26,20 @@ class $AssetsAudioGen {
   /// File path: assets/audio/boost_speed.mp3
   String get boostSpeed => 'assets/audio/boost_speed.mp3';
 
+  /// File path: assets/audio/bumper.mp3
+  String get bumper => 'assets/audio/bumper.mp3';
+
   /// File path: assets/audio/heartbeat.mp3
   String get heartbeat => 'assets/audio/heartbeat.mp3';
 
   /// File path: assets/audio/jump.mp3
   String get jump => 'assets/audio/jump.mp3';
+
+  /// File path: assets/audio/thud.mp3
+  String get thud => 'assets/audio/thud.mp3';
+
+  /// File path: assets/audio/whoosh.mp3
+  String get whoosh => 'assets/audio/whoosh.mp3';
 
   /// List of all assets
   List<String> get values => [
@@ -38,8 +47,11 @@ class $AssetsAudioGen {
     boostGravity,
     boostJump,
     boostSpeed,
+    bumper,
     heartbeat,
     jump,
+    thud,
+    whoosh,
   ];
 }
 

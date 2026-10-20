@@ -227,4 +227,49 @@ void main() {
       expect(rolled.rollOffTop(reach + 0.5), 4);
     });
   });
+
+  group('LaserClearance near the dynamic elements', () {
+    test('allows no barrier near a fan, a mace or a seesaw', () {
+      LaserClearance near({
+        List<Fan> fans = const [],
+        List<Pendulum> pendulums = const [],
+        List<Seesaw> seesaws = const [],
+      }) => LaserClearance(
+        envelope: testEnvelope,
+        floors: const [
+          FloorRun(position: Vec2(0, 4), size: Vec2(200, tileSize)),
+        ],
+        ramps: const [],
+        platforms: const [],
+        boosts: const [],
+        fans: fans,
+        pendulums: pendulums,
+        seesaws: seesaws,
+      );
+      final fan = near(
+        fans: const [Fan(left: 50, right: 60, base: 7, top: -5)],
+      );
+      expect(fan.clearance(75), isNull);
+      expect(fan.clearance(60 + loopClearance + 1), isNotNull);
+      const pendulum = Pendulum(
+        pivot: Vec2(50, 0),
+        length: 3,
+        period: 4,
+        clear: 0.25,
+        phase: 0,
+      );
+      final mace = near(pendulums: const [pendulum]);
+      expect(mace.clearance(50 + 3 + maceRadius + dynamicClearance), isNull);
+      expect(mace.clearance(50 + 3.5 + dynamicClearance + 1), isNotNull);
+      const seesaw = Seesaw(
+        pivot: Vec2(50, 3),
+        halfLength: 2,
+        rest: 0.28,
+        tip: 0.66,
+      );
+      final plank = near(seesaws: const [seesaw]);
+      expect(plank.clearance(seesaw.right + dynamicClearance), isNull);
+      expect(plank.clearance(seesaw.right + dynamicClearance + 1), isNotNull);
+    });
+  });
 }

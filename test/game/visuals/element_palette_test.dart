@@ -27,6 +27,10 @@ void main() {
         ElementPalette.mud,
         ElementPalette.track,
         ElementPalette.rush,
+        ElementPalette.air,
+        ElementPalette.bumper,
+        ElementPalette.iron,
+        ElementPalette.wood,
       ];
       for (final palette in BiomePalette.reference.values) {
         for (final background in palette.all) {

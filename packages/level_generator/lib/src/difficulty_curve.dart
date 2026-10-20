@@ -143,8 +143,9 @@ class DifficultyCurve {
   static const checkpointSeconds = 35.0;
 
   /// The level at which each obstacle first appears: the new physics at
-  /// levels 9, 11 and 13, leaving levels 10, 12, 14 and on to later
-  /// mechanics (design D6 of add-curved-terrain-and-physics).
+  /// levels 9, 11 and 13 and the dynamic elements at 15, 17, 19 and 21,
+  /// leaving levels 10, 12, 14 and on to later mechanics (design D6 of
+  /// add-curved-terrain-and-physics, D5 of add-dynamic-elements).
   static const Map<SectionKind, int> introductionLevel = {
     SectionKind.rampUp: 1,
     SectionKind.rampDown: 1,
@@ -173,6 +174,11 @@ class DifficultyCurve {
     SectionKind.ice: 11,
     SectionKind.mud: 11,
     SectionKind.loop: 13,
+    SectionKind.fanGap: 15,
+    SectionKind.fanClimb: 15,
+    SectionKind.bumperClimb: 17,
+    SectionKind.pendulums: 19,
+    SectionKind.seesaw: 21,
   };
 
   /// Straight ramps share their weight with curves, so slopes vary in shape.
@@ -194,6 +200,11 @@ class DifficultyCurve {
     SectionKind.mud,
     SectionKind.ferry,
     SectionKind.crumblingHops,
+    SectionKind.fanGap,
+    SectionKind.fanClimb,
+    SectionKind.bumperClimb,
+    SectionKind.pendulums,
+    SectionKind.seesaw,
   };
 
   /// Plain sections, which grow rarer with depth.
@@ -238,6 +249,11 @@ class DifficultyCurve {
     SectionKind.ice: 0.5,
     SectionKind.mud: 0.5,
     SectionKind.loop: 0.4,
+    SectionKind.fanGap: 0.6,
+    SectionKind.fanClimb: 0.4,
+    SectionKind.bumperClimb: 0.7,
+    SectionKind.pendulums: 0.6,
+    SectionKind.seesaw: 0.6,
   };
 
   /// The parameters of [level] (from 1).

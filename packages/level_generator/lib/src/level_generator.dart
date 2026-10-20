@@ -75,6 +75,20 @@ const _spikesTime = 3.0;
 /// About how long a ferry crossing takes, in seconds.
 const _ferryTime = 10.0;
 
+/// The tallest wall a fan climb serves, in meters.
+const _fanClimbMax = 10.0;
+
+/// The tallest wall a bumper climb reaches, in meters.
+const _bumperClimbMax = 10.0;
+
+/// The least step between a bumper climb's bumpers, in meters: a straight
+/// bounce off one then never reaches the bumper two above.
+const _bumperStep = 1.7;
+
+/// The tiles of run before a bumper climb's wall: room to jump onto its
+/// lowest bumper, and to fall back onto.
+const _climbRoom = 4;
+
 /// Sections a player takes one after another without stopping: what flow
 /// phrases are made of (design D2 of flow-and-pacing).
 const Set<SectionKind> _flowKinds = {
@@ -88,6 +102,7 @@ const Set<SectionKind> _flowKinds = {
   SectionKind.loop,
   SectionKind.trampolineHops,
   SectionKind.conveyor,
+  SectionKind.seesaw,
 };
 
 /// Tense sections, which an adrenaline zone may cover (design D7 of
@@ -97,6 +112,7 @@ const Set<SectionKind> _tenseKinds = {
   SectionKind.crumblingHops,
   SectionKind.chainedGaps,
   SectionKind.descent,
+  SectionKind.pendulums,
 };
 
 /// The least estimated play time between two adrenaline zones, in seconds.
@@ -108,6 +124,10 @@ const _featuredShare = 0.75;
 /// How often an obstacle simply heads for the course's target height,
 /// whatever the level features.
 const _journeyShare = 0.25;
+
+/// How long the course may take to reach its heading before its landings
+/// start to slope towards it, in seconds of estimated play.
+const _journeyPatience = 60.0;
 
 /// How far above and below its start a course may wander, in meters
 /// (design D4 of raise-difficulty-and-pace).
@@ -122,6 +142,8 @@ const Set<SectionKind> _climbs = {
   SectionKind.staircase,
   SectionKind.orbClimb,
   SectionKind.tower,
+  SectionKind.fanClimb,
+  SectionKind.bumperClimb,
 };
 
 /// Sections that end lower than they start.
@@ -149,6 +171,10 @@ class _Builder {
   final trampolines = <Trampoline>[];
   final loops = <Loop>[];
   final adrenaline = <AdrenalineZone>[];
+  final fans = <Fan>[];
+  final bumpers = <Bumper>[];
+  final pendulums = <Pendulum>[];
+  final seesaws = <Seesaw>[];
   final sections = <SectionKind>[];
 
   /// The last obstacle appended, to keep plain climbs apart.
@@ -197,6 +223,9 @@ class _Builder {
   /// Climbs or descents towards it are favored, so the course travels up
   /// and down (design D4 of raise-difficulty-and-pace).
   double? _heading;
+
+  /// The estimated play time when the course set off for its heading.
+  double _headingSince = 0;
 
   /// Estimated speed of a player who keeps pushing right.
   double speed = 0;
@@ -292,6 +321,10 @@ class _Builder {
     trampolines: List.unmodifiable(trampolines),
     loops: List.unmodifiable(loops),
     adrenaline: List.unmodifiable(adrenaline),
+    fans: List.unmodifiable(fans),
+    bumpers: List.unmodifiable(bumpers),
+    pendulums: List.unmodifiable(pendulums),
+    seesaws: List.unmodifiable(seesaws),
     sections: List.unmodifiable(sections),
     estimatedDuration: duration,
     featured: List.unmodifiable(featured),
@@ -311,6 +344,9 @@ class _Builder {
       trampolines: trampolines,
       loops: loops,
       adrenaline: adrenaline,
+      fans: fans,
+      pendulums: pendulums,
+      seesaws: seesaws,
     );
     final lasers = <LaserBarrier>[];
     for (final site in _laserSites) {
@@ -469,6 +505,16 @@ class _Builder {
         _loop();
       case SectionKind.breakPoint:
         _breakPoint();
+      case SectionKind.fanGap:
+        _fanGap();
+      case SectionKind.fanClimb:
+        _fanClimb();
+      case SectionKind.bumperClimb:
+        _bumperClimb();
+      case SectionKind.pendulums:
+        _pendulums();
+      case SectionKind.seesaw:
+        _seesaw();
     }
     sections.add(kind);
     if (kind == SectionKind.flat) {
@@ -477,6 +523,7 @@ class _Builder {
       _lastKind = kind;
       _flat(_landingTiles);
       _maybeCheckpoint(threshold: 0.75);
+      _drift();
     }
   }
 
@@ -517,11 +564,18 @@ class _Builder {
       weights.removeWhere((kind, _) => _descents.contains(kind));
     }
     // Head for a height inside the band, and pick another once there.
-    final heading = _heading ??= _newHeading();
-    if ((heading - y).abs() < 3) _heading = _newHeading();
+    if (_heading == null || (_heading! - y).abs() < 3) {
+      _heading = _newHeading();
+      _headingSince = duration;
+    }
     final towards = _heading! < y ? _climbs : _descents;
+    final away = _heading! < y ? _descents : _climbs;
     weights.updateAll(
-      (kind, weight) => towards.contains(kind) ? weight * _headingBias : weight,
+      (kind, weight) => towards.contains(kind)
+          ? weight * _headingBias
+          : away.contains(kind)
+          ? weight / _headingBias
+          : weight,
     );
     // Towers and descents only where they fit inside the band.
     if (y - _bigSection < _startHeight - _maxRise) {
@@ -529,6 +583,12 @@ class _Builder {
     }
     if (y + _bigSection > _startHeight + _maxFall) {
       weights.remove(SectionKind.descent);
+    }
+    if (y - _fanClimbMax < _startHeight - _maxRise) {
+      weights.remove(SectionKind.fanClimb);
+    }
+    if (y - _bumperClimbMax < _startHeight - _maxRise) {
+      weights.remove(SectionKind.bumperClimb);
     }
     // Spikes never lie on the start's or the goal's run, and a ferry takes a
     // while: neither when the level is about to end.
@@ -650,12 +710,16 @@ class _Builder {
     _openRun();
   }
 
+  /// A gap's rise: level half the time, otherwise up to 60 % of a climb or
+  /// down to 2.5 m lower, leaning towards the course's heading two to one,
+  /// so gaps carry the course through its band too.
   double _gapRise() {
     if (random.chance(0.5)) return 0;
-    return random.range(
-      -2.5,
-      0.6 * envelope.maxClimb(margin, surface: runSurface),
-    );
+    final heading = _heading;
+    final up = heading == null ? 0.5 : (heading < y ? 2 / 3 : 1 / 3);
+    return random.chance(up)
+        ? random.range(0, 0.6 * envelope.maxClimb(margin, surface: runSurface))
+        : -random.range(0, 2.5);
   }
 
   /// A gap landing [rise] higher, using a share of the reach at the current
@@ -702,8 +766,12 @@ class _Builder {
   double _stepHeight() =>
       math.max(0.6, envelope.maxClimb(1, surface: runSurface) * _share());
 
-  void _stepUp(double height) {
+  /// A ledge [height] meters up; [bumped] sets a bumper low in its riser.
+  void _stepUp(double height, {bool bumped = false}) {
     _closeRun();
+    if (bumped) {
+      bumpers.add(Bumper(Vec2(x + bumperInset, y - bumperRadius)));
+    }
     y -= height;
     _openRun(fill: height);
     speed *= 0.5;
@@ -937,13 +1005,21 @@ class _Builder {
   /// overshoots the tile into the riser.
   void _shortTread() {
     _gap(_gapRise(), landingTiles: 1);
+    // From level 17, half the risers kick an overshoot back into the gap
+    // (design D2 of add-dynamic-elements).
+    final bumped =
+        parameters.weights.containsKey(SectionKind.bumperClimb) &&
+        random.chance(0.5);
     if (!parameters.weights.containsKey(SectionKind.jumpBoost)) {
       _flat(1);
-      _stepUp(_stepHeight());
+      _stepUp(_stepHeight(), bumped: bumped);
       return;
     }
     _boostApproach(BoostType.jump, tiles: 1, inset: tileSize * 0.4);
-    _stepUp(_boosted(envelope.maxBoostedClimb(1), envelope.maxClimb(1)));
+    _stepUp(
+      _boosted(envelope.maxBoostedClimb(1), envelope.maxClimb(1)),
+      bumped: bumped,
+    );
   }
 
   /// A drop or a gap whose landing has spikes starting two tiles in: a fast
@@ -965,6 +1041,36 @@ class _Builder {
     _curve(CurveKind.hill, [_bump(_rampHeight())]);
     _flat(1);
     _gap(_gapRise());
+  }
+
+  /// Once the course has taken longer than its patience to reach its
+  /// heading, a landing slopes on towards it: a rounded slope and a run,
+  /// not an obstacle, so the level's character is unchanged and the course
+  /// still travels its band (level-generation spec, vertical variety).
+  void _drift() {
+    final heading = _heading;
+    if (heading == null ||
+        duration - _headingSince < _journeyPatience ||
+        (heading - y).abs() < 3) {
+      return;
+    }
+    final height = _rampHeight();
+    if (heading < y) {
+      _rampUp(height);
+    } else {
+      _rampDown(height);
+    }
+    _flat(_landingTiles);
+  }
+
+  /// A rise of up to [most] meters either way, leaning towards the course's
+  /// heading two to one, so sections that travel little in height still
+  /// carry the course through its band.
+  double _towardsHeading(double most) {
+    final heading = _heading;
+    final up = heading == null ? 0.5 : (heading < y ? 2 / 3 : 1 / 3);
+    final rise = random.range(0, most);
+    return random.chance(up) ? rise : -rise;
   }
 
   /// A height to head for, inside the band, at least 10 m from here.
@@ -1054,19 +1160,44 @@ class _Builder {
 
   /// One to three bumps in a row, each as gentle as a ramp. A fast ball
   /// takes off from a crest and comes down on the next slope or the
-  /// landing.
+  /// landing. More often deep, the hill is not left empty: spikes lie in a
+  /// valley between two bumps, or a speed boost after it launches the ball
+  /// over a long gap (design D11 of add-dynamic-elements).
   void _hill() {
+    if (random.chance(_wavyShare)) {
+      if (!_canLaunch || random.chance(0.5)) {
+        _curve(CurveKind.hill, [_bump(_rampHeight())]);
+        _spikes();
+        _flat(1);
+        _curve(CurveKind.hill, [_bump(_rampHeight())]);
+        return;
+      }
+      _curve(CurveKind.hill, [
+        for (var i = random.intIn(1, 2); i > 0; i--) _bump(_rampHeight()),
+      ]);
+      _speedBoost();
+      return;
+    }
     final count = random.intIn(1, 3);
     _curve(CurveKind.hill, [
       for (var i = 0; i < count; i++) _bump(_rampHeight()),
     ]);
   }
 
-  /// A smooth dip 1.5–3 m deep, to roll through and climb out of.
+  /// A smooth dip 1.5–3 m deep, to roll through and climb out of; more
+  /// often deep, a speed boost after it launches the ball over a long gap.
   void _halfPipe() {
     final (width, depth) = _bump(random.range(1.5, 1.5 + 1.5 * intensity));
     _curve(CurveKind.halfPipe, [(width, -depth)]);
+    if (_canLaunch && random.chance(_wavyShare)) _speedBoost();
   }
+
+  /// How often a hill or a half-pipe carries an obstacle: half at first,
+  /// most deep.
+  double get _wavyShare => 0.5 + 0.4 * parameters.depth;
+
+  /// Whether speed boosts are known, so a curve may launch the ball.
+  bool get _canLaunch => parameters.weights.containsKey(SectionKind.speedBoost);
 
   /// A bump of [height] and the width that keeps it gentle.
   (double, double) _bump(double height) =>
@@ -1084,7 +1215,7 @@ class _Builder {
       x += island;
       _time(island);
       final last = i == islands - 1;
-      final rise = random.range(-1.5, 1.5);
+      final rise = _towardsHeading(1.5);
       // The ball bounces where it lands on the island: count from its middle.
       final width = _boosted(
         envelope.maxTrampolineGap(speed: speed, rise: rise, margin: 1) -
@@ -1141,6 +1272,198 @@ class _Builder {
     // The boost belongs to the loop's run alone.
     _closeRun();
     _openRun();
+  }
+
+  /// Fans across a pit 1.1 to 2 times the farthest jump: the ball floats
+  /// over it and is pushed on to the far bank, up to 1.5 m lower. Deep, the
+  /// columns split, with at most a tile without wind between them (design
+  /// D1 of add-dynamic-elements).
+  void _fanGap() {
+    final farthest = envelope.maxGap(
+      speed: envelope.topSpeed,
+      rise: 0,
+      margin: 1,
+    );
+    final width = farthest * random.range(1.1, 2);
+    final drop = random.range(0, 1.5);
+    // The near run is the higher bank.
+    final hover = y - envelope.fanClearance - random.range(0.2, 0.8);
+    final base = y + envelope.fanCatchDepth;
+    final top = base - (base - hover) / (1 - 1 / fanLift);
+    var count = parameters.depth >= 0.5 ? random.intIn(2, 3) : 1;
+    final gap = random.range(0.5, 1) * tileSize;
+    var column = (width - (count - 1) * gap) / count;
+    if (column < 2 * tileSize) {
+      count = 1;
+      column = width;
+    }
+    _closeRun();
+    var left = x;
+    for (var i = 0; i < count; i++) {
+      fans.add(Fan(left: left, right: left + column, base: base, top: top));
+      left += column + gap;
+    }
+    _float(y - hover);
+    x += width;
+    y += drop;
+    _openRun();
+    _time(width, obstacle: true);
+  }
+
+  /// A fan set in the floor at the foot of a wall higher than a jump boost
+  /// reaches: its column lifts the ball above the wall's top (design D1 of
+  /// add-dynamic-elements).
+  void _fanClimb() {
+    final height = random.range(envelope.jumpBoostHeight * 1.05, _fanClimbMax);
+    _flat(1);
+    final hover = y - height - envelope.fanClearance - random.range(0.2, 0.8);
+    final top = y - (y - hover) / (1 - 1 / fanLift);
+    fans.add(Fan(left: x - tileSize, right: x, base: y, top: top));
+    _float(y - hover);
+    _stepUp(height);
+  }
+
+  /// The time a fan takes to lift the ball [rise] meters; the player then
+  /// lands from a float, so pushes on from rest.
+  void _float(double rise) {
+    final time = rise / envelope.fanRiseSpeed;
+    duration += time;
+    sinceRespawn += time;
+    speed = 0;
+    _landedLate = false;
+  }
+
+  /// Bumpers in two columns before a wall, alternating and each higher than
+  /// the last, each throwing the ball up and towards the next, the last
+  /// towards the ledge: the ball jumps onto the lowest, then bounces from
+  /// one to the next. A miss drops it back to the run (design D2 of
+  /// add-dynamic-elements).
+  void _bumperClimb() {
+    final count = parameters.depth >= 0.5 && random.chance(0.5) ? 4 : 2;
+    _flat(_climbRoom);
+    // The lowest top within a jump, then steps within a hop, and never so
+    // close that a straight bounce hits the bumper two above.
+    var top = math.min(
+      math.max(envelope.jumpHeight * _share() * 0.9, 1.9),
+      2.3,
+    );
+    double step(double least) => math.min(
+      math.max(envelope.bumperHopRise * _share(), least),
+      envelope.bumperHopRise * margin,
+    );
+    for (var i = 0; i < count; i++) {
+      if (i > 0) top += step(_bumperStep);
+      final column = i.isEven ? bumperColumnGap : 0.0;
+      bumpers.add(
+        Bumper(
+          Vec2(x - bumperWallGap - column, y - top + climbBumperRadius),
+          radius: climbBumperRadius,
+          // From the far column towards the near one, and back; the last
+          // straight up, beside the ledge.
+          lean: i == count - 1 ? 0 : (i.isEven ? 1 : -1),
+        ),
+      );
+    }
+    final height = top + step(1.2);
+    // About a second a hop.
+    duration += count;
+    sinceRespawn += count;
+    speed = 0;
+    _landedLate = false;
+    _stepUp(height);
+  }
+
+  /// Maces swinging over the run, one, or up to three deep, each with two
+  /// tiles to wait in before it and a lane clear long enough to cross from
+  /// rest at their back; then a gap, so a knock can throw the ball off
+  /// (design D3 of add-dynamic-elements).
+  void _pendulums() {
+    final count = parameters.depth >= 0.5 ? random.intIn(1, 3) : 1;
+    var lane = x;
+    for (var i = 0; i < count; i++) {
+      _flat(pendulumRoom);
+      final length = random.range(2.5, 3.5);
+      final clear = random.range(0.2, 0.3);
+      final reach = Pendulum(
+        pivot: const Vec2(0, 0),
+        length: length,
+        period: 1,
+        clear: clear,
+        phase: 0,
+      ).reach;
+      final span = 2 * (reach + ballRadius);
+      const room = pendulumRoom * tileSize;
+      final crossing = envelope.pushTime(room, room + span);
+      final period = crossing / (_share() * clear);
+      lane = x;
+      pendulums.add(
+        Pendulum(
+          pivot: Vec2(x + span / 2, y - maceClearance - maceRadius - length),
+          length: length,
+          period: period,
+          clear: clear,
+          phase: random.range(0, period),
+        ),
+      );
+      x += span;
+      _time(span, obstacle: true);
+      // On average, half a swing to wait.
+      duration += period / 2;
+      sinceRespawn += period / 2;
+    }
+    _flat(1);
+    // From rest at the last mace's lane.
+    speed = envelope.speedAfter(x - lane);
+    _landedLate = false;
+    _gap(_gapRise());
+  }
+
+  /// One seesaw over a pit, or two in a row deep: rolled onto, ridden down
+  /// and jumped from its tipped far end to the far bank (design D4 of
+  /// add-dynamic-elements).
+  void _seesaw() {
+    final count = parameters.depth >= 0.5 && random.chance(0.5) ? 2 : 1;
+    for (var i = 0; i < count; i++) {
+      _flat(2);
+      final half = random.range(1.5, 2.25);
+      final rest = half * 0.14;
+      final tip = half * 0.33;
+      // The near end rests level with the run, a crack past its edge.
+      final along = Seesaw(
+        pivot: const Vec2(0, 0),
+        halfLength: half,
+        rest: rest,
+        tip: tip,
+      ).nearEnd.x;
+      final seesaw = Seesaw(
+        pivot: Vec2(x + seesawCrack - along, y - rest),
+        halfLength: half,
+        rest: rest,
+        tip: tip,
+      );
+      seesaws.add(seesaw);
+      final far = seesaw.farEnd;
+      final rise = math.min(
+        _towardsHeading(1.5),
+        0.5 * envelope.seesawJumpHeight,
+      );
+      final reach = envelope.maxSeesawGap(rise: rise, margin: 1);
+      // The plank at rest never reaches over the bank.
+      final least = math.max(tileSize * 0.8, seesaw.right - far.x + 0.3);
+      final width = math.max(least, math.min(reach * _share(), reach * margin));
+      _closeRun();
+      final start = x;
+      x = far.x + width;
+      y = far.y - rise;
+      _openRun();
+      _time(x - start, obstacle: true);
+      speed = envelope.seesawExitSpeed;
+      _land(
+        envelope.seesawAirTime(rise) ?? envelope.flightTime,
+        covered: width,
+      );
+      if (i < count - 1) _flat(_landingTiles);
+    }
   }
 
   /// Places a checkpoint at the start of the current run once the time since
