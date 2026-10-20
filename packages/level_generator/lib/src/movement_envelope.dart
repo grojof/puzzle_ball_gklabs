@@ -32,6 +32,11 @@ class MovementEnvelope {
     required this.mudFlightTime,
     required this.loopEntrySpeed,
     required this.rushGain,
+    required this.fanClearance,
+    required this.fanCatchDepth,
+    required this.fanRiseSpeed,
+    required this.seesawExitSpeed,
+    required this.seesawJumpHeight,
   });
 
   /// Height of a standing jump, in meters.
@@ -110,6 +115,26 @@ class MovementEnvelope {
   /// How much stronger the push is during an adrenaline rush, with the same
   /// damping: speeds scale by it (design D7 of flow-and-pacing).
   final double rushGain;
+
+  /// How far below a fan's hover height a bank or a ledge must lie, in
+  /// meters: the ball's radius and how low its settled bobbing sinks, with
+  /// margin (design D1 of add-dynamic-elements).
+  final double fanClearance;
+
+  /// How far below the run a fan's base must stand, in meters, to catch a
+  /// ball that jumps or rolls into its column.
+  final double fanCatchDepth;
+
+  /// The mean speed at which a fan lifts the ball to its hover height, in
+  /// m/s, for the duration estimate.
+  final double fanRiseSpeed;
+
+  /// The least speed a ball pushed from rest at a seesaw's near end has at
+  /// its tipped far end, in m/s (design D4 of add-dynamic-elements).
+  final double seesawExitSpeed;
+
+  /// Height of a jump from a seesaw's tipped far end, in meters.
+  final double seesawJumpHeight;
 
   /// Speed reached after pushing over [distance] meters, starting at
   /// [startSpeed]: read on [speedCurve] from where it reaches [startSpeed].
@@ -199,6 +224,63 @@ class MovementEnvelope {
     final discriminant = launch * launch - 2 * gravity * rise;
     if (discriminant < 0) return null;
     return (launch + math.sqrt(discriminant)) / gravity;
+  }
+
+  /// Air time of a jump from a seesaw's tipped far end landing [rise]
+  /// meters above it, or null when out of reach: the plain jump's arc,
+  /// lower.
+  double? seesawAirTime(double rise) => _arcTime(
+    seesawJumpHeight,
+    flightTime * math.sqrt(seesawJumpHeight / jumpHeight),
+    rise,
+  );
+
+  /// The widest gap a jump from a seesaw's tipped far end clears, landing
+  /// [rise] meters higher, scaled by [margin].
+  double maxSeesawGap({required double rise, required double margin}) {
+    if (rise > margin * seesawJumpHeight) return 0;
+    final time = seesawAirTime(rise);
+    return time == null ? 0 : margin * seesawExitSpeed * time;
+  }
+
+  /// The widest gap a ball rolling off a ledge at [speed], without jumping,
+  /// clears onto ground [drop] meters lower, scaled by [margin] (design D2
+  /// of add-dynamic-elements).
+  double maxRollOffGap({
+    required double speed,
+    required double drop,
+    required double margin,
+  }) => margin * speed * fallTime(drop);
+
+  /// At most how long a ball pushed from rest takes to go from [from] to
+  /// [to] meters along flat ground, in seconds (design D3 of
+  /// add-dynamic-elements).
+  ///
+  /// The speed only grows, so each sample's stretch takes at most its
+  /// length over the speed at its start. On the first stretch the push's
+  /// acceleration only falls, so the speed is at least the first sample's
+  /// times the square root of the share covered, which a square root
+  /// integrates exactly.
+  double pushTime(double from, double to) {
+    var time = 0.0;
+    var start = math.max(0, from).toDouble();
+    if (start < curveStep && to > start) {
+      final end = math.min(to, curveStep);
+      // ∫ dx / (v₁ √(x / s)) = 2 √s (√end − √start) / v₁.
+      time +=
+          2 *
+          math.sqrt(curveStep) *
+          (math.sqrt(end) - math.sqrt(start)) /
+          speedCurve.first;
+      start = end;
+    }
+    while (start < to) {
+      final index = (start / curveStep).floor();
+      final end = math.min(to, (index + 1) * curveStep);
+      time += (end - start) / _speedAt(index * curveStep);
+      start = end;
+    }
+    return time;
   }
 
   /// Time to fall [height] meters without jumping, on the same fitted arc.

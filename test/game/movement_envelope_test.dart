@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flame/cache.dart';
 import 'package:flame_forge2d/flame_forge2d.dart';
 import 'package:flame_test/flame_test.dart';
@@ -548,5 +550,181 @@ void main() {
         expect(entry, greaterThanOrEqualTo(1.2 * ballEnvelope.loopEntrySpeed));
       },
     );
+  });
+
+  group('the dynamic elements reach the movement envelope', () {
+    /// A level of [floors] at their heights, with [fans] and [seesaws], and
+    /// a deep floor far below.
+    LevelData course({
+      required List<FloorRun> floors,
+      List<Fan> fans = const [],
+      List<Seesaw> seesaws = const [],
+    }) => LevelData(
+      seed: 'envelope',
+      level: 1,
+      ballStart: const Vec2(tileSize / 2, 3),
+      goal: const Vec2(299, 2.25),
+      floors: [
+        ...floors,
+        const FloorRun(position: Vec2(0, 60), size: Vec2(300, tileSize)),
+      ],
+      ramps: const [],
+      boosts: const [],
+      checkpoints: const [],
+      sections: const [],
+      estimatedDuration: 10,
+      fans: fans,
+      seesaws: seesaws,
+    );
+
+    // A pit fan as the generator builds it, with the least clearance.
+    const run = 4.0;
+    const hover = run - 0.5 - 0.2;
+    const base = run + 3;
+    const fan = Fan(
+      left: 30,
+      right: 60,
+      base: base,
+      top: base - (base - hover) / (1 - 1 / fanLift),
+    );
+    for (final jump in [false, true]) {
+      testWithGame(
+        'a fan catches a ball that ${jump ? 'jumps' : 'rolls'} in, and '
+        'floats it clear of the banks',
+        () => testGame(
+          images: images,
+          levelFor: (_) => course(
+            floors: const [
+              FloorRun(position: Vec2(0, run), size: Vec2(30, tileSize)),
+              FloorRun(position: Vec2(60, run), size: Vec2(30, tileSize)),
+            ],
+            fans: const [fan],
+          ),
+        ),
+        (game) async {
+          game.input!.removeFromParent();
+          await game.ready();
+          final ball = game.level!.ball;
+          game.intent.horizontal = 1;
+          var deepest = double.negativeInfinity;
+          var risen = false;
+          var lowest = double.negativeInfinity;
+          var jumped = !jump;
+          for (var i = 0; i < 900; i++) {
+            game.update(_dt);
+            final p = ball.body.position;
+            if (!jumped && p.x > 29.4) {
+              game.intent.requestJump();
+              jumped = true;
+            }
+            if (p.x <= 30) continue;
+            game.intent.horizontal = p.x < 38 ? 1 : 0;
+            deepest = math.max(deepest, p.y);
+            if (p.y <= hover) risen = true;
+            // The ball's bottom, once it has risen to the hover height.
+            if (risen) lowest = math.max(lowest, p.y + 0.2);
+          }
+          expect(risen, isTrue);
+          expect(deepest, lessThan(run + ballEnvelope.fanCatchDepth));
+          expect(lowest, lessThan(hover + ballEnvelope.fanClearance));
+        },
+      );
+    }
+
+    testWithGame(
+      'a fan lifts the ball over a wall at its rising speed',
+      () => testGame(
+        images: images,
+        levelFor: (_) => course(
+          floors: const [
+            FloorRun(position: Vec2(0, run), size: Vec2(12, tileSize)),
+            FloorRun(position: Vec2(12, run - 10), size: Vec2(30, 11.5)),
+          ],
+          fans: const [
+            Fan(left: 10.5, right: 12, base: run, top: run - 2 * 10.7),
+          ],
+        ),
+      ),
+      (game) async {
+        game.input!.removeFromParent();
+        await game.ready();
+        final ball = game.level!.ball;
+        game.intent.horizontal = 1;
+        double? entered;
+        double? over;
+        var time = 0.0;
+        for (var i = 0; i < 1200 && over == null; i++) {
+          game.update(_dt);
+          time += _dt;
+          final p = ball.body.position;
+          if (entered == null && p.x > 10.5) entered = time;
+          if (p.x > 12.5 && p.y < run - 10) over = time;
+        }
+        expect(over, isNotNull);
+        // Risen 10.7 m to its hover height in that time.
+        expect(
+          10.7 / (over! - entered!),
+          greaterThan(ballEnvelope.fanRiseSpeed),
+        );
+      },
+    );
+
+    // The shortest seesaw is the slowest, the longest jumps lowest.
+    for (final half in [1.5, 2.25]) {
+      final rest = half * 0.14;
+      final seesaw = Seesaw(
+        pivot: Vec2(
+          10 + seesawCrack + math.sqrt(half * half - rest * rest),
+          run - rest,
+        ),
+        halfLength: half,
+        rest: rest,
+        tip: half * 0.33,
+      );
+      testWithGame(
+        'a seesaw $half m each side pushed from rest leaves its far end fast '
+        'enough, and its jump carries far enough',
+        () => testGame(
+          images: images,
+          levelFor: (_) => course(
+            floors: const [
+              FloorRun(position: Vec2(0, run), size: Vec2(10, tileSize)),
+            ],
+            seesaws: [seesaw],
+          ),
+        ),
+        (game) async {
+          game.input!.removeFromParent();
+          await game.ready();
+          final ball = game.level!.ball;
+          ball.body
+            ..setTransform(
+              Vector2(seesaw.nearEnd.x + 0.05, run - 0.21),
+              const Rot.identity(),
+            )
+            ..linearVelocity = Vector2.zero();
+          for (var i = 0; i < 20; i++) {
+            game.update(_dt);
+          }
+          game.intent.horizontal = 1;
+          for (var i = 0; i < 300; i++) {
+            game.update(_dt);
+            if (ball.body.position.x >= seesaw.farEnd.x - 0.25) break;
+          }
+          expect(
+            ball.body.linearVelocity.x,
+            greaterThanOrEqualTo(ballEnvelope.seesawExitSpeed),
+          );
+          final ground = ball.body.position.y;
+          game.intent.requestJump();
+          final (distance, height) = fly(game, ground);
+          expect(height, greaterThanOrEqualTo(ballEnvelope.seesawJumpHeight));
+          expect(
+            distance,
+            greaterThanOrEqualTo(ballEnvelope.maxSeesawGap(rise: 0, margin: 1)),
+          );
+        },
+      );
+    }
   });
 }

@@ -51,6 +51,7 @@ class LevelComponent extends Component with HasGameReference<Forge2DGame> {
   /// charge held, ground up to this much above it is still within reach.
   static const airJumpRise = 3.0;
 
+  /// The ball's radius, as the generator sizes the course for.
   static const ballRadius = 0.2;
 
   final LevelData data;
@@ -104,6 +105,10 @@ class LevelComponent extends Component with HasGameReference<Forge2DGame> {
     }
     for (final curve in data.curves) {
       see(curve.left, curve.right, curve.bottom);
+    }
+    // A ball floating in a fan's column has the fan below it.
+    for (final fan in data.fans) {
+      see(fan.left, fan.right, fan.base);
     }
     for (final platform in data.platforms) {
       see(
@@ -216,6 +221,13 @@ class LevelComponent extends Component with HasGameReference<Forge2DGame> {
           width: trampoline.width,
         ),
       for (final loop in data.loops) LoopComponent(loop: loop, ball: ball),
+      for (final fan in data.fans)
+        FanComponent(fan: fan, inFloor: _inFloor(fan)),
+      for (final seesaw in data.seesaws) SeesawComponent(seesaw: seesaw),
+      for (final pendulum in data.pendulums)
+        PendulumComponent(pendulum: pendulum),
+      for (final bumper in data.bumpers) BumperComponent(bumper: bumper),
+      ...RoofBeamComponent.over(data.bumpers),
       for (final zone in data.adrenaline) _zone(zone),
       RushTrailComponent(ball: ball),
       for (final platform in data.platforms)
@@ -257,6 +269,14 @@ class LevelComponent extends Component with HasGameReference<Forge2DGame> {
       ball,
     ]);
   }
+
+  /// Whether [fan] is set in a floor run rather than standing in a pit.
+  bool _inFloor(Fan fan) => data.floors.any(
+    (floor) =>
+        floor.top == fan.base &&
+        floor.left <= fan.left &&
+        floor.right >= fan.right,
+  );
 
   /// An adrenaline zone's sensor, reaching well above and a little below
   /// the ground it covers, and the stretches of that ground to tint.
@@ -303,6 +323,7 @@ class LevelComponent extends Component with HasGameReference<Forge2DGame> {
         if (child is CrumblingPlatformComponent) child.restore();
         if (child is BoostComponent) child.restore();
         if (child is LoopComponent) child.restore();
+        if (child is SeesawComponent) child.restore();
       }
       onRespawned?.call();
       return;

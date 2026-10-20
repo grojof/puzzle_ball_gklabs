@@ -69,6 +69,7 @@ The ADRs are:
   with the logic mechanics
 - [ADR-0015](docs/decisions/0015-flow-break-points-and-adrenaline.md): a heavier ball, flow with break points, and the
   adrenaline rush
+- [ADR-0016](docs/decisions/0016-dynamic-elements.md): fans, bumpers, pendulums and seesaws
 
 Contributors (human or AI) start with [AGENTS.md](AGENTS.md).
 

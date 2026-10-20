@@ -12,7 +12,10 @@ void main() {
   setUpAll(() async => images = await testImages());
 
   // One level per introduction, plus deep levels.
-  for (final number in [1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 13, 45, 120, 300]) {
+  for (final number in [
+    ...[1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 13],
+    ...[15, 17, 19, 21, 45, 120, 300],
+  ]) {
     testBotCompletes(
       () => images,
       levelGenerator.generate(seed: 'bot', level: number),

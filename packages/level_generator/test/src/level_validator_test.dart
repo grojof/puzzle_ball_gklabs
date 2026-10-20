@@ -24,6 +24,10 @@ LevelData course({
   List<Trampoline> trampolines = const [],
   List<Loop> loops = const [],
   List<AdrenalineZone> adrenaline = const [],
+  List<Fan> fans = const [],
+  List<Bumper> bumpers = const [],
+  List<Pendulum> pendulums = const [],
+  List<Seesaw> seesaws = const [],
   Vec2 ballStart = const Vec2(0.75, 3),
   Vec2? goal,
 }) {
@@ -44,6 +48,10 @@ LevelData course({
     trampolines: trampolines,
     loops: loops,
     adrenaline: adrenaline,
+    fans: fans,
+    bumpers: bumpers,
+    pendulums: pendulums,
+    seesaws: seesaws,
     sections: const [],
     estimatedDuration: 10,
   );
@@ -635,6 +643,11 @@ void main() {
             mudFlightTime: 1.2,
             loopEntrySpeed: 11,
             rushGain: 1.25,
+            fanClearance: 0.9,
+            fanCatchDepth: 3,
+            fanRiseSpeed: 2,
+            seesawExitSpeed: 5,
+            seesawJumpHeight: 1.5,
           ),
         );
         final belt = [
@@ -695,6 +708,264 @@ void main() {
         ),
         contains(endsWith('holds a checkpoint')),
       );
+    });
+  });
+
+  group('LevelValidator on the dynamic elements', () {
+    List<String> strict(LevelData level) => check(level, margin: 0.9);
+
+    group('fans', () {
+      const hover = 4 - 0.5 - 0.2;
+      const base = 4.0 + 3;
+      const top = base - 2 * (base - hover);
+      final pit = [floor(0, 4), floor(24.5, 4)];
+
+      test('accept fans spanning a pit, high and deep enough', () {
+        expect(
+          strict(
+            course(
+              floors: pit,
+              fans: const [Fan(left: 4.5, right: 24.5, base: base, top: top)],
+            ),
+          ),
+          isEmpty,
+        );
+        // Split, with a tile between columns.
+        expect(
+          strict(
+            course(
+              floors: pit,
+              fans: const [
+                Fan(left: 4.5, right: 13.75, base: base, top: top),
+                Fan(left: 15.25, right: 24.5, base: base, top: top),
+              ],
+            ),
+          ),
+          isEmpty,
+        );
+      });
+
+      test('reject a lull too wide, narrow split columns, or a short span', () {
+        expect(
+          strict(
+            course(
+              floors: pit,
+              fans: const [
+                Fan(left: 4.5, right: 12, base: base, top: top),
+                Fan(left: 17, right: 24.5, base: base, top: top),
+              ],
+            ),
+          ),
+          contains(startsWith('fans over x=4.5 leave too wide a lull')),
+        );
+        expect(
+          strict(
+            course(
+              floors: pit,
+              fans: const [
+                Fan(left: 4.5, right: 6, base: base, top: top),
+                Fan(left: 6.5, right: 24.5, base: base, top: top),
+              ],
+            ),
+          ),
+          contains(startsWith('fans over x=4.5 leave too wide a lull')),
+        );
+        expect(
+          strict(
+            course(
+              floors: pit,
+              fans: const [Fan(left: 4.5, right: 20, base: base, top: top)],
+            ),
+          ),
+          contains(startsWith('fans over x=4.5 do not span the pit')),
+        );
+      });
+
+      test('reject a fan that floats too low or stands too high', () {
+        expect(
+          strict(
+            course(
+              floors: pit,
+              fans: const [Fan(left: 4.5, right: 24.5, base: base, top: 3)],
+            ),
+          ),
+          contains(startsWith('fan at x=4.5 floats the ball too low')),
+        );
+        expect(
+          strict(
+            course(
+              floors: pit,
+              fans: const [Fan(left: 4.5, right: 24.5, base: 5, top: 1.6)],
+            ),
+          ),
+          contains(startsWith('fan at x=4.5 stands too high to catch')),
+        );
+      });
+
+      test('accept a fan in the floor that lifts above a wall', () {
+        final wall = [floor(0, 4), floor(4.5, -4, fill: 8)];
+        const lifting = Fan(left: 3, right: 4.5, base: 4, top: -13.4);
+        expect(strict(course(floors: wall, fans: const [lifting])), isEmpty);
+        expect(
+          strict(
+            course(
+              floors: wall,
+              fans: const [Fan(left: 3, right: 4.5, base: 4, top: -11)],
+            ),
+          ),
+          contains(startsWith('fan at x=3.0 does not lift above the wall')),
+        );
+      });
+
+      test('reject a fan over a run', () {
+        expect(
+          strict(
+            course(fans: const [Fan(left: 1, right: 3, base: 7, top: -1)]),
+          ),
+          contains(startsWith('fan at x=1.0 is misplaced')),
+        );
+      });
+    });
+
+    group('bumpers', () {
+      const row = 4 - bumperRoofHeight - bumperRadius;
+      List<Bumper> roof(double from, double to) => [
+        for (var x = from; x <= to + 1e-9; x += 0.8) Bumper(Vec2(x, row)),
+      ];
+
+      test('accept a roof over a drop gap that rolling off clears', () {
+        expect(
+          strict(
+            course(
+              floors: [floor(0, 4), floor(7.5, 6)],
+              bumpers: roof(1.85, 7.15),
+            ),
+          ),
+          isEmpty,
+        );
+      });
+
+      test('reject a roof over no drop, or a gap rolling off misses', () {
+        expect(
+          strict(
+            course(
+              floors: [floor(0, 4), floor(7.5, 4)],
+              bumpers: roof(1.85, 7.15),
+            ),
+          ),
+          containsAll([
+            startsWith('bumper roof at x=4.5 is over no drop'),
+            startsWith('roll-off of 3.0 at x=4.5'),
+          ]),
+        );
+      });
+
+      test('accept one low in a riser, and reject one anywhere else', () {
+        expect(
+          strict(
+            course(
+              floors: [floor(0, 4), floor(4.5, 2, fill: 2)],
+              bumpers: const [
+                Bumper(Vec2(4.5 + bumperInset, 4 - bumperRadius)),
+              ],
+            ),
+          ),
+          isEmpty,
+        );
+        expect(
+          strict(course(bumpers: const [Bumper(Vec2(2, 1))])),
+          contains(startsWith('bumper at (2.000, 1.000) is misplaced')),
+        );
+      });
+    });
+
+    group('pendulums', () {
+      Pendulum mace(double x, {double period = 8, double clear = 0.25}) =>
+          Pendulum(
+            pivot: Vec2(x, 4 - maceClearance - maceRadius - 3),
+            length: 3,
+            period: period,
+            clear: clear,
+            phase: 0,
+          );
+      final run = [floor(0, 4, tiles: 8), floor(13, 4)];
+
+      test('accept a mace with room around it and time to cross', () {
+        expect(strict(course(floors: run, pendulums: [mace(6)])), isEmpty);
+      });
+
+      test('reject a mace off its run, too wide a swing, no room, or too '
+          'little time', () {
+        expect(
+          strict(course(floors: run, pendulums: [mace(6, clear: 0.35)])),
+          contains(startsWith('pendulum at x=6.0 is misplaced')),
+        );
+        expect(
+          strict(course(floors: run, pendulums: [mace(1)])),
+          contains(startsWith('pendulum at x=1.0 is misplaced')),
+        );
+        expect(
+          strict(course(floors: run, pendulums: [mace(4.5), mace(8)])),
+          contains(startsWith('pendulum at x=8.0 leaves no room')),
+        );
+        expect(
+          strict(course(floors: run, pendulums: [mace(6, period: 2)])),
+          contains(startsWith('pendulum at x=6.0 leaves')),
+        );
+      });
+    });
+
+    group('seesaws', () {
+      const seesaw = Seesaw(
+        pivot: Vec2(4.5 + seesawCrack + 1.98, 3.72),
+        halfLength: 2,
+        rest: 0.28,
+        tip: 0.66,
+      );
+
+      test('accept one resting level with its run, its bank within a jump', () {
+        expect(
+          strict(
+            course(floors: [floor(0, 4), floor(9.2, 4)], seesaws: [seesaw]),
+          ),
+          isEmpty,
+        );
+      });
+
+      test('reject one off its run, malformed, or short of its bank', () {
+        const high = Seesaw(
+          pivot: Vec2(6.58, 3),
+          halfLength: 2,
+          rest: 0.28,
+          tip: 0.66,
+        );
+        expect(
+          strict(course(floors: [floor(0, 4), floor(9.2, 4)], seesaws: [high])),
+          contains(startsWith('seesaw at x=6.58 is misplaced')),
+        );
+        const flat = Seesaw(
+          pivot: Vec2(6.58, 3.72),
+          halfLength: 2,
+          rest: 0.28,
+          tip: 0.2,
+        );
+        expect(
+          strict(course(floors: [floor(0, 4), floor(9.2, 4)], seesaws: [flat])),
+          contains(startsWith('seesaw at x=6.58 is misplaced')),
+        );
+        expect(
+          strict(
+            course(floors: [floor(0, 4), floor(20, 4)], seesaws: [seesaw]),
+          ),
+          contains(startsWith('gap of')),
+        );
+        expect(
+          strict(
+            course(floors: [floor(0, 4), floor(8.5, 4)], seesaws: [seesaw]),
+          ),
+          contains(startsWith('seesaw at x=6.58 reaches over its bank')),
+        );
+      });
     });
   });
 }

@@ -57,6 +57,12 @@ void main() {
       ]);
     });
 
+    testWidgets('buzzes sharply for a hit', (tester) async {
+      DeviceHaptics(enabled: () => true).play(Haptic.hit);
+      await tester.pump();
+      expect(vibrations, [null]);
+    });
+
     testWidgets('stays still while the setting is off', (tester) async {
       var enabled = false;
       final haptics = DeviceHaptics(enabled: () => enabled)..play(Haptic.jump);

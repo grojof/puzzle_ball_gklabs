@@ -75,7 +75,11 @@ void main() {
           values.reduce((a, b) => a + b) / values.length;
       // The validator's speed is generous, so these are lower bounds.
       expect(mean(early), inInclusiveRange(0.6, 0.9));
-      expect(early.reduce(math.max), lessThanOrEqualTo(0.9));
+      // Never beyond the first level's margin: about 90 %.
+      expect(
+        early.reduce(math.max),
+        lessThanOrEqualTo(curve.parametersFor(1).margin + 1e-9),
+      );
       expect(mean(deep), greaterThan(mean(early)));
       expect(deep.reduce(math.max), lessThanOrEqualTo(0.96));
     });
@@ -766,15 +770,26 @@ void main() {
         SectionKind.gap,
         SectionKind.drop,
         SectionKind.cascade,
+        SectionKind.speedBoost,
+        SectionKind.loop,
+        SectionKind.trampolineHops,
+        SectionKind.conveyor,
+        SectionKind.bumperRoof,
+        SectionKind.seesaw,
       };
+      var total = 0;
+      var mixed = 0;
       for (final (_, data) in levels(40, 45)) {
         final kinds = data.sections.toSet();
         expect(kinds.intersection(flow), isNotEmpty);
-        expect(
-          kinds.difference(flow).difference({SectionKind.flat}),
-          isNotEmpty,
-        );
+        total++;
+        // A challenge phrase may draw flow kinds too, when the level
+        // features them: only nearly every level shows another kind.
+        if (kinds.difference(flow).difference({SectionKind.flat}).isNotEmpty) {
+          mixed++;
+        }
       }
+      expect(mixed / total, greaterThan(0.9));
     });
 
     test('no plain climb follows another', () {
@@ -869,6 +884,233 @@ void main() {
       expect(beyondPlain, greaterThan(0));
     });
   });
+  group('dynamic elements', () {
+    Iterable<(int, LevelData)> levels(int from, int to) sync* {
+      for (final seed in seeds) {
+        for (var n = from; n <= to; n++) {
+          yield (n, level(n, seed));
+        }
+      }
+    }
+
+    test('each first appears in its own level, and never before', () {
+      for (final seed in seeds) {
+        expect(level(15, seed).fans, isNotEmpty, reason: seed);
+        expect(level(17, seed).bumpers, isNotEmpty, reason: seed);
+        expect(level(19, seed).pendulums, isNotEmpty, reason: seed);
+        expect(level(21, seed).seesaws, isNotEmpty, reason: seed);
+        for (var n = 1; n < 15; n++) {
+          expect(level(n, seed).fans, isEmpty);
+        }
+        for (var n = 15; n < 17; n++) {
+          expect(level(n, seed).bumpers, isEmpty);
+        }
+        for (var n = 17; n < 19; n++) {
+          expect(level(n, seed).pendulums, isEmpty);
+        }
+        for (var n = 19; n < 21; n++) {
+          expect(level(n, seed).seesaws, isEmpty);
+        }
+      }
+    });
+
+    test('fans float the ball clear of the banks and catch it below', () {
+      var gaps = 0;
+      var climbs = 0;
+      var split = 0;
+      for (final (_, data) in levels(15, 80)) {
+        final floors = data.floors;
+        for (var i = 0; i + 1 < floors.length; i++) {
+          final floor = floors[i];
+          final next = floors[i + 1];
+          final columns = [
+            for (final fan in data.fans)
+              if (fan.left >= floor.right - 1e-9 &&
+                  fan.right <= next.left + 1e-9)
+                fan,
+          ];
+          if (columns.isNotEmpty) {
+            gaps++;
+            if (columns.length > 1) split++;
+            for (final fan in columns) {
+              expect(
+                fan.hover,
+                lessThanOrEqualTo(
+                  math.min(floor.top, next.top) -
+                      testEnvelope.fanClearance +
+                      1e-9,
+                ),
+              );
+              expect(
+                fan.base,
+                greaterThanOrEqualTo(
+                  floor.top + testEnvelope.fanCatchDepth - 1e-9,
+                ),
+              );
+            }
+            for (var c = 1; c < columns.length; c++) {
+              expect(
+                columns[c].left - columns[c - 1].right,
+                lessThanOrEqualTo(tileSize + 1e-9),
+              );
+            }
+            // Wider than a jump reaches.
+            expect(
+              next.left - floor.right,
+              greaterThan(
+                testEnvelope.maxGap(
+                  speed: testEnvelope.topSpeed,
+                  rise: 0,
+                  margin: 1,
+                ),
+              ),
+            );
+          }
+          final floorFan = data.fans.where(
+            (fan) => fan.base == floor.top && fan.right == floor.right,
+          );
+          if (floorFan.isNotEmpty) {
+            climbs++;
+            expect(
+              floor.top - next.top,
+              greaterThan(testEnvelope.jumpBoostHeight),
+            );
+            expect(
+              next.top - floorFan.single.hover,
+              greaterThanOrEqualTo(testEnvelope.fanClearance - 1e-9),
+            );
+          }
+        }
+      }
+      expect(gaps, greaterThan(0));
+      expect(climbs, greaterThan(0));
+      expect(split, greaterThan(0));
+    });
+
+    test('bumper roofs hang over drop gaps, and risers kick back', () {
+      var roofs = 0;
+      var risers = 0;
+      for (final (_, data) in levels(17, 80)) {
+        final floors = data.floors;
+        for (var i = 0; i + 1 < floors.length; i++) {
+          final floor = floors[i];
+          final next = floors[i + 1];
+          final row = floor.top - bumperRoofHeight - bumperRadius;
+          final roof = data.bumpers.where(
+            (bumper) =>
+                (bumper.center.y - row).abs() < 1e-9 &&
+                bumper.center.x > floor.right - 2 * tileSize - 1e-9 &&
+                bumper.center.x < next.left + 1e-9,
+          );
+          if (roof.isNotEmpty && next.left > floor.right) {
+            roofs++;
+            // A drop, roofed from two tiles before its edge to its far side.
+            expect(next.top, greaterThan(floor.top));
+            expect(
+              roof.first.center.x,
+              closeTo(floor.right - 2 * tileSize + bumperRadius, 1e-9),
+            );
+            expect(roof.last.center.x, closeTo(next.left - bumperRadius, 1e-9));
+          }
+          final riser = (next.left + bumperInset, floor.top - bumperRadius);
+          if (data.bumpers.any(
+            (bumper) =>
+                (bumper.center.x - riser.$1).abs() < 1e-9 &&
+                (bumper.center.y - riser.$2).abs() < 1e-9,
+          )) {
+            expect(next.top, lessThan(floor.top));
+            risers++;
+          }
+        }
+      }
+      // Above a rolling ball, below a jump.
+      expect(bumperRoofHeight, greaterThan(2 * ballRadius + 0.3));
+      expect(bumperRoofHeight, lessThan(testEnvelope.jumpHeight / 2));
+      expect(roofs, greaterThan(0));
+      expect(risers, greaterThan(0));
+    });
+
+    test('pendulums leave room to wait and time to cross', () {
+      var gauntlets = 0;
+      for (final (_, data) in levels(19, 80)) {
+        final byRun = <double, List<Pendulum>>{};
+        for (final pendulum in data.pendulums) {
+          final crossing = testEnvelope.pushTime(
+            0,
+            2 * (pendulum.reach + ballRadius),
+          );
+          expect(crossing, lessThanOrEqualTo(pendulum.clearTime));
+          final run = data.floors.singleWhere(
+            (floor) =>
+                floor.left <= pendulum.pivot.x &&
+                floor.right >= pendulum.pivot.x &&
+                (floor.top - pendulum.ground).abs() < 1e-9,
+          );
+          (byRun[run.left] ??= []).add(pendulum);
+          expect(
+            pendulum.left - ballRadius - run.left,
+            greaterThanOrEqualTo(tileSize - 1e-9),
+          );
+          expect(
+            run.right - pendulum.right - ballRadius,
+            greaterThanOrEqualTo(tileSize - 1e-9),
+          );
+        }
+        for (final run in byRun.values) {
+          if (run.length > 1) gauntlets++;
+          for (var i = 1; i < run.length; i++) {
+            expect(
+              run[i].left - run[i - 1].right - 2 * ballRadius,
+              greaterThanOrEqualTo(tileSize - 1e-9),
+            );
+          }
+        }
+      }
+      expect(gauntlets, greaterThan(0));
+    });
+
+    test('seesaws rest level with their run and reach their bank', () {
+      var seesaws = 0;
+      for (final (n, data) in levels(21, 80)) {
+        final margin = curve.parametersFor(n).margin;
+        for (final seesaw in data.seesaws) {
+          seesaws++;
+          final near = data.floors.lastWhere(
+            (floor) => floor.right <= seesaw.left + 1e-9,
+          );
+          final bank = data.floors.firstWhere(
+            (floor) => floor.left >= seesaw.right,
+          );
+          expect(seesaw.left - near.right, closeTo(seesawCrack, 1e-9));
+          expect(seesaw.nearEnd.y, closeTo(near.top, 1e-9));
+          final far = seesaw.farEnd;
+          final reach = testEnvelope.maxSeesawGap(
+            rise: far.y - bank.top,
+            margin: margin,
+          );
+          expect(bank.left - far.x, lessThanOrEqualTo(reach + 1e-9));
+        }
+      }
+      expect(seesaws, greaterThan(0));
+    });
+
+    test('deep levels use them all', () {
+      final kinds = <SectionKind>{};
+      for (final (_, data) in levels(60, 70)) {
+        kinds.addAll(data.sections);
+      }
+      expect(
+        kinds,
+        containsAll([
+          SectionKind.fanGap,
+          SectionKind.fanClimb,
+          SectionKind.bumperRoof,
+          SectionKind.pendulums,
+          SectionKind.seesaw,
+        ]),
+      );
+    });
+  });
 }
 
-const goldenDigests = [2751000118, 4153120212, 1316809374];
+const goldenDigests = [2371709512, 1675417042, 124226504];
