@@ -85,7 +85,8 @@ with a different feel for each event:
 - a short light pulse when the ball actually jumps;
 - a strong pulse when a boost starts;
 - a double pulse when a checkpoint activates;
-- a heartbeat, two soft pulses, when an adrenaline rush starts.
+- a heartbeat, two soft pulses, when an adrenaline rush starts;
+- a sharp pulse when a bumper or a mace hits the ball.
 
 A jump request that does not make the ball jump SHALL NOT vibrate.
 
@@ -105,8 +106,12 @@ A jump request that does not make the ball jump SHALL NOT vibrate.
 - **WHEN** vibration is enabled and the ball enters an adrenaline zone
 - **THEN** the device gives a heartbeat
 
+#### Scenario: A hit
+- **WHEN** vibration is enabled and a bumper or a mace hits the ball
+- **THEN** the device gives a sharp pulse
+
 #### Scenario: Vibration disabled
-- **WHEN** vibration is disabled and the ball jumps, takes a boost, activates a checkpoint or starts a rush
+- **WHEN** vibration is disabled and the ball jumps, takes a boost, activates a checkpoint, starts a rush or is hit
 - **THEN** the device does not vibrate
 
 ### Requirement: On-screen controls fit the thumb
