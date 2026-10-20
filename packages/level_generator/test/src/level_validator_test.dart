@@ -814,7 +814,7 @@ void main() {
               fans: const [Fan(left: 3, right: 4.5, base: 4, top: -5)],
             ),
           ),
-          contains(startsWith('fan at x=3.0 does not lift above the wall')),
+          contains(_violation('fan at x=3.0 does not lift above the wall')),
         );
       });
 
@@ -823,7 +823,7 @@ void main() {
           strict(
             course(fans: const [Fan(left: 1, right: 3, base: 7, top: -1)]),
           ),
-          contains(startsWith('fan at x=1.0 is misplaced')),
+          contains(_violation('fan at x=1.0 is misplaced')),
         );
       });
     });
@@ -856,15 +856,15 @@ void main() {
           strict(
             course(floors: wall, bumpers: zigzag([2.2, 4.0], swapped: true)),
           ),
-          contains(startsWith('bumper climb at x=9.0 is malformed')),
+          contains(_violation('bumper climb at x=9.0 is malformed')),
         );
         expect(
           strict(course(floors: wall, bumpers: zigzag([3.0, 4.6]))),
-          contains(startsWith('bumper at y=1.0 is out of reach')),
+          contains(_violation('bumper at y=1.0 is out of reach')),
         );
         expect(
           strict(course(floors: wall, bumpers: zigzag([2.2, 3.4]))),
-          contains(startsWith('ledge at x=9.0 is out of reach')),
+          contains(_violation('ledge at x=9.0 is out of reach')),
         );
       });
 
@@ -907,19 +907,19 @@ void main() {
           'little time', () {
         expect(
           strict(course(floors: run, pendulums: [mace(6, clear: 0.35)])),
-          contains(startsWith('pendulum at x=6.0 is misplaced')),
+          contains(_violation('pendulum at x=6.0 is misplaced')),
         );
         expect(
           strict(course(floors: run, pendulums: [mace(1)])),
-          contains(startsWith('pendulum at x=1.0 is misplaced')),
+          contains(_violation('pendulum at x=1.0 is misplaced')),
         );
         expect(
           strict(course(floors: run, pendulums: [mace(4.5), mace(8)])),
-          contains(startsWith('pendulum at x=8.0 leaves no room')),
+          contains(_violation('pendulum at x=8.0 leaves no room')),
         );
         expect(
           strict(course(floors: run, pendulums: [mace(6, period: 2)])),
-          contains(startsWith('pendulum at x=6.0 leaves')),
+          contains(_violation('pendulum at x=6.0 leaves')),
         );
       });
     });
@@ -978,3 +978,8 @@ void main() {
     });
   });
 }
+
+/// A violation starting with [text], whose whole numbers may print without
+/// their ".0", as JavaScript prints them.
+Matcher _violation(String text) =>
+    matches(RegExp('^${RegExp.escape(text).replaceAll(r'\.0 ', r'(\.0)? ')}'));
