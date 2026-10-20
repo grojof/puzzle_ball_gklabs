@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flame/cache.dart';
 import 'package:flame_test/flame_test.dart';
 import 'package:flutter/painting.dart';
+import 'package:flutter_test/flutter_test.dart' show addTearDown;
 import 'package:level_generator/level_generator.dart';
 import 'package:puzzle_ball_gklabs/audio/audio_service.dart';
 import 'package:puzzle_ball_gklabs/game/ball_odyssey_game.dart';
@@ -67,7 +68,10 @@ LevelData flatLevel({
   );
 }
 
-/// A game on flat levels with recorded audio and a controllable sensor.
+/// A game on flat levels with recorded audio and a controllable sensor. It
+/// is torn down at the end of the test, so its physics world is freed:
+/// Box2D allows only so many at once, and CI runs every test in one
+/// process.
 BallOdysseyGame testGame({
   required Images images,
   LevelData Function(int level)? levelFor,
@@ -81,7 +85,7 @@ BallOdysseyGame testGame({
   String? Function(int)? worldLabel,
   void Function()? onSessionCompleted,
 }) {
-  return BallOdysseyGame(
+  final game = BallOdysseyGame(
     levelFor: levelFor ?? (_) => flatLevel(),
     startLevel: startLevel,
     totalLevels: totalLevels,
@@ -97,4 +101,6 @@ BallOdysseyGame testGame({
     onSessionCompleted: onSessionCompleted,
     accelerometer: sensor == null ? null : () => sensor.stream,
   );
+  addTearDown(game.teardown);
+  return game;
 }
