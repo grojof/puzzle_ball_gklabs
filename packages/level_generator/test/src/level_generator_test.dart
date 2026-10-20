@@ -786,7 +786,7 @@ void main() {
         SectionKind.loop,
         SectionKind.trampolineHops,
         SectionKind.conveyor,
-        SectionKind.bumperPosts,
+        SectionKind.bumperClimb,
         SectionKind.seesaw,
       };
       var total = 0;
@@ -999,9 +999,9 @@ void main() {
       expect(split, greaterThan(0));
     });
 
-    test('bumper posts stand on runs past a gap, and risers kick back', () {
-      var posts = 0;
-      var deep = 0;
+    test('bumper climbs zigzag up to their ledge, and risers kick back', () {
+      var climbs = 0;
+      var tall = 0;
       var risers = 0;
       for (final (n, data) in levels(17, 80)) {
         final floors = data.floors;
@@ -1009,37 +1009,46 @@ void main() {
         for (var i = 0; i + 1 < floors.length; i++) {
           final floor = floors[i];
           final next = floors[i + 1];
-          final stand = floor.top - bumperStand - bumperRadius;
-          final on = data.bumpers.where(
-            (bumper) =>
-                (bumper.center.y - stand).abs() < 1e-9 &&
-                bumper.center.x > floor.left &&
-                bumper.center.x < floor.right,
-          );
-          if (on.isNotEmpty) {
-            posts += on.length;
-            if (on.length > 1) deep++;
-            // A gap before the run, a tile to jump from, a tile to land on.
-            expect(floor.left, greaterThan(floors[i - 1].right));
+          final near = next.left - bumperWallGap;
+          final climb = [
+            for (final bumper in data.bumpers)
+              if (((bumper.center.x - near).abs() < 1e-9 ||
+                      (bumper.center.x - near + bumperColumnGap).abs() <
+                          1e-9) &&
+                  bumper.center.y < floor.top &&
+                  bumper.center.y > next.top)
+                bumper,
+          ]..sort((a, b) => b.center.y.compareTo(a.center.y));
+          if (climb.isNotEmpty) {
+            climbs++;
+            if (climb.length > 4) tall++;
+            // A wall beyond a jump boost, from the far column to the near.
+            expect(next.left, closeTo(floor.right, 1e-9));
+            expect(floor.top - next.top, greaterThan(testEnvelope.jumpHeight));
+            expect(climb.length.isEven, isTrue);
+            for (var k = 0; k < climb.length; k++) {
+              expect((climb[k].center.x - near).abs() < 1e-9, k.isOdd);
+            }
+            // The lowest within a jump, each step and the ledge within a
+            // hop, and never closer than a straight bounce reaches.
+            final tops = [
+              floor.top,
+              for (final bumper in climb) bumper.center.y - bumperRadius,
+              next.top,
+            ];
             expect(
-              on.first.center.x - postSpan / 2 - floor.left,
-              closeTo(tileSize, 1e-9),
+              tops[0] - tops[1],
+              lessThanOrEqualTo(testEnvelope.jumpHeight * margin + 1e-9),
             );
-            expect(
-              floor.right - on.last.center.x - postSpan / 2,
-              greaterThanOrEqualTo(tileSize - 1e-9),
-            );
-            // Jumped like spikes as wide as the span.
-            expect(
-              postSpan,
-              lessThanOrEqualTo(
-                testEnvelope.maxGap(
-                  speed: testEnvelope.speedCurve.first,
-                  rise: 0,
-                  margin: margin,
-                ),
-              ),
-            );
+            for (var k = 2; k < tops.length; k++) {
+              expect(
+                tops[k - 1] - tops[k],
+                lessThanOrEqualTo(testEnvelope.bumperHopRise * margin + 1e-9),
+              );
+            }
+            for (var k = 2; k < tops.length - 1; k++) {
+              expect(tops[k - 1] - tops[k], greaterThanOrEqualTo(1.7 - 1e-9));
+            }
           }
           final riser = (next.left + bumperInset, floor.top - bumperRadius);
           if (data.bumpers.any(
@@ -1052,8 +1061,8 @@ void main() {
           }
         }
       }
-      expect(posts, greaterThan(0));
-      expect(deep, greaterThan(0));
+      expect(climbs, greaterThan(0));
+      expect(tall, greaterThan(0));
       expect(risers, greaterThan(0));
     });
 
@@ -1164,7 +1173,7 @@ void main() {
         containsAll([
           SectionKind.fanGap,
           SectionKind.fanClimb,
-          SectionKind.bumperPosts,
+          SectionKind.bumperClimb,
           SectionKind.pendulums,
           SectionKind.seesaw,
         ]),
@@ -1173,4 +1182,4 @@ void main() {
   });
 }
 
-const goldenDigests = [768873675, 2649850469, 3036758814];
+const goldenDigests = [768873675, 2639266758, 905357616];

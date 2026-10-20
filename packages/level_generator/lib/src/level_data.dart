@@ -364,13 +364,13 @@ class Fan {
 /// The radius of a bumper, in meters.
 const bumperRadius = 0.35;
 
-/// How high a bumper post's stand lifts it off the run, in meters: a
-/// rolling ball hits the bumper (design D2 of add-dynamic-elements).
-const bumperStand = 0.1;
+/// How far a bumper climb's near column stands from its wall, in meters
+/// (design D2 of add-dynamic-elements).
+const bumperWallGap = 0.9;
 
-/// The stretch of run a bumper post takes to jump over, in meters: the
-/// bumper, and the rise and fall of a jump clearing it.
-const postSpan = 3.0;
+/// How much farther from the wall a bumper climb's far column stands, in
+/// meters.
+const bumperColumnGap = 2.2;
 
 /// How far a riser's bumper is set into the wall, in meters.
 const bumperInset = 0.2;
@@ -906,9 +906,9 @@ enum SectionKind {
   /// A fan at the foot of a wall higher than a jump boost reaches.
   fanClimb,
 
-  /// Bumper posts standing on the runs after a gap: each is jumped, and
-  /// running into one throws the ball back.
-  bumperPosts,
+  /// Bumpers in a zigzag before a wall, bounced from one to the next up to
+  /// its ledge.
+  bumperClimb,
 
   /// Maces swinging over a run, each with room to wait before it.
   pendulums,

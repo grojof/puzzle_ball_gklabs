@@ -89,18 +89,20 @@ the hover height.
 - **WHEN** a fan stands at the foot of a wall higher than a jump boost reaches
 - **THEN** its column lifts the ball above the wall's top, and pushing forwards lands it on the ledge
 
-### Requirement: Bumper posts
-Bumper posts SHALL stand on the run after a gap, a tile in, one at first and up to three deep, each with a tile of run
-before and after it. Each SHALL be cleared by a jump from the run-up before it, with the level's precision, as spikes
-as wide as the post's span are.
+### Requirement: Bumper climbs
+A bumper climb SHALL stand before a wall higher than a jump: bumpers in two columns, alternating from the far one to the
+one next to the wall, each higher than the last. The lowest SHALL be within a jump from the run before the wall, each
+next one and the ledge within the measured rise of a bounce, with the level's precision, and no two so close that a
+straight bounce hits the bumper two above. The run before the wall SHALL leave room to jump onto the lowest bumper and
+to fall back onto.
 
-#### Scenario: Jumping a post
-- **WHEN** a player lands short after the gap and jumps from the tile before a post
-- **THEN** the ball clears the post and lands beyond it
+#### Scenario: Climbing
+- **WHEN** a player jumps onto the lowest bumper and steers each bounce onto the next one
+- **THEN** the ball reaches the ledge
 
-#### Scenario: Landing long
-- **WHEN** a player lands long after the gap and rolls into the post
-- **THEN** the post throws the ball back, towards the gap
+#### Scenario: Missing a bumper
+- **WHEN** the ball misses the next bumper
+- **THEN** it falls back to the run before the wall and can try again
 
 ### Requirement: Pendulums leave a way through
 Pendulums SHALL hang over floor runs, with two tiles of run before each mace's reach where the ball can wait without

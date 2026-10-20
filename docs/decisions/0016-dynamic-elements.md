@@ -1,7 +1,7 @@
 ---
 type: decision
 title: "ADR-0016: Fans, bumpers, pendulums and seesaws"
-description: "Fans blow upwards and are always on; bumpers stand as posts after gaps and sit low in risers; maces swing on a rhythm and push the ball; seesaws tip over pits. Each is measured with the real ball and introduced at levels 15, 17, 19 and 21."
+description: "Fans blow upwards and are always on; bumpers make zigzag climbs before walls and sit low in risers; maces swing on a rhythm and push the ball; seesaws tip over pits. Each is measured with the real ball and introduced at levels 15, 17, 19 and 21."
 tags: [level-generation, physics, mechanics]
 ---
 
@@ -19,7 +19,8 @@ the static terrain, they move or push the ball. The author chose how three of th
 - **Seesaws:** planks over a pit, rather than moving ramps on solid ground.
 
 The bumpers were first proposed as roofs over drop gaps. The author's play-test found them senseless: going under
-hit the roof, so they went over it. They chose posts on the ground instead. They also asked for faster, harder maces,
+hit the roof, so they went over it. Posts on the ground came next, but they broke the immersion. The author asked
+for something more skilful: climbing up while alternating between bumpers. They also asked for faster, harder maces,
 faster fans, and obstacles on wavy stretches, which felt empty.
 
 ## Decision
@@ -32,8 +33,8 @@ faster fans, and obstacles on wavy stretches, which felt empty.
   - set in the floor, they lift it over a wall higher than a jump boost reaches.
 - **Bumpers (level 17):**
   - a bumper throws the ball away from it at a fixed speed;
-  - posts stand on short stands on the run after a gap, to be jumped; landing long or rolling on runs into one,
-    which throws the ball back towards the gap;
+  - before a wall higher than a jump, bumpers in two alternating columns climb to the ledge: the ball bounces from
+    one to the next, steering each bounce; a miss drops it back to the run before the wall;
   - set low in the riser of a short tread, a bumper kicks an overshoot back into the gap.
 - **Pendulums (level 19):**
   - iron maces swing on a fixed rhythm and throw the ball away hard when they hit it;

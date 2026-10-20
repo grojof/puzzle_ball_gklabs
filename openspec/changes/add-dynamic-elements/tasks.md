@@ -35,7 +35,12 @@
 - [x] 6.2 Make maces throw the ball hard and swing faster, crossing from the back of a two-tile room (D3); verify the mechanics and pendulum tests
 - [x] 6.3 Make fans lift harder and rise faster, re-measuring the clearance (D1); verify the envelope tests
 - [x] 6.4 Let hills and half-pipes carry spikes in a valley or a boost launch (D11); verify a generator test that their share grows deep
-- [ ] 6.5 Run the stress run again, rebuild for the phone, and play again (stress run: 800/800)
+- [x] 6.5 Run the stress run again, rebuild for the phone, and play again (stress run: 800/800)
+
+## 7. After the second play-test
+
+- [x] 7.1 Replace the bumper posts by bumper climbs before a wall, with stronger bumpers (D2); verify generator, validator, mechanics, envelope and bot tests
+- [ ] 7.2 Run the stress run again (800/800), rebuild for the phone, and play again
 
 ## Workflow follow-up
 

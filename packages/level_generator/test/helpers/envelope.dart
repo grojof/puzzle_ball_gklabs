@@ -34,4 +34,5 @@ const testEnvelope = MovementEnvelope(
   fanRiseSpeed: 2,
   seesawExitSpeed: 5,
   seesawJumpHeight: 1.5,
+  bumperHopRise: 2,
 );

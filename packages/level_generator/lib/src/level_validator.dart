@@ -92,16 +92,6 @@ class LevelValidator {
           );
         }
       }
-      // A bumper post is jumped like spikes as wide as its span.
-      for (final post in level.bumpers) {
-        if (!_postOn(post, floor)) continue;
-        final left = post.center.x - postSpan / 2;
-        final before = along(left - floor.left, speed);
-        final limit = envelope.maxGap(speed: before, rise: 0, margin: margin);
-        if (postSpan > limit * (1 + _epsilon) + _epsilon) {
-          violations.add('post at x=$left exceeds $limit');
-        }
-      }
       speed = along(floor.size.x, speed);
       // Past maces, the player sets off from rest at the last one's lane.
       final lane = _lastLane(level, floor);
@@ -159,6 +149,12 @@ class LevelValidator {
       final rise = floor.top - next.top;
       final gap = next.left - floor.right;
       if (gap < _epsilon) {
+        final climb = _climbOf(level, floor, next);
+        if (climb != null) {
+          _checkClimb(climb, floor, next, margin, violations);
+          speed = 0;
+          continue;
+        }
         final lift = _floorFan(level, floor);
         if (rise > _epsilon && lift != null) {
           if (next.top - lift.hover < envelope.fanClearance - _epsilon) {
@@ -276,13 +272,66 @@ class LevelValidator {
     return null;
   }
 
-  /// Whether [bumper] is a post standing on [floor], with a tile of run-up
-  /// before its span and a tile after it.
-  static bool _postOn(Bumper bumper, FloorRun floor) =>
-      (bumper.center.y - (floor.top - bumperStand - bumperRadius)).abs() <
-          _epsilon &&
-      bumper.center.x - postSpan / 2 >= floor.left + tileSize - _epsilon &&
-      bumper.center.x + postSpan / 2 <= floor.right - tileSize + _epsilon;
+  /// The bumpers of a climb before the wall [next] rises to from [floor],
+  /// from the bottom, if any: in the two columns before the wall, between
+  /// the two runs' heights.
+  static List<Bumper>? _climbOf(
+    LevelData level,
+    FloorRun floor,
+    FloorRun next,
+  ) {
+    if ((next.left - floor.right).abs() > _epsilon ||
+        next.top > floor.top - _epsilon) {
+      return null;
+    }
+    final near = next.left - bumperWallGap;
+    final bumpers = [
+      for (final bumper in level.bumpers)
+        if (((bumper.center.x - near).abs() < _epsilon ||
+                (bumper.center.x - near + bumperColumnGap).abs() < _epsilon) &&
+            bumper.center.y < floor.top &&
+            bumper.center.y > next.top)
+          bumper,
+    ]..sort((a, b) => b.center.y.compareTo(a.center.y));
+    return bumpers.isEmpty ? null : bumpers;
+  }
+
+  /// A bumper climb alternates its columns from the far one to the near
+  /// one, its lowest top within a jump, each step and the ledge within a
+  /// hop, with room on the run before it (design D2 of
+  /// add-dynamic-elements).
+  void _checkClimb(
+    List<Bumper> bumpers,
+    FloorRun floor,
+    FloorRun wall,
+    double margin,
+    List<String> violations,
+  ) {
+    final near = wall.left - bumperWallGap;
+    var shaped =
+        bumpers.length.isEven &&
+        floor.left <= near - bumperColumnGap - tileSize + _epsilon;
+    for (var i = 0; i < bumpers.length; i++) {
+      final onNear = (bumpers[i].center.x - near).abs() < _epsilon;
+      if (onNear != i.isOdd) shaped = false;
+    }
+    if (!shaped) {
+      violations.add('bumper climb at x=${wall.left} is malformed');
+    }
+    final hop = envelope.bumperHopRise * margin;
+    var top = floor.top;
+    var reach = envelope.jumpHeight * margin;
+    for (final bumper in [...bumpers.map((b) => b.center.y - bumperRadius)]) {
+      if (top - bumper > reach + _epsilon) {
+        violations.add('bumper at y=$bumper is out of reach in its climb');
+      }
+      top = bumper;
+      reach = hop;
+    }
+    if (top - wall.top > hop + _epsilon) {
+      violations.add('ledge at x=${wall.left} is out of reach of its climb');
+    }
+  }
 
   /// Fans over a pit cover it from edge to edge, with at most a tile
   /// without wind between columns of at least two tiles; they hold the ball
@@ -337,8 +386,8 @@ class LevelValidator {
     }
   }
 
-  /// Every bumper stands as a post on a run, or sits low in the riser of a
-  /// step up (design D2 of add-dynamic-elements).
+  /// Every bumper is part of a climb before a wall, or sits low in the
+  /// riser of a step up (design D2 of add-dynamic-elements).
   void _checkBumpers(LevelData level, List<String> violations) {
     final floors = level.floors;
     for (final bumper in level.bumpers) {
@@ -351,9 +400,9 @@ class LevelValidator {
             next.top < floor.top - _epsilon &&
             (bumper.center.x - (next.left + bumperInset)).abs() < _epsilon &&
             (bumper.center.y - (floor.top - bumperRadius)).abs() < _epsilon;
-        if (riser) placed = true;
+        final climb = _climbOf(level, floor, next);
+        if (riser || (climb != null && climb.contains(bumper))) placed = true;
       }
-      if (floors.any((floor) => _postOn(bumper, floor))) placed = true;
       if (!placed) {
         violations.add('bumper at ${bumper.center} is misplaced');
       }

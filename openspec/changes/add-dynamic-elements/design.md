@@ -66,14 +66,19 @@ See proposal.md for the motivation. Today:
   - on contact, the ball's speed along the contact normal becomes `bumperSpeed` (about 9 m/s) outwards, and its speed
     along the surface is kept;
   - this is a set speed, as with trampolines, so the throw does not depend on how hard the ball hit.
-- **Bumper posts** (`bumperPosts`, a flow kind; they replace the bumper roofs of the first play-test, which the
-  author found senseless: going under hit the roof, so they went over it):
-  - a gap onto a single tile's landing, then a post a tile in, standing on a stand 0.1 m high, so a rolling ball hits
-    it;
-  - from depth 0.5, up to three posts, each after a tile of run;
-  - a post is jumped like spikes as wide as `postSpan` (3 m): the bumper and the rise and fall of a jump clearing it,
-    so it needs the reach at the speed of the tile before it;
-  - landing long or rolling on runs into the post, which throws the ball back, often into the gap.
+- **Bumper climbs** (`bumperClimb`, a challenge kind and a climb). The first play-test found roofs over drop gaps
+  senseless (going under hit the roof, so the author went over it), and the second found posts on the run after a gap
+  broke the immersion. The author asked for something more skilful, climbing up while alternating between bumpers:
+  - a run of four tiles, then a wall;
+  - in front of it, two columns of bumpers, `bumperWallGap` (0.9 m) and 3.1 m from the wall, alternating from the far
+    column to the near one, four bumpers or, deep, six;
+  - the lowest bumper's top within a jump (90 % of the precision share of the jump's height, from 1.9 to 2.3 m);
+  - each next top, and the ledge, a share of `bumperHopRise` above the last, never less than 1.7 m between bumpers,
+    or a straight bounce hits the bumper two above in the same column;
+  - the bumpers throw at 11 m/s (9 before), so a bounce rises about 2 to 2.7 m;
+  - a miss drops the ball back to the run, so it costs time, not a life.
+- **Measured:** `bumperHopRise` 2 m: the ball's bottom rises at least 2.05 m above a bumper's top when it comes down
+  0.2 m off it after a 2 m fall, and 2.7 m when it comes down on the top.
 - **Bumper risers:** from level 17, half of the short-tread break points line their riser's face with two or three
   bumpers below the lip. An overshoot is kicked back into the gap. A jump from the tread still clears the lip.
 
@@ -130,15 +135,15 @@ See proposal.md for the motivation. Today:
 ### D5. Difficulty curve
 - **Introductions:**
   - `fanGap` and `fanClimb` at 15;
-  - `bumperPosts` at 17, and bumper risers in break points from 17;
+  - `bumperClimb` at 17, and bumper risers in break points from 17;
   - `pendulums` at 19;
   - `seesaw` at 21.
 
   Level 19 is a breather. It still introduces its element, as level 9 does.
-- **Base weights:** `fanGap` 0.6, `fanClimb` 0.4, `bumperPosts` 0.7, `pendulums` 0.6, `seesaw` 0.6. All five are rich
+- **Base weights:** `fanGap` 0.6, `fanClimb` 0.4, `bumperClimb` 0.7, `pendulums` 0.6, `seesaw` 0.6. All five are rich
   kinds, which grow more common with depth.
 - **Kinds:**
-  - flow kinds gain `bumperPosts` and `seesaw`;
+  - flow kinds gain `seesaw`, and the climbs gain `fanClimb` and `bumperClimb`;
   - tense kinds gain `pendulums`;
   - plain climbs are unchanged.
 
@@ -169,8 +174,8 @@ Both reuse the spikes' and the speed boost's sections, so the validator's rules 
     - bases lie `fanCatchDepth` below the run;
     - windless stretches are within a glide;
     - nothing solid stands in a column but the floor fan's own ground;
-  - **bumper posts:** each stands on a run with a tile of run either side of its span, and the span is within a
-    jump at the speed before it;
+  - **bumper climbs:** the columns alternate from the far one to the near one, the lowest top is within a jump,
+    each step and the ledge within a hop, with a tile of run before the far column;
   - **pendulums:**
     - waiting rooms are out of every strip;
     - the strips are on one run;
@@ -207,7 +212,9 @@ Both reuse the spikes' and the speed boost's sections, so the validator's rules 
 - **Fans:**
   - in a fan gap it floats and pushes on, easing off once above the far bank's edge;
   - in a fan climb it waits against the wall until above the top, then pushes over.
-- **Bumper posts:** it jumps them as it jumps spikes as wide as their span.
+- **Bumper climbs:** it stands before the lowest bumper and jumps onto it, then steers each flight onto the next
+  bumper, coming down just off its top on the side of the one after, keeping clear of a bumper's side until above it
+  and moving out from under the bumper above; from the last it lands on the ledge.
 - **Pendulums:**
   - it stops in each waiting room;
   - it reads the pendulum's schedule from the level data and the game's clock;
@@ -225,7 +232,7 @@ Both reuse the spikes' and the speed boost's sections, so the validator's rules 
 ### D10. Versions and records
 - `generatorVersion` becomes 6, with new golden digests on the VM and in Chrome.
 - ADR-0016 records how each element plays and why: fans upwards and always on, maces that push, seesaws over pits, and
-  bumpers as posts and risers, and curves that carry obstacles.
+  bumpers as climbs and risers, and curves that carry obstacles.
 
 ## Risks / Trade-offs
 
@@ -235,8 +242,8 @@ Both reuse the spikes' and the speed boost's sections, so the validator's rules 
   on the settled ball, and the author's play-test judges the feel.
 - **[A seesaw jitters or catapults]** → Its limits, damping and light plank are measured, and the jump after it is
   sized from the measured worst case.
-- **[A post's throw feels unfair]** → It is in view across the gap, and a careful landing leaves a tile to jump it
-  from.
+- **[A bumper climb is too hard]** → A miss only drops the ball back to the run, and the steps are sized from the
+  measured hop with the level's precision; the bot climbs walls of two to six bumpers.
 - **[Frame time]** → The new bodies are few and their art is cached. The frame time is measured on the reference
   phone.
 

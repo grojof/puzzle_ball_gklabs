@@ -190,10 +190,10 @@ speed curve included. Two game tests keep them honest: `movement_envelope_test.d
 the physics stops reaching them, and `level_playthrough_test.dart` has a bot (`test/helpers/level_bot.dart`) play one
 level per introduction plus deep levels. The bot takes off near edges, holds a steady push in the air, rides ferries,
 uses orbs, keeps pushing over curves and through loops, steers after a trampoline's bounce or a jump boost, pushes
-harder in a rush, and jumps off a ledge over spikes just below. It floats on through fans, jumps bumper posts as it
-jumps spikes, waits at the back of each mace's room for its lane to clear, and jumps from a seesaw's far end. Before tuning the
-curve, run a local stress run of a few hundred levels with the same bot. Box2D allows only so many worlds in one test
-process, so keep each stress file under about 120 levels.
+harder in a rush, and jumps off a ledge over spikes just below. It floats on through fans, bounces up bumper
+climbs, waits at the back of each mace's room for its lane to clear, and jumps from a seesaw's far end. Before
+tuning the curve, run a local stress run of a few hundred levels with the same bot. Box2D allows only so many worlds
+in one test process, so keep each stress file under about 120 levels.
 
 ## Audio
 

@@ -2,8 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flame_forge2d/flame_forge2d.dart';
 import 'package:flutter/painting.dart';
-import 'package:level_generator/level_generator.dart'
-    show Bumper, bumperRadius, bumperStand;
+import 'package:level_generator/level_generator.dart' show Bumper, bumperRadius;
 import 'package:puzzle_ball_gklabs/game/components/ball_component.dart';
 import 'package:puzzle_ball_gklabs/game/visuals/element_palette.dart';
 
@@ -12,19 +11,14 @@ import 'package:puzzle_ball_gklabs/game/visuals/element_palette.dart';
 /// (level-mechanics spec, design D2 of add-dynamic-elements).
 ///
 /// Drawn with a bright cap and a chrome ring, it lights up and swells when
-/// it throws the ball (game-visuals spec). A post stands on a short steel
-/// stand.
+/// it throws the ball (game-visuals spec).
 class BumperComponent extends BodyComponent with ContactCallbacks {
-  new({required this.bumper, this.post = false}) : super(renderBody: false);
+  new({required this.bumper}) : super(renderBody: false);
 
   final Bumper bumper;
 
-  /// Whether the bumper is a post standing on the ground, rather than set
-  /// in a riser.
-  final bool post;
-
   /// The speed a bumper throws the ball at, in m/s.
-  static const speed = 9.0;
+  static const speed = 11.0;
 
   /// How long a bumper flashes after a throw, in seconds.
   static const flashTime = 0.2;
@@ -87,21 +81,8 @@ class BumperComponent extends BodyComponent with ContactCallbacks {
     ],
   ).createShader(Rect.fromCircle(center: Offset.zero, radius: bumperRadius));
 
-  static final _stand = Paint()..color = const Color(0xFF39444E);
-
   @override
   void render(Canvas canvas) {
-    if (post) {
-      canvas.drawRect(
-        const Rect.fromLTWH(
-          -0.08,
-          bumperRadius - 0.05,
-          0.16,
-          bumperStand + 0.05,
-        ),
-        _stand,
-      );
-    }
     // Swells and glows while flashing.
     final flash = isFlashing
         ? math.sin(math.pi * _sinceThrow / flashTime)

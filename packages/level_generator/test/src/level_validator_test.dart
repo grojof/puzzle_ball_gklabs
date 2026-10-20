@@ -648,6 +648,7 @@ void main() {
             fanRiseSpeed: 2,
             seesawExitSpeed: 5,
             seesawJumpHeight: 1.5,
+            bumperHopRise: 2,
           ),
         );
         final belt = [
@@ -828,29 +829,40 @@ void main() {
     });
 
     group('bumpers', () {
-      const stand = 4 - bumperStand - bumperRadius;
-      final run = [floor(0, 4, tiles: 6), floor(10.5, 4)];
-
-      test('accept a post a jump clears, with a tile either side', () {
-        expect(
-          strict(
-            course(floors: run, bumpers: const [Bumper(Vec2(4.5, stand))]),
+      // A wall 6.4 m up, with four bumpers: tops 2.2, 4.0, 5.8 and...
+      final wall = [floor(0, 4, tiles: 6), floor(9, 4 - 5.6, fill: 5.6)];
+      List<Bumper> zigzag(List<double> tops, {bool swapped = false}) => [
+        for (var k = 0; k < tops.length; k++)
+          Bumper(
+            Vec2(
+              9 - bumperWallGap - ((k.isEven != swapped) ? bumperColumnGap : 0),
+              4 - tops[k] + bumperRadius,
+            ),
           ),
+      ];
+
+      test('accept a climb that zigzags up within its hops', () {
+        expect(
+          strict(course(floors: wall, bumpers: zigzag([2.2, 4.0]))),
           isEmpty,
         );
       });
 
-      test('reject a post too close to an edge, or beyond a jump', () {
+      test('reject a climb out of reach, of the wrong shape, or short of its '
+          'ledge', () {
         expect(
-          strict(course(floors: run, bumpers: const [Bumper(Vec2(2, stand))])),
-          contains(startsWith('bumper at (2.000, 3.550) is misplaced')),
+          strict(
+            course(floors: wall, bumpers: zigzag([2.2, 4.0], swapped: true)),
+          ),
+          contains(startsWith('bumper climb at x=9.0 is malformed')),
         );
         expect(
-          check(
-            course(floors: run, bumpers: const [Bumper(Vec2(4.5, stand))]),
-            margin: 0.3,
-          ),
-          contains(startsWith('post at x=3.0 exceeds')),
+          strict(course(floors: wall, bumpers: zigzag([3.0, 4.6]))),
+          contains(startsWith('bumper at y=1.0 is out of reach')),
+        );
+        expect(
+          strict(course(floors: wall, bumpers: zigzag([2.2, 3.4]))),
+          contains(startsWith('ledge at x=9.0 is out of reach')),
         );
       });
 

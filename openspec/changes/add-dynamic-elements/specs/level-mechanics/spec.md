@@ -34,9 +34,9 @@ outside it, the fan SHALL have no effect.
 Touching a bumper SHALL throw the ball straight away from the bumper's surface at a fixed speed, whatever speed it hit
 at, keeping its speed along the surface. A bumper SHALL NOT send the ball back to a checkpoint by itself.
 
-#### Scenario: Rolling into a post
-- **WHEN** the ball rolls into a bumper post
-- **THEN** it is thrown back at the bumper's speed
+#### Scenario: Coming down on a bumper
+- **WHEN** the ball comes down a little off a bumper's top
+- **THEN** it is thrown back up at the bumper's speed, leaning to that side
 
 ### Requirement: Pendulums knock the ball
 A pendulum SHALL swing an iron mace on a rigid arm on a fixed rhythm, the same on every device. A mace that meets the

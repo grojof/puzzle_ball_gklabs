@@ -5,7 +5,7 @@
 ### Requirement: Readable fans and bumpers
 A fan SHALL show a housing with spinning blades and visible currents of air rising through its whole column, so its
 reach and its hover height read before the ball enters. A bumper SHALL look like a pinball bumper, with a bright cap
-and a chrome ring, on a short stand when it is a post, and SHALL light up and swell briefly when it throws the ball.
+and a chrome ring, and SHALL light up and swell briefly when it throws the ball.
 Both SHALL be recognizable in every biome and follow the depth style of the other elements.
 
 #### Scenario: A fan in the snowy peaks

@@ -559,6 +559,7 @@ void main() {
       required List<FloorRun> floors,
       List<Fan> fans = const [],
       List<Seesaw> seesaws = const [],
+      List<Bumper> bumpers = const [],
     }) => LevelData(
       seed: 'envelope',
       level: 1,
@@ -575,6 +576,7 @@ void main() {
       estimatedDuration: 10,
       fans: fans,
       seesaws: seesaws,
+      bumpers: bumpers,
     );
 
     // A pit fan as the generator builds it, with the least clearance.
@@ -722,6 +724,48 @@ void main() {
           expect(
             distance,
             greaterThanOrEqualTo(ballEnvelope.maxSeesawGap(rise: 0, margin: 1)),
+          );
+        },
+      );
+    }
+
+    // Coming down a little off the top, after a hop of its own.
+    for (final offset in [-0.2, 0.2]) {
+      testWithGame(
+        'a bumper landed on ${offset.abs()} m off its top throws the ball up '
+        'by its hop',
+        () => testGame(
+          images: images,
+          levelFor: (_) => course(
+            floors: const [
+              FloorRun(position: Vec2(0, run), size: Vec2(60, tileSize)),
+            ],
+            bumpers: const [Bumper(Vec2(20, run - 4))],
+          ),
+        ),
+        (game) async {
+          game.input!.removeFromParent();
+          await game.ready();
+          final ball = game.level!.ball;
+          const top = run - 4 - bumperRadius;
+          ball.body
+            ..setTransform(
+              Vector2(20 + offset, top - ballRadius - 2),
+              const Rot.identity(),
+            )
+            ..linearVelocity = Vector2.zero();
+          var bounced = false;
+          var highest = double.infinity;
+          for (var i = 0; i < 180; i++) {
+            final falling = ball.body.linearVelocity.y >= 0;
+            game.update(_dt);
+            if (falling && ball.body.linearVelocity.y < 0) bounced = true;
+            if (bounced) highest = math.min(highest, ball.body.position.y);
+          }
+          expect(bounced, isTrue);
+          expect(
+            top - (highest + ballRadius),
+            greaterThanOrEqualTo(ballEnvelope.bumperHopRise),
           );
         },
       );

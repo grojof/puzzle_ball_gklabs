@@ -37,6 +37,7 @@ class MovementEnvelope {
     required this.fanRiseSpeed,
     required this.seesawExitSpeed,
     required this.seesawJumpHeight,
+    required this.bumperHopRise,
   });
 
   /// Height of a standing jump, in meters.
@@ -135,6 +136,11 @@ class MovementEnvelope {
 
   /// Height of a jump from a seesaw's tipped far end, in meters.
   final double seesawJumpHeight;
+
+  /// How high the ball's bottom rises above a bumper's top when it comes
+  /// down on it a little off its top, in meters: what a bumper climb's
+  /// steps are sized from (design D2 of add-dynamic-elements).
+  final double bumperHopRise;
 
   /// Speed reached after pushing over [distance] meters, starting at
   /// [startSpeed]: read on [speedCurve] from where it reaches [startSpeed].

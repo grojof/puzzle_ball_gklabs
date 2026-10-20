@@ -176,7 +176,7 @@ class DifficultyCurve {
     SectionKind.loop: 13,
     SectionKind.fanGap: 15,
     SectionKind.fanClimb: 15,
-    SectionKind.bumperPosts: 17,
+    SectionKind.bumperClimb: 17,
     SectionKind.pendulums: 19,
     SectionKind.seesaw: 21,
   };
@@ -202,7 +202,7 @@ class DifficultyCurve {
     SectionKind.crumblingHops,
     SectionKind.fanGap,
     SectionKind.fanClimb,
-    SectionKind.bumperPosts,
+    SectionKind.bumperClimb,
     SectionKind.pendulums,
     SectionKind.seesaw,
   };
@@ -251,7 +251,7 @@ class DifficultyCurve {
     SectionKind.loop: 0.4,
     SectionKind.fanGap: 0.6,
     SectionKind.fanClimb: 0.4,
-    SectionKind.bumperPosts: 0.7,
+    SectionKind.bumperClimb: 0.7,
     SectionKind.pendulums: 0.6,
     SectionKind.seesaw: 0.6,
   };

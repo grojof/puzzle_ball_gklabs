@@ -161,53 +161,28 @@ void main() {
   });
 
   group('bumpers', () {
-    const post = Bumper(Vec2(12, _top - bumperStand - bumperRadius));
-
     testWithGame(
-      'standing on a run throw a ball rolling into them back',
-      () => gameOn(_course(bumpers: const [post])),
+      'throw a ball that comes down on their top back up, high',
+      () => gameOn(_course(bumpers: const [Bumper(Vec2(12, _top - 2))])),
       (game) async {
-        final ball = _place(game, 6);
-        game.intent.horizontal = 1;
+        final ball = _place(game, 12.1, y: _top - 4);
         final bumper = game.level!.children.whereType<BumperComponent>().single;
-        expect(bumper.post, isTrue);
-        var fastest = 0.0;
-        for (var i = 0; i < 240 && !bumper.isFlashing; i++) {
+        var highest = double.infinity;
+        var thrown = false;
+        for (var i = 0; i < 120; i++) {
           game.update(_dt);
+          if (bumper.isFlashing) thrown = true;
+          if (thrown) highest = math.min(highest, ball.body.position.y);
         }
-        for (var i = 0; i < 3; i++) {
-          fastest = math.max(fastest, -ball.body.linearVelocity.x);
-          game.update(_dt);
-        }
-        expect(bumper.isFlashing, isTrue);
-        expect(fastest, greaterThan(BumperComponent.speed * 0.6));
+        expect(thrown, isTrue);
+        // Its bottom rises well above the bumper's top.
+        const top = _top - 2 - bumperRadius;
+        expect(top - (highest + ballRadius), greaterThan(2));
         expect(audio.played, contains(GameSound.bumper));
         expect(haptics.played, contains(Haptic.hit));
         bumper.render(Canvas(PictureRecorder()));
         _run(game, 0.5);
         expect(bumper.isFlashing, isFalse);
-      },
-    );
-
-    testWithGame(
-      'standing on a run let a ball jump over them',
-      () => gameOn(_course(bumpers: const [post])),
-      (game) async {
-        final ball = _place(game, 6);
-        game.intent.horizontal = 1;
-        for (
-          var i = 0;
-          i < 240 && ball.body.position.x < 12 - postSpan / 2;
-          i++
-        ) {
-          game.update(_dt);
-        }
-        game.intent.requestJump();
-        for (var i = 0; i < 120 && ball.body.position.x < 14; i++) {
-          game.update(_dt);
-        }
-        expect(ball.body.position.x, greaterThan(14));
-        expect(audio.played, isNot(contains(GameSound.bumper)));
       },
     );
 
@@ -407,7 +382,7 @@ void main() {
       _course(
         floors: const [(0, 20), (40, 60), (80, 190)],
         fans: const [Fan(left: 20, right: 40, base: 7, top: -3)],
-        bumpers: const [Bumper(Vec2(50, _top - bumperStand - bumperRadius))],
+        bumpers: const [Bumper(Vec2(50, _top - 2))],
         pendulums: const [
           Pendulum(
             pivot: Vec2(100, _top - maceClearance - maceRadius - 3),

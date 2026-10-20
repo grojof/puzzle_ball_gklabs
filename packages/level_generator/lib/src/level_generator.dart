@@ -78,6 +78,17 @@ const _ferryTime = 10.0;
 /// The tallest wall a fan climb serves, in meters.
 const _fanClimbMax = 10.0;
 
+/// The tallest wall a bumper climb reaches, in meters.
+const _bumperClimbMax = 14.0;
+
+/// The least step between a bumper climb's bumpers, in meters: a straight
+/// bounce off one then never reaches the bumper two above.
+const _bumperStep = 1.7;
+
+/// The tiles of run before a bumper climb's wall: room to jump onto its
+/// lowest bumper, and to fall back onto.
+const _climbRoom = 4;
+
 /// Sections a player takes one after another without stopping: what flow
 /// phrases are made of (design D2 of flow-and-pacing).
 const Set<SectionKind> _flowKinds = {
@@ -91,7 +102,6 @@ const Set<SectionKind> _flowKinds = {
   SectionKind.loop,
   SectionKind.trampolineHops,
   SectionKind.conveyor,
-  SectionKind.bumperPosts,
   SectionKind.seesaw,
 };
 
@@ -133,6 +143,7 @@ const Set<SectionKind> _climbs = {
   SectionKind.orbClimb,
   SectionKind.tower,
   SectionKind.fanClimb,
+  SectionKind.bumperClimb,
 };
 
 /// Sections that end lower than they start.
@@ -498,8 +509,8 @@ class _Builder {
         _fanGap();
       case SectionKind.fanClimb:
         _fanClimb();
-      case SectionKind.bumperPosts:
-        _bumperPosts();
+      case SectionKind.bumperClimb:
+        _bumperClimb();
       case SectionKind.pendulums:
         _pendulums();
       case SectionKind.seesaw:
@@ -575,6 +586,9 @@ class _Builder {
     }
     if (y - _fanClimbMax < _startHeight - _maxRise) {
       weights.remove(SectionKind.fanClimb);
+    }
+    if (y - _bumperClimbMax < _startHeight - _maxRise) {
+      weights.remove(SectionKind.bumperClimb);
     }
     // Spikes never lie on the start's or the goal's run, and a ferry takes a
     // while: neither when the level is about to end.
@@ -994,7 +1008,7 @@ class _Builder {
     // From level 17, half the risers kick an overshoot back into the gap
     // (design D2 of add-dynamic-elements).
     final bumped =
-        parameters.weights.containsKey(SectionKind.bumperPosts) &&
+        parameters.weights.containsKey(SectionKind.bumperClimb) &&
         random.chance(0.5);
     if (!parameters.weights.containsKey(SectionKind.jumpBoost)) {
       _flat(1);
@@ -1319,24 +1333,37 @@ class _Builder {
     _landedLate = false;
   }
 
-  /// A gap onto a single tile, then one bumper post, or up to three deep,
-  /// each jumped from a tile of run-up: landing long, or rolling on, runs
-  /// into a post, which throws the ball back into the gap (design D2 of
+  /// Bumpers in two columns before a wall, alternating and each higher than
+  /// the last: the ball jumps onto the lowest, then bounces from one to the
+  /// next up to the ledge. A miss drops it back to the run (design D2 of
   /// add-dynamic-elements).
-  void _bumperPosts() {
-    _gap(_gapRise(), landingTiles: 1);
-    final count = parameters.depth >= 0.5 ? random.intIn(1, 3) : 1;
+  void _bumperClimb() {
+    final count = parameters.depth >= 0.5 && random.chance(0.5) ? 6 : 4;
+    _flat(_climbRoom);
+    // The lowest top within a jump, then steps within a hop, and never so
+    // close that a straight bounce hits the bumper two above.
+    var top = math.min(
+      math.max(envelope.jumpHeight * _share() * 0.9, 1.9),
+      2.3,
+    );
+    double step(double least) => math.min(
+      math.max(envelope.bumperHopRise * _share(), least),
+      envelope.bumperHopRise * margin,
+    );
     for (var i = 0; i < count; i++) {
-      _flat(1);
-      // Only where a jump clears it from the run-up.
-      if (_reach(0) * margin < postSpan) continue;
+      if (i > 0) top += step(_bumperStep);
+      final column = i.isEven ? bumperColumnGap : 0.0;
       bumpers.add(
-        Bumper(Vec2(x + postSpan / 2, y - bumperStand - bumperRadius)),
+        Bumper(Vec2(x - bumperWallGap - column, y - top + bumperRadius)),
       );
-      x += postSpan;
-      _time(postSpan, obstacle: true);
-      _land(envelope.flightTime, covered: postSpan);
     }
+    final height = top + step(1.2);
+    // About a second a hop.
+    duration += count;
+    sinceRespawn += count;
+    speed = 0;
+    _landedLate = false;
+    _stepUp(height);
   }
 
   /// Maces swinging over the run, one, or up to three deep, each with two

@@ -23,10 +23,11 @@ the heavier ball, like every other element.
     ledge.
   - **Skill:** a ball that flies in fast can overshoot the column and fall back, and one pushed beyond the column
     before the bank falls into the pit.
-- **Bumpers (level 17):** pinball bumpers set in ceilings and walls. Touching one throws the ball away from it at a
-  fixed, strong speed. They play as traps, but never send the ball back to a checkpoint by themselves.
-  - **Bumper posts:** bumpers on short stands on the runs after a gap, a tile in, one at first and up to three
-    deep. Each is jumped; landing long or rolling on runs into it, and it throws the ball back, often into the gap.
+- **Bumpers (level 17):** pinball bumpers that throw the ball away from them at a fixed, strong speed. They never
+  send the ball back to a checkpoint by themselves.
+  - **Bumper climbs:** before a wall higher than a jump, bumpers in two columns, alternating and each higher
+    than the last. The ball jumps onto the lowest and bounces from one to the next, steering each bounce, up to the
+    ledge; a miss drops it back to the run before the wall, to try again.
   - **Bumper risers:** from level 17, a break point's short tread can end in a riser lined with bumpers. A ball that
     overshoots the tread is kicked back into the gap.
 - **Pendulums (level 19):** iron maces swinging on a rigid arm over a run, on a fixed rhythm like the lasers.
@@ -61,7 +62,7 @@ the heavier ball, like every other element.
 - `level-generation`:
   - stages: fans at 15, bumpers at 17, pendulums at 19, seesaws at 21;
   - deep levels use the new elements too;
-  - new requirements for fans, bumper posts, pendulums, seesaws, and obstacles on curves.
+  - new requirements for fans, bumper climbs, pendulums, seesaws, and obstacles on curves.
 - `level-mechanics`:
   - fans, bumpers, pendulums and seesaws in play;
   - respawns reset the seesaws.
@@ -73,7 +74,7 @@ the heavier ball, like every other element.
 
 - **Generator:** `packages/level_generator`:
   - data: `Fan`, `Bumper`, `Pendulum`, `Seesaw`;
-  - section kinds: `fanGap`, `fanClimb`, `bumperPosts`, `pendulums`, `seesaw`;
+  - section kinds: `fanGap`, `fanClimb`, `bumperClimb`, `pendulums`, `seesaw`;
   - difficulty curve, envelope, validator, laser clearance and tests.
 - **Game:**
   - four components: a fan's sensor that lifts, static bumpers, kinematic pendulums, and a dynamic seesaw on a
